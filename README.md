@@ -7,7 +7,7 @@ PuNDIT will integrate and enhance several software tools needed by the High Ener
 
 #### Funding ####
 
-    The PuNDIT research project is funded by the National Science Foundation under award numbers 1440571 and 1440585
+    PuNDIT is funded by the National Science Foundation under award numbers 1440571 and 1440585
 
 #### Project Duration ####
 
