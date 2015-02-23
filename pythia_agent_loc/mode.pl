@@ -88,7 +88,7 @@ sub getLowMode {
 
 		if($prev != -1)
 		{
-			#minima
+			# find local minima
 			#if($prev > $cur and $next > $cur)
 			if(DoubleGT($prev, $cur) and DoubleGT($next, $cur))
 			{

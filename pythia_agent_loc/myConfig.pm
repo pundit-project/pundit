@@ -8,6 +8,9 @@ our @EXPORT = qw($minWlen $maxWlen $dfield $tfield $sfield $rsfield $minProbDela
 
 
 ### config
+our $diagEnabled = 0; # 1 to enable diagnosis, 0 to disable
+our $plotGraph = 0; # 1 to enable graph generation, 0 to disable
+
 our $minWlen = 5; #s
 our $maxWlen = 60; #s
 
@@ -25,7 +28,21 @@ our $sfield = 1; #s
 our $rsfield = 4; #s
 ###
 
-our $DATADIR = "/var/lib/owamp/hierarchy/root/regular/";
+our $psVersion = "3.4";
+
+if ($psVersion == "3.3")
+{
+	# perfSONAR 3.3
+	our $DATADIR = "/var/lib/owamp/hierarchy/root/regular/";
+	use lib '/opt/perfsonar_ps/perfsonarbuoy_ma/lib/';
+}
+else
+{
+	# perfSONAR 3.4
+	our $DATADIR = "/var/lib/perfsonar/regular_testing/";
+	use lib "/opt/perfsonar_ps/regular_testing/lib/";
+}
+
 #our $DATADIR = "/tmp/owp/";
 our $MINSCANDUR = 300; #s
 

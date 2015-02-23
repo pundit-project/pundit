@@ -19,8 +19,8 @@ sub scandir
 	opendir(DIR, $dir) or die "Cannot open $dir: $!\n";
 	for(readdir DIR)
 	{
-		my $file = "$DATADIR/$_";
-		if(-f $file and !exists $fileSeen{$file})
+		my $file = "$dir/$_";
+		if($file =~ /\.owp$/i and -f $file and !exists $fileSeen{$file})
 		{
 			my $ret = &$fileProcessor($file);
 			$fileSeen{$file} = 1 if $ret != -1;
@@ -29,19 +29,47 @@ sub scandir
 	close DIR;
 }
 
+# Scandir 2 takes a directory and finds the owamp subdirectories within it
+# Calls scandir() on any directories found
+# Only used for perfSONAR 3.4
+sub scandir2
+{
+	my $dir = shift;
+	my $fileProcessor = shift;
+
+	foreach my $dirSearch (glob $dir . "owamp_*") 
+	{
+		next if ! -d $dirSearch;              # skip if it's not a directory
+		scandir($dirSearch, $fileProcessor); # Pass it on to scandir()
+	}
+}
+
 sub getTSFile
 {
 	my $filename = shift;
 	#my $sline = `owstats -R $filename | head -1 | cut -d ' ' -f 2`;
 	my $sline = `./owpingone $filename | head -1 | cut -d ' ' -f 2`;
 	chomp $sline;
-	return owptime2time($sline);
+	if ($myConfig::psVersion == "3.3")
+	{
+		return owptime2time($sline);
+	}
+	else
+	{
+		return perfSONAR_PS::RegularTesting::Utils::owptime2datetime($sline)->epoch();
+	}
 }
 
 sub checkFile
 {
-use lib '/opt/perfsonar_ps/perfsonarbuoy_ma/lib/';
-use OWP::Utils;
+	if ($myConfig::psVersion == "3.3")
+	{
+		require OWP::Utils;
+	}
+	else
+	{
+		require perfSONAR_PS::RegularTesting::Utils;
+	}
 
 	my $filename = shift;
 	#my $wsecs = (stat($filename))[9];
@@ -69,8 +97,17 @@ sub runFile
 
 	my $eline = `owstats -R $filename | tail -1 | cut -d ' ' -f 2`;
 	chomp $eline;
-	my $ftime = owptime2time($eline);
-
+	
+	my $ftime = -1;
+	if ($myConfig::psVersion == "3.3")
+	{
+		$ftime = owptime2time($eline);
+	}
+	else
+	{
+		$ftime = perfSONAR_PS::RegularTesting::Utils::owptime2datetime($eline)->epoch();
+	}
+	
 	return -1 if $ftime > time(); ### e.g.: a file with no records; bug with owptime2time
 	return -1 if time() - (stat($filename))[9] > 2*$MINSCANDUR; #file not updated for over 10mins
 
@@ -84,9 +121,16 @@ sub runScan
 {
 	while(1)
 	{
-		# scan for files and add to job list
-		scandir($DATADIR, \&checkFile);
-
+		if ($myConfig::psVersion == "3.3")
+		{
+			# scan for files and add to job list
+			scandir($DATADIR, \&checkFile);
+		}
+		else
+		{
+			scandir2($DATADIR, \&checkFile);
+		}
+		
 		# run pending jobs
 		while(1)
 		{

@@ -15,27 +15,34 @@ sub preprocessReader
 	my @sendTS = ();
 	my $min = 0xFFFFFF; my $max = -0xFFFFFF; my $nout = 0;
 
-	open(IN, "./owstats -v $inputFile |") or die;
+	open(IN, "owstats -v $inputFile |") or die;
 	while(my $line = <IN>)
 	{
-		next if $line !~ /^seq_no/;
+		next if $line !~ /^seq_no/; # skip lines that are not owamp measurements
 		chomp $line;
-		$line =~ s/=/ /g; $line =~ s/\t/ /g;
+		
+		# replace equals and tabs with spaces, then split on space
+		$line =~ s/=/ /g; 
+		$line =~ s/\t/ /g;
 		my @obj = split(/\s+/, $line);
 
 		if($line !~ /LOST/)
 		{
+			# skip values that are out of range
 			next if $obj[10] < $fileStartTime;
 			last if $obj[10] > $fileEndTime;
 		}
 		else
 		{
+			# note sequence number of loss
 			$lostseqsref->{$obj[1]} = 1;
 			next;
 		}
 
+		# Delay
 		my $d = $obj[3];
 
+		# Seq no and send timestamp
 		push(@orgseqs, $obj[1]);
 		push(@sendTS, $obj[10]);
 

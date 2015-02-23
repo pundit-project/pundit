@@ -28,7 +28,9 @@ sub getX
 }
 sub printTS
 {
-use GD::Graph::linespoints;
+	if ($myConfig::plotGraph == 1) {
+		require GD::Graph::linespoints;
+	}
 
 	my $st = shift;
 	my $et = shift;
@@ -47,57 +49,67 @@ use GD::Graph::linespoints;
 	### for owp files only:
 	my ($src, $dst) = getsrcdst($iFile);
 
-	my $graph = GD::Graph::linespoints->new(400, 300);
-	$graph->set(
-		x_label => 'Time (s)',
-		y_label => 'One-way delay (ms)',
-		#title   => 'Some simple graph',
-		r_margin => 15,
-		transparent => 0,
-		x_tick_number => 'auto',
-		marker_size => 1
-	) or return -1;
-
-	my $xmin = $st-$stime-$offset;
-	my $xmax = $et-$stime+$offset;
-	my $n = @$dref;
-	#my $n = @$timeserref;
-	my @data = (); my @t = (); my @d = ();
-	for(my $c = 0; $c < $n; $c++)
-	{
-		my $x = $tref->[$c] - $stime;
-		#next if $x < $xmin;
-		#last if $x > $xmax;
-		push(@t, $x); push(@d, $dref->[$c]);
-		#my $x = $timeserref->[$c]->{sendTS} - $stime;
-		#next if $x < $xmin;
-		#last if $x > $xmax;
-		#push(@t, $x); push(@d, $timeserref->[$c]->{delay});
-	}
-	$data[0] = \@t; $data[1] = \@d;
-	my $gd = $graph->plot(\@data) or return -1;
-
-	for(my $s = $startS; $s <= $endS; $s++)
-	{
-		#( $lostseqs{$s}-$stime ) if exists $lostseqs{$s};
-		if(exists $lostseqs{$s})
+	my $pngplot = undef;
+	if ($myConfig::plotGraph == 1) {
+		my $graph = GD::Graph::linespoints->new(400, 300);
+		$graph->set(
+			x_label => 'Time (s)',
+			y_label => 'One-way delay (ms)',
+			#title   => 'Some simple graph',
+			r_margin => 15,
+			transparent => 0,
+			x_tick_number => 'auto',
+			marker_size => 1
+		) or return -1;
+	
+		my $xmin = $st-$stime-$offset;
+		my $xmax = $et-$stime+$offset;
+		my $n = @$dref;
+		#my $n = @$timeserref;
+		my @data = (); my @t = (); my @d = ();
+		for(my $c = 0; $c < $n; $c++)
 		{
-			my $xp = getX($graph, $lostseqs{$s}-$stime);
-			$graph->{graph}->line($xp, $graph->{top}, $xp, $graph->{bottom}, 1);
+			my $x = $tref->[$c] - $stime;
+			#next if $x < $xmin;
+			#last if $x > $xmax;
+			push(@t, $x); push(@d, $dref->[$c]);
+			#my $x = $timeserref->[$c]->{sendTS} - $stime;
+			#next if $x < $xmin;
+			#last if $x > $xmax;
+			#push(@t, $x); push(@d, $timeserref->[$c]->{delay});
 		}
+		$data[0] = \@t; $data[1] = \@d;
+		my $gd = $graph->plot(\@data) or return -1;
+	
+		for(my $s = $startS; $s <= $endS; $s++)
+		{
+			#( $lostseqs{$s}-$stime ) if exists $lostseqs{$s};
+			if(exists $lostseqs{$s})
+			{
+				my $xp = getX($graph, $lostseqs{$s}-$stime);
+				$graph->{graph}->line($xp, $graph->{top}, $xp, $graph->{bottom}, 1);
+			}
+		}
+		#my $file = $iFile;
+		#$file =~ s/^/$stime\_/;
+		#$file =~ s/\//_/g;
+		#$file =~ s/$/.png/;
+		#open(IMG, ">diag-plots/$file") or die $!;
+		#binmode IMG;
+		#print IMG $gd->png;
+		#close IMG;
+	
+		$pngplot = $gd->png
+		
 	}
-
-	#my $file = $iFile;
-	#$file =~ s/^/$stime\_/;
-	#$file =~ s/\//_/g;
-	#$file =~ s/$/.png/;
-	#open(IMG, ">diag-plots/$file") or die $!;
-	#binmode IMG;
-	#print IMG $gd->png;
-	#close IMG;
-
-	my $diagstr = $str; chomp $diagstr; $diagstr =~ s/.*diag: //;
-	writeEventDB($st, $et, $src, $dst, $diagstr, $gd->png, $iFile); #"diag-plots/$file");
+	else {
+		$pngplot = undef
+	}
+	
+	my $diagstr = $str; 
+	chomp $diagstr; 
+	$diagstr =~ s/.*diag: //;
+	writeEventDB($st, $et, $src, $dst, $diagstr, $pngplot, $iFile); #"diag-plots/$file");
 }
 
 sub printReorderEvent

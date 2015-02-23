@@ -89,6 +89,7 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 	if($inputFile !~ /\.owp$/)
 	{
 		delete $lostseqs{$s} if exists $lostseqs{$s}; #reordering
+		# mark all seq numbers from $oldseq to $s as lost
 		for(my $seq = $oldseq+1; $seq < $s; $seq++)
 		{
 			$lostseqs{$seq} = $t;
@@ -103,18 +104,23 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 		}
 	}
 
-	# reordering
+	# Skip lost seqnos for reordering calc
 	$nexporderseq++;
-	while(exists $lostseqs{$nexporderseq}) { $nexporderseq++; }
+	while(exists $lostseqs{$nexporderseq}) 
+	{ 
+		$nexporderseq++; 
+	}
 
+	# Call this only when timediff is larger than current Window
 	if($t - $starttime > $curWlen)
 	{
 		my $mode = -1;
-		my $h = getBW($IQR, $n);
+		my $h = getBW($IQR, $n); # bandwidth calculated using interquartile range
 		if($h != 0)
 		{
+			# Run gaussian kernel density estimation and get mode for baseline
 			($mode, my $modeEnd, my $modeStart, my $density) = 
-						getLowMode(\@sortW, $h, $n);
+						getLowMode(\@sortW, $h, $n); 
 			$oldmode = $mode if $oldmode == -1;
 
 		#print STDERR "baseline: $mode range $modeStart to $modeEnd (".
@@ -124,8 +130,7 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 
 			#my $rightCI = getHighMode(\@sortW, $h, $n, $modeEnd);
 
-			my ($ret,$estart,$eend,$estartS,$eendS, $eventWref, 
-				$eventWtsref, $eventWseqref) = 
+			my ($ret, $estart, $eend, $estartS, $eendS, $eventWref, $eventWtsref, $eventWseqref) = 
 			addDensityPts(\@W, \@Wts, \@sortW, \@Wseq, $n, $modeStart, $modeEnd, 
 					$density, $starttime, $t, $range, $exptbegin, \@sortS);
 			if($ret == 1)
@@ -138,8 +143,16 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 				#\%lostseqs, $oldmode); #XXX: change mode to last non-event mode
 				setEventVars($estart-5, $eend+5, $eventWref, $eventWtsref, 
 					$eventWseqref, \%lostseqs, $oldmode, 1);
-				my $ret = diagnosisTree();
-
+				
+				# Optional call to diagnosis
+				if ($myConfig::diagEnabled == 1) 
+				{
+					my $ret = diagnosisTree();
+				}
+				else
+				{
+					my $ret = "Delay";
+				}
 				printTS($estart, $eend, $starttime, 5, \%lostseqs, 
 						$estartS, $eendS, $inputFile, $ret,
 						$eventWref, $eventWtsref);
@@ -150,8 +163,12 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 		### Loss
 		my $nlost = 0;
 		for(my $seq = $loseq; $seq < $hiseq + 1; $seq++) 
-		{ if(exists $lostseqs{$seq}) {$nlost++;} } #print STDERR "LOST $seq\n";} }
-		my ($ret,$estart,$eend,$estartS,$eendS, $eventWref, 
+		{ 
+			if(exists $lostseqs{$seq}) {$nlost++;}
+			#print STDERR "LOST $seq\n"; 
+		} 
+		
+		my ($ret, $estart, $eend, $estartS, $eendS, $eventWref, 
 				$eventWtsref, $eventWseqref) = 
 		addLossPts(\@W, \@Wts, \@sortW, \@Wseq, $n,
 				$starttime, $t, $range, $exptbegin, \@sortS, $nlost);
@@ -160,7 +177,17 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 		{
 			setEventVars($estart-5, $eend+5, $eventWref, $eventWtsref, $eventWseqref,
 					\%lostseqs, $oldmode, 2);
-			my $ret = diagnosisTree();
+					
+			# Optional call to diagnosis
+			if ($myConfig::diagEnabled == 1) 
+			{
+				my $ret = diagnosisTree();
+			}
+			else
+			{
+				my $ret = "Loss";
+			}
+			
 			printTS($estart, $eend, $starttime, 5, \%lostseqs, 
 					$estartS, $eendS, $inputFile, $ret,
 					$eventWref, $eventWtsref);
@@ -171,12 +198,25 @@ for(my $timearrseq = 0; $timearrseq < $ntimearrseq; $timearrseq++)
 		my ($reorderStart, $reorderEnd) = addReorderWindow($rmetric, $t);
 		#only for reordering
 		setEventVars(undef, undef, undef, undef, undef, undef, undef, 3);
-		my $ret = diagnosisTree();
-		if($ret =~ /Reorder/)
+		if ($myConfig::diagEnabled == 1) 
 		{
-			printReorderEvent($reorderStart, $reorderEnd, $inputFile, $ret);
-			print "REORDERING: $reorderStart $reorderEnd diag $ret\n";
+			my $ret = diagnosisTree();
+			if($ret =~ /Reorder/)
+			{
+				printReorderEvent($reorderStart, $reorderEnd, $inputFile, $ret);
+				print "REORDERING: $reorderStart $reorderEnd diag $ret\n";
+			}
 		}
+		else 
+		{
+			# simple reordering detection
+			if(ReorderExist() == 1) 
+			{
+				printReorderEvent($reorderStart, $reorderEnd, $inputFile, $ret);
+				print "REORDERING: $reorderStart $reorderEnd diag $ret\n";
+			}
+		}
+		
 		#my $reorderRet = checkReordering();
 		#my $str = ($reorderRet == -1) ? "none" : 
 		#		(($reorderRet == 0) ? "persistent" : "unstable");
@@ -237,7 +277,16 @@ if($ret == 1)
 {
 	setEventVars($estart-5, $eend+5, $eventWref, $eventWtsref, $eventWseqref,
 		\%lostseqs, $oldmode, 2);
-	my $ret = diagnosisTree();
+	
+	# Optional call to diagnosis
+	if ($myConfig::diagEnabled == 1) 
+	{
+		my $ret = diagnosisTree();
+	}
+	else
+	{
+		my $ret = "Loss (residual)";
+	}
 	
 	printTS($estart, $eend, $starttime, 5, \%lostseqs, 
 		$estartS, $eendS, $inputFile, $ret,
