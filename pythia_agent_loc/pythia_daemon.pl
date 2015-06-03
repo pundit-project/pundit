@@ -13,9 +13,13 @@ exit if $pid;
 setsid or die "Can't start a new session: $!";
 
 print "Starting server..\n";
+
+# run this only on startup
+`perl cleanowamp.pl >> run.log 2>&1`;
+
 while(1)
 {
-	`perl tree.pl`;
+	#`perl tree.pl`;
 	`perl scandir.pl >> run.log 2>&1`;
 }
 

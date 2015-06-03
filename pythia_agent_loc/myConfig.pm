@@ -32,20 +32,23 @@ our $psVersion = "3.4";
 
 if ($psVersion == "3.3")
 {
-	# perfSONAR 3.3
+	# perfSONAR 3.3-specific options
 	our $DATADIR = "/var/lib/owamp/hierarchy/root/regular/";
 	use lib '/opt/perfsonar_ps/perfsonarbuoy_ma/lib/';
 }
 else
 {
-	# perfSONAR 3.4
+	# perfSONAR 3.4-specific options
 	our $DATADIR = "/var/lib/perfsonar/regular_testing/";
 	use lib "/opt/perfsonar_ps/regular_testing/lib/";
 }
 
-#our $DATADIR = "/tmp/owp/";
 our $MINSCANDUR = 300; #s
 
+# More configuration options
+
+# When starting up, this is the number of hours in the backlogged owamp measurements to process. All older files will be deleted.
+our $oldOwampThreshold = 0;
 
 1;
 

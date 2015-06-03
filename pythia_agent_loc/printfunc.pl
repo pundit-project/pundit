@@ -8,7 +8,7 @@ require 'dbstore.pl';
 sub getsrcdst
 {
 	my $owpfile = shift;
-	my $str = `./owstats $owpfile | grep "owping statistics from "`;
+	my $str = `owstats $owpfile | grep "owping statistics from "`;
 	chomp $str;
 	my @obj = split(/\s+/, $str);
 

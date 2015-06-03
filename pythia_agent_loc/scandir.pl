@@ -47,8 +47,7 @@ sub scandir2
 sub getTSFile
 {
 	my $filename = shift;
-	#my $sline = `owstats -R $filename | head -1 | cut -d ' ' -f 2`;
-	my $sline = `./owpingone $filename | head -1 | cut -d ' ' -f 2`;
+	my $sline = `owstats -R $filename | head -1 | cut -d ' ' -f 2`;
 	chomp $sline;
 	if ($myConfig::psVersion == "3.3")
 	{
@@ -57,6 +56,25 @@ sub getTSFile
 	else
 	{
 		return perfSONAR_PS::RegularTesting::Utils::owptime2datetime($sline)->epoch();
+	}
+}
+
+# Gets the start timestamp from an owp file
+# Simplified version that gets it from the filename
+sub getTSFile2
+{
+	my $filename = shift;
+	$filename =~ s#^.*/##; # strip everything up to the last slash
+	if ($filename =~ m/^(.*)_.*$/) # match the first part of the filename
+	{
+		if ($myConfig::psVersion == "3.3")
+		{
+			return owptime2time($1);
+		} else {
+			return perfSONAR_PS::RegularTesting::Utils::owptime2datetime($1)->epoch();
+		}
+	} else {
+		return -1;
 	}
 }
 
@@ -73,10 +91,13 @@ sub checkFile
 
 	my $filename = shift;
 	#my $wsecs = (stat($filename))[9];
-	my $wsecs = getTSFile($filename);
+	my $wsecs = getTSFile2($filename);
 
-	return -1 if $wsecs > time(); ### e.g.: a file with no records; bug with owptime2time
-
+	if ($wsecs > time() || $wsecs == -1)
+	{
+		return -1; ### e.g.: a file with no records; bug with owptime2time
+	}
+	
 	#return if exists $prevwsecs{$filename} and $wsecs == $prevwsecs{$filename};
 	#$prevwsecs{$filename} = $wsecs;
 	print "got file: $filename $wsecs\n";
@@ -95,6 +116,7 @@ sub runFile
 	my $starttime = shift;
 	my $endtime = shift;
 
+	# Note: We use owstats here to ensure the files aren't empty/incomplete
 	my $eline = `owstats -R $filename | tail -1 | cut -d ' ' -f 2`;
 	chomp $eline;
 	
@@ -111,7 +133,7 @@ sub runFile
 	return -1 if $ftime > time(); ### e.g.: a file with no records; bug with owptime2time
 	return -1 if time() - (stat($filename))[9] > 2*$MINSCANDUR; #file not updated for over 10mins
 
-	print "executing..\n";
+	print "processing $filename ...\n";
 	`perl events.pl $filename $starttime $endtime`; #XXX: replace by a procedure call
 
 	return 0;

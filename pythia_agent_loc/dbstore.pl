@@ -10,27 +10,28 @@ vega access: root : bb
 create database pythia;
 use pythia;
 create table events (
-sendTS int(11),
-recvTS int(11),
-srchost VARCHAR(256),
-dsthost VARCHAR(256),
-diagnosis VARCHAR(256),
-plot blob);
+	sendTS int(11),
+	recvTS int(11),
+	srchost VARCHAR(256),
+	dsthost VARCHAR(256),
+	diagnosis VARCHAR(256),
+	plot blob
+);
 
 create table reorderevents (
-sendTS int(11),
-recvTS int(11),
-srchost VARCHAR(256),
-dsthost VARCHAR(256),
-diagnosis VARCHAR(256)
+	sendTS int(11),
+	recvTS int(11),
+	srchost VARCHAR(256),
+	dsthost VARCHAR(256),
+	diagnosis VARCHAR(256)
 );
 
 create table localizationdata (
-srchost VARCHAR(256),
-dsthost VARCHAR(256),
-startTime int(11),
-delayMetric double,
-lossMetric int(1)
+	srchost VARCHAR(256),
+	dsthost VARCHAR(256),
+	startTime int(11),
+	delayMetric double,
+	lossMetric int(1)
 );
 =end
 =cut
