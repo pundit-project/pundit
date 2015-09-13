@@ -15,6 +15,8 @@ create table events (
 	srchost VARCHAR(256),
 	dsthost VARCHAR(256),
 	diagnosis VARCHAR(256),
+	CSRate float,
+	filename VARCHAR(512),
 	plot blob
 );
 
@@ -37,16 +39,12 @@ create table localizationdata (
 =cut
 
 use DBI;
-
-my $host = "localhost";
-my $port = 3306;
-my $database = "pythia";
-my $user = "gatech";
-my $pw = "gatech";
+use dbConfig;
+use myConfig;
 
 sub prepareDB
 {
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or die
+	my $dbh = DBI->connect("DBI:mysql:$dbConfig::database:$dbConfig::host:$dbConfig::port", $dbConfig::user, $dbConfig::pw) or die
 		"cannot connect to DB";
 =pod
 	my $query = "show tables";
@@ -109,7 +107,7 @@ sub writeEventDB
 	$sth->finish;
 
 	# update overlapping events if needed
-	if($diag =~ /Unknown/)
+	if($diag =~ /Unknown/ and $myConfig::diagEnabled == 1)
 	{
 		checkUpdatePathMatches($dbh, $startTS, $endTS, $src, $dst, $diag);
 	}
