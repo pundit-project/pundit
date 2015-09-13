@@ -5,11 +5,41 @@ use strict;
 use myConfig;
 use threads;
 
+if ($myConfig::psVersion == "3.3")
+{
+	require OWP::Utils;
+}
+else
+{
+	require perfSONAR_PS::RegularTesting::Utils;
+}
+
 require 'scanheap.pl';
 
 my @sortList = ();
 my %fileSeen = ();
 #my %prevwsecs = ();
+
+# number of files processed every time duration
+my $process_count = 0;
+my $process_ts = time();
+
+sub debug_write_heapsize
+{
+	my $heap_filename = "debug_heap_size";
+	open my $heap_fh, ">", $heap_filename or die $!;
+	print $heap_fh scalar @sortList;
+	close $heap_fh;
+}
+
+sub report_process_count
+{
+	my ($count) = @_;
+	my $process_filename = "processed_count";
+	open my $process_fh, ">", $process_filename or die $!;
+	print $process_fh $process_count;
+	close $process_fh;
+}
 
 sub scandir
 {
@@ -80,15 +110,6 @@ sub getTSFile2
 
 sub checkFile
 {
-	if ($myConfig::psVersion == "3.3")
-	{
-		require OWP::Utils;
-	}
-	else
-	{
-		require perfSONAR_PS::RegularTesting::Utils;
-	}
-
 	my $filename = shift;
 	#my $wsecs = (stat($filename))[9];
 	my $wsecs = getTSFile2($filename);
@@ -152,17 +173,28 @@ sub runScan
 		{
 			scandir2($DATADIR, \&checkFile);
 		}
+		debug_write_heapsize();
 		
 		# run pending jobs
 		while(1)
 		{
 			my $elem = popElem(\@sortList);
 			last if !defined $elem;
+			$process_count += 1; # increment counter
 			my $elemts = $elem->{TS};
-print "pop..\n";
+			print "pop..\n";
 			# run from elemts to curtime-5mins if dur > 5mins
 			my $elemRun = 0;
 			my $curtime = time();
+			
+			# report values for check_mk
+			if (($curtime - $process_ts) >= $myConfig::reportingDuration)
+			{
+				report_process_count($process_count);
+				$process_count = 0;
+				$process_ts = $curtime;
+			}
+			
 			if($curtime - $elemts > 2*$MINSCANDUR)
 			{
 				print "run $elem->{FILE}: $elemts to $curtime-5mins\n";
