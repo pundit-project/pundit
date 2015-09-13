@@ -14,10 +14,20 @@ sub preprocessReader
 	my @orgseqs = ();
 	my @sendTS = ();
 	my $min = 0xFFFFFF; my $max = -0xFFFFFF; my $nout = 0;
-
-	open(IN, "owstats -v $inputFile |") or die;
+	
+	my $lost_count = 0;
+	my $reorder_metric = 0;
+	
+	# switches for owamp 3.4+
+	open(IN, "owstats -v -U $inputFile |") or die;
 	while(my $line = <IN>)
 	{
+		# grab a reordering metric if any. We calculate our own, so no need to preserve all values
+		$reorder_metric = $1 if ($line =~/^\d*-reordering = ([0-9]*\.?[0-9]*)/);
+		
+		# grab the number of lost packets
+		$lost_count = $1 if ($line =~ /^\d*\ssent, (\d*) lost/);
+		
 		next if $line !~ /^seq_no/; # skip lines that are not owamp measurements
 		chomp $line;
 		
@@ -70,7 +80,7 @@ sub preprocessReader
 		$prevdelay = $ref->{delay};
 		$prevTS = $sendTS[$c];
 	}
-	return ($min, $max, $nout);
+	return ($min, $max, $nout, $lost_count, $reorder_metric);
 }
 
 sub preprocess
@@ -81,9 +91,9 @@ sub preprocess
 	my $timeseriesref = shift;
 	my $lostseqsref = shift;
 
-	my ($min, $max, $nout) = 
+	my ($min, $max, $nout, $loss, $reorder) = 
 		preprocessReader($ARGV[0], $ARGV[1], $ARGV[2], $timeseriesref, $lostseqsref);
-	return ($min, $max, $nout);
+	return ($min, $max, $nout, $loss, $reorder);
 }
 
 
