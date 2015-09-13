@@ -103,7 +103,7 @@ sub printTS
 		
 	}
 	else {
-		$pngplot = undef
+		$pngplot = undef;
 	}
 	
 	my $diagstr = $str; 
