@@ -34,8 +34,8 @@ sub new
 	# init the subcomponents
 	my $ev_rcv = new Loc::EvReceiver($cfg);
 	return undef if (!$ev_rcv);
-#	my $tr_rcv = new Loc::EvReceiver($cfg);
-#	return undef if (!$tr_rcv);
+	my $tr_rcv = new Loc::TrReceiver($cfg);
+	return undef if (!$tr_rcv);
 	my $loc_reporter = new Loc::Reporter($cfg);
 	return undef if (!$loc_reporter);
 	
@@ -53,6 +53,7 @@ sub new
 	my $self = {
         _config => $cfg,
         _ev_rcv => $ev_rcv,
+        _tr_rcv => $tr_rcv,
         _loc_reporter => $loc_reporter,
         _sum_tomo => $sum_tomo,
         _bool_tomo => $bool_tomo,
@@ -132,11 +133,7 @@ sub process_time
 	my $tomography = $self->{'_tomography'};
 	
 	# Get the current updated traceroute matrix
-	my ($tr_first, $tr_last, $tr_new_matrix, $tr_new_node_list) = get_tr_matrix($in_time - 60*15, 0);
-#	if ($tr_first < $in_time) {
-#		print "Traceroute matrix is too old. Doing nothing...\n";
-#		return;
-#	} 
+	my ($tr_first, $tr_last, $tr_new_matrix, $tr_new_node_list) = get_tr_matrix(0, 0);
 
 	# grab the event table from db
 	my ($ev_first, $ev_last, $ev_new_table) = $self->{'_ev_rcv'}->get_event_table($in_time, $in_time + $window_size);

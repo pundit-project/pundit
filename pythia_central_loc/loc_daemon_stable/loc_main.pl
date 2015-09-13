@@ -19,9 +19,6 @@ Run this script to start all subcomponents
 
 =cut
 
-# Time lag at start in minutes
-my $time_lag = 10;
-
 # Calculates the id for a given bucket given a timestamp
 sub calc_bucket_id
 {
@@ -33,6 +30,8 @@ sub main
 {
 	my $cfg = new Loc::Config("localization.conf");
 	my $windowsize = $cfg->get_param("loc", "window_size");
+    my $time_lag = $cfg->get_param("loc", "time_lag");
+    	
 	my $processor = new Loc::Processor($cfg);
 	
 	my $last_time = calc_bucket_id(time, $windowsize) - ($time_lag * 60);

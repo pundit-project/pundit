@@ -17,9 +17,6 @@ This script reads the events from the database and processes it into a data stru
 
 =cut
 
-# Variable
-my $windowsize = 5;
-
 # dummy event table
 # Has an extra column indicating whether it's processed or not
 my @event_table = 
@@ -38,6 +35,8 @@ sub new
 	# init the sub-receiver
 	my $mysql_rcv = new Loc::EvReceiver::Mysql($cfg);
 	return undef if (!$mysql_rcv);
+	
+	my $windowsize = $cfg->get_param('loc', 'window_size');
 	
 	my $self = {
         _config => $cfg,
@@ -68,7 +67,7 @@ sub get_event_table
 	my ($self, $in_first_ev_ts, $in_last_ev_ts) = @_;
 
 	# Get the event table from db
-	my $out_table = $self->{'_rcv'}->get_events_db($in_first_ev_ts, $in_last_ev_ts - $windowsize);
+	my $out_table = $self->{'_rcv'}->get_events_db($in_first_ev_ts, $in_last_ev_ts - $self->{'windowsize'});
 	
 	# Return nothing if no results
 	return (0, 0, undef) if (!$out_table);
@@ -77,7 +76,7 @@ sub get_event_table
 	
 	# get the timestamps from the table
 	my $out_first_ev_ts = $$out_table[0]->{'startTime'}; 
-	my $out_last_ev_ts = $$out_table[-1]->{'startTime'} + $windowsize;
+	my $out_last_ev_ts = $$out_table[-1]->{'startTime'} + $self->{'windowsize'};
 	
 	# return the array
 	return ($out_first_ev_ts, $out_last_ev_ts, $out_table);
