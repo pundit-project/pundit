@@ -4,7 +4,7 @@ use strict;
 
 use Exporter;
 use base 'Exporter';
-our @EXPORT = qw($minWlen $maxWlen $dfield $tfield $sfield $rsfield $minProbDelay $maxInterProbGap $minProbDuration $minBinWidth $baseDensityThresh $minLowModeFrac $DATADIR $MINSCANDUR);
+our @EXPORT = qw($minWlen $maxWlen $dfield $tfield $sfield $rsfield $minProbDelay $maxInterProbGap $minProbDuration $minBinWidth $baseDensityThresh $minLowModeFrac $DATADIR $MINSCANDUR $peer_monitors $oldOwampThreshold $reportingDuration $tr_frequency);
 
 
 ### config
@@ -47,8 +47,17 @@ our $MINSCANDUR = 300; #s
 
 # More configuration options
 
+# traceroute frequency in seconds
+our $tr_frequency =  900;
+
+# hostnames of peer monitors
+our $peer_monitors = ["mon1", "mon2", "mon3"];
+
 # When starting up, this is the number of hours in the backlogged owamp measurements to process. All older files will be deleted.
 our $oldOwampThreshold = 0;
+
+# The duration between updates for periodically reported check_mk variables 
+our $reportingDuration = 60;
 
 1;
 
