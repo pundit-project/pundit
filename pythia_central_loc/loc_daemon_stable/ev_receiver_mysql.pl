@@ -21,7 +21,7 @@ sub new
 	# init the DBI
 	my $host = $cfg->get_param("mysql", "host");
 	my $port = $cfg->get_param("mysql", "port");
-	my $database = "pythia";
+	my $database = $cfg->get_param("mysql", "database");
 	my $user = $cfg->get_param("mysql", "user");
 	my $pw = $cfg->get_param("mysql", "password");
 	
@@ -42,8 +42,8 @@ sub get_events_db
 	my ($self, $startTS, $endTS) = @_;
 	
 	# Extract from self
-	my $sth = $self->{'_sth'};
 	my $dbh = $self->{'_dbh'};
+	my $sth;
 	
 	if ($endTS != 0)
 	{
@@ -93,10 +93,8 @@ sub DESTROY
 {
 	my $self = shift;
 	
-	my $sth = $self->{'_sth'};
 	my $dbh = $self->{'_dbh'};
 	
-	$sth->finish if $sth;
 	$dbh->disconnect if $dbh;
 }
 
