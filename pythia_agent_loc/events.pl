@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 use strict;
 
@@ -32,14 +32,18 @@ my %lostseqs = ();
 
 # ESnet, I2
 
-my ($min, $max, $nout) = 
+my ($min, $max, $nout, $loss, $reorder) = 
 	preprocess($inputFile, $fileStartTime, $fileEndTime, \@timeseries, \%lostseqs);
 
 # Init the localization module
 localizationInit();
 
+my $delayVar = $max - $min;
+print STDERR "delayVar " . $delayVar . " nout " . $nout . " loss " . $loss . " reorder " . $reorder . "\n";
+
 # exit if delays don't have sufficient variance
-if($max-$min < $minProbDelay or $nout < 4) 
+# added condition that no losses or reordering must be present
+if (($max-$min < $minProbDelay or $nout < 4) and $loss == 0 and $reorder == 0) 
 { 
 	print STDERR "skipping: no problem\n";
 	
