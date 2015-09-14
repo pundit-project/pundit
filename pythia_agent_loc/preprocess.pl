@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!perl -w
 #
 # Copyright 2012 Georgia Institute of Technology
@@ -129,3 +130,119 @@ for(my $c = 0; $c < $n; $c++)
 
 1;
 
+=======
+#!perl -w
+#
+# Copyright 2012 Georgia Institute of Technology
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+use strict;
+use myConfig;
+
+sub preprocessReader
+{
+	my $inputFile = shift;
+	my $fileStartTime = shift;
+	my $fileEndTime = shift;
+	my $timeseriesref = shift;
+	my $lostseqsref = shift;
+
+	my @orgseqs = ();
+	my @sendTS = ();
+	my $min = 0xFFFFFF; my $max = -0xFFFFFF; my $nout = 0;
+
+	open(IN, "./owstats -v $inputFile |") or die;
+	while(my $line = <IN>)
+	{
+		next if $line !~ /^seq_no/;
+		chomp $line;
+		$line =~ s/=/ /g; $line =~ s/\t/ /g;
+		my @obj = split(/\s+/, $line);
+
+		if($line !~ /LOST/)
+		{
+			next if $obj[10] < $fileStartTime;
+			last if $obj[10] > $fileEndTime;
+		}
+		else
+		{
+			$lostseqsref->{$obj[1]} = 1;
+			next;
+		}
+
+		my $d = $obj[3];
+
+		push(@orgseqs, $obj[1]);
+		push(@sendTS, $obj[10]);
+
+		my %elem = ();
+		$elem{seq} = $obj[1];
+		$elem{delay} = $d;
+		push(@$timeseriesref, \%elem);
+
+		$max = $d if $max < $d; $min = $d if $min > $d;
+		$nout++ if $d-$min > $minProbDelay;
+	}
+	close IN;
+
+	@$timeseriesref = sort { $a->{seq} <=> $b->{seq} } @$timeseriesref;
+	@sendTS = sort { $a <=> $b} @sendTS;
+	my $n = @sendTS;
+	my $prevdelay = $timeseriesref->[0]->{delay};
+	my $prevTS = $sendTS[0];
+	for(my $c = 0; $c < $n; $c++)
+	{
+		my $ref = $timeseriesref->[$c];
+		$ref->{sendTS} = $sendTS[$c];
+		$ref->{seqorg} = $orgseqs[$c];
+		$ref->{delay} = $prevdelay if $c != 0 and $ref->{sendTS} - $prevTS < 100e-6;
+		$prevdelay = $ref->{delay};
+		$prevTS = $sendTS[$c];
+	}
+	return ($min, $max, $nout);
+}
+
+sub preprocess
+{
+	my $inputFile = shift;
+	my $fileStartTime = shift;
+	my $fileEndTime = shift;
+	my $timeseriesref = shift;
+	my $lostseqsref = shift;
+
+	my ($min, $max, $nout) = 
+		preprocessReader($ARGV[0], $ARGV[1], $ARGV[2], $timeseriesref, $lostseqsref);
+	return ($min, $max, $nout);
+}
+
+
+=pod
+my @timeseries = (); #array of hashes
+my %lostseqs = ();
+
+preprocess($ARGV[0], $ARGV[1], $ARGV[2], \@timeseries, \%lostseqs);
+
+my $n = @timeseries;
+for(my $c = 0; $c < $n; $c++)
+{
+	my $ref = $timeseries[$c];
+	print "$ref->{seq} $ref->{delay} $ref->{sendTS} $ref->{seqorg}\n";
+}
+=end
+=cut
+
+1;
+
+>>>>>>> branch 'master' of https://github.com/pundit-project/pundit.git
