@@ -19,6 +19,9 @@ use strict;
 
 use POSIX qw(setsid);
 
+require "detection_main.pm";
+require "infile_scheduler.pm";
+
 umask 0;
 open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
 open(STDOUT, ">>run.log") or die;
@@ -26,6 +29,9 @@ open STDERR, '>>run.log' or die "Can't write to /dev/null: $!";
 defined(my $pid = fork) or die "Can't fork: $!";
 exit if $pid;
 setsid or die "Can't start a new session: $!";
+
+my $detectionModule = new Detection("./etc/pundit_agent.conf", "site1");
+my $infileScheduler = new InfileScheduler("./etc/pundit_agent.conf", $detectionModule);
 
 print "Starting server..\n";
 
@@ -35,5 +41,7 @@ print "Starting server..\n";
 while(1)
 {
 	#`perl tree.pl`;
-	`perl scandir.pl >> run.log 2>&1`;
+#	`perl scandir.pl >> run.log 2>&1`;
+    $infileScheduler->runSchedule();
+    sleep(1);
 }
