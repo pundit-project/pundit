@@ -53,6 +53,36 @@ create table localizationdata (
 	lossMetric int(1)
 );
 
+# Localization results
+create table loss_bool_results (
+    start_time INT,
+    link VARCHAR(25)
+);
+
+create table reorder_bool_results (
+    start_time INT,
+    link VARCHAR(25)
+);
+
+create table delay_range_results (
+    start_time INT,
+    link VARCHAR(25),
+    range_start FLOAT,
+    range_end FLOAT
+);
+
+create table status (
+    startTime INT, 
+    endTime INT, 
+    srchost VARCHAR(256), 
+    dsthost VARCHAR(256), 
+    baselineDelay FLOAT, 
+    detectionCode INT, 
+    queueingDelay FLOAT, 
+    lossRatio FLOAT, 
+    reorderMetric FLOAT
+);
+
 # Traceroute table for holding traces collected by each agent
 
 CREATE TABLE traceroutes (
