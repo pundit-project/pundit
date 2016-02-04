@@ -33,7 +33,7 @@ sub new
     my ($class, $cfg, $detObj) = @_;
     
     # initialise check mk reporter to periodically write stats
-    my $checkMkReporter = new checkMkReporter($cfg);
+    my $checkMkReporter = new CheckMkReporter($cfg);
     
     my %cfgHash = Config::General::ParseConfig($cfg);
     

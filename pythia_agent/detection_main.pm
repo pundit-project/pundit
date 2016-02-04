@@ -235,6 +235,7 @@ sub _readFile
         
         my %elem = ();
         $elem{ts} = $obj[10] * 1.0; # sender timestamp
+        $elem{rcvts} = $obj[12] * 1.0; # receiver timestamp
         $elem{seq} = $obj[1]; # original seq
         $elem{lost} = $lost_flag;
         
@@ -260,6 +261,7 @@ sub _readFile
 }
 
 # Calculates the bin of this timestamp
+# only used in version 1 of detection
 sub _calcBin
 {
     my ($self, $timestamp) = @_;
