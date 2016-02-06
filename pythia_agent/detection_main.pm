@@ -22,7 +22,14 @@ use strict;
 #use myConfig;
 use Config::General;
 use Data::Dumper;
+
 require "detection_reporter.pm";
+
+# used for time conversion
+use Math::BigInt;
+use Math::BigFloat;
+use constant JAN_1970 => 0x83aa7e80;    # offset in seconds
+my $scale = new Math::BigInt 2**32; # this is also a constant
 
 sub new
 {
@@ -59,7 +66,6 @@ sub new
     return $self;
 }
 
-
 # entry point for external functions
 sub processFile
 {
@@ -85,6 +91,15 @@ sub processFile
     
     return $problemFlags;
 }
+
+
+sub owptime2exacttime {
+    my $bigtime     = new Math::BigInt $_[0];
+    my $mantissa    = $bigtime % $scale;
+    my $significand = ( $bigtime / $scale ) - JAN_1970;
+    return ( $significand . "." . $mantissa );
+}
+
 
 # parses the config variable for the value
 sub _parseTimeOrPercentage
@@ -134,7 +149,7 @@ sub _parsePercentage
     
     if ($input =~ /^(\d+)%$/)
     {
-        $val = $1 / 100.0;
+        $val = $1 * 1.0;
     }
     else
     {
@@ -168,23 +183,25 @@ sub _readFile
     my @timeseries = ();
     my $sessionMinDelay;
     
-    # variabled used to overwrite delays due to self queueing 
+    # variables used to overwrite delays due to self queueing 
     my ($prevTS, $prevDelay);
     
     my $srchost;
     my $dsthost;
     my $reorder_metric;
     my $lost_count;
+    my @lost_array;
     
     if (substr($inputFile, -3) eq "owp")
     {
-        open(IN, "owstats -v -U $inputFile |") or die;
+        # Print individual packet delays, with Unix timestamps, using millisecond granularity
+        open(IN, "owstats -v -U -nm $inputFile |") or die;
     }
-    else # text file for debugging
-    {
-        open(IN, "$inputFile") or die;
-    }
-    
+#    else # text file for debugging
+#    {
+#        open(IN, "$inputFile") or die;
+#    }
+
     while(my $line = <IN>)
     {
         if ($line =~/^--- owping statistics from \[(.+?)\]:\d+ to \[(.+?)\]\:\d+ ---$/)
@@ -212,6 +229,8 @@ sub _readFile
         # check for lost packet
         my $lost_flag = 0;
         my $delay = -1.0;
+        my $sndTS = -1;
+        my $rcvTS = -1;
         if($line !~ /LOST/)
         {
 #            # skip values that are out of range
@@ -220,6 +239,9 @@ sub _readFile
 
             # Delay
             $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+            
+            $sndTS = $obj[10] * 1.0;
+            $rcvTS = $obj[12] * 1.0;
             
             # update the minimum delay in this session
             if (!defined $sessionMinDelay || $delay < $sessionMinDelay)
@@ -230,17 +252,19 @@ sub _readFile
         else
         {
             # note sequence number of loss
+            push(@lost_array, $obj[1]);
+            
             $lost_flag = 1;
         }
         
         my %elem = ();
-        $elem{ts} = $obj[10] * 1.0; # sender timestamp
-        $elem{rcvts} = $obj[12] * 1.0; # receiver timestamp
-        $elem{seq} = $obj[1]; # original seq
+        $elem{ts} = $sndTS; # sender timestamp
+        $elem{rcvts} = $rcvTS; # receiver timestamp
+        $elem{seq} = int($obj[1]); # original seq
         $elem{lost} = $lost_flag;
         
         # If 2 packets are sent too close to each other, likely induced self queueing 
-        if (@timeseries > 0 && ($elem{ts} - $prevTS < 100e-6))
+        if (@timeseries > 0 && ($elem{ts} != -1) && ($elem{ts} - $prevTS < 100e-6))
         {
             $elem{delay} = $prevDelay;
         }
@@ -249,16 +273,112 @@ sub _readFile
             $elem{delay} = $delay;
         }
         
-        # keep track of values to overwrite self queueing
-        $prevDelay = $delay;
-        $prevTS = $elem{ts};
-        
+        if ($elem{ts} != -1)
+        {
+            # keep track of values to overwrite self queueing
+            $prevDelay = $delay;
+            $prevTS = $elem{ts};
+        }
         push(@timeseries, \%elem);
     }
     close IN;
     
+    # sort the timeseries by seq no
+    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
+    
+    # loop one more time to fill the sender timestamps of lost packets
+    if (scalar(@lost_array) > 0)
+    {
+        open(IN, "owstats -R $inputFile |") or die;
+        while(my $line = <IN>)
+        {
+            # Each line can be split using this way
+            my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
+            
+            $seqNo = int($seqNo);
+            if ($seqNo == $lost_array[0])
+            {
+                $timeseries[$seqNo]->{ts} = owptime2exacttime($sTime);
+                shift @lost_array;
+            }
+            last if (scalar(@lost_array) == 0);
+        }
+        close IN;
+    }
+    
     return ($srchost, $dsthost, \@timeseries, $sessionMinDelay);
 }
+
+# reads an input owamp file
+# Not being used yet.
+sub _readFile2
+{
+    my ($self, $inputFile) = @_;
+    
+    if (substr($inputFile, -3) ne "owp")
+    {
+        print "$inputFile is not an owp file! Skipping!\n";
+        return -1;
+    }
+    
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    # metadata
+    my ($srchost, $srcip, $dsthost, $dstip);
+    
+    # 2 loops: one for getting the metadata, then one for getting the timeseries
+    
+    # get the metadata
+    
+#    FROM_HOST       perfsonar03-iep-grid.saske.sk
+#    FROM_ADDR       147.213.204.117
+#    FROM_PORT       8927
+#    TO_HOST psum09.cc.gt.atl.ga.us
+#    TO_ADDR 143.215.129.69
+#    TO_PORT 8777
+#    START_TIME      15735090711158434567
+#    END_TIME        15735090973283830624
+    
+    
+    open(IN, "owstats -M $inputFile |") or die;
+    while(my $line = <IN>)
+    {
+        if ($line =~/^--- owping statistics from \[(.+?)\]:\d+ to \[(.+?)\]\:\d+ ---$/)
+        {
+            $srchost = $1;
+            $dsthost = $2;           
+        }
+    }
+    close IN;
+    
+    # 2nd loop gets the timeseries
+    open(IN, "owstats -R $inputFile |") or die;
+    while(my $line = <IN>)
+    {
+        # Each line can be split using this way
+        my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
+        
+        my $delay = -1;
+        my $loss = 0;
+        if ($rTime != 0 && $sSync == 1 && $rSync == 1)
+        {
+            $delay = $rTime - $sTime;
+        }
+        if ($rTime == 0)
+        {
+            $loss = 1;
+        }
+        
+        
+    }
+    close IN;
+    
+}
+
 
 # Calculates the bin of this timestamp
 # only used in version 1 of detection
@@ -563,7 +683,7 @@ sub _detect_problems
     my $queueingDelay = 0.0;
     if ((scalar(@$timeseries) - $lossProblemCount) > 0) # only count non-lost packets
     {
-        $delayPerc = ($delayProblemCount * 1.0)/(scalar(@$timeseries) - $lossProblemCount);
+        $delayPerc = ($delayProblemCount * 100.0)/(scalar(@$timeseries) - $lossProblemCount);
         if ($delayPerc > $self->{"_delayThresh"})
         {
             $delayProblemFlag = 1;
@@ -577,7 +697,7 @@ sub _detect_problems
         
     # Process losses in this window
     my $lossProblemFlag = 0;
-    my $lossPerc = ($lossProblemCount * 1.0)/scalar(@$timeseries);
+    my $lossPerc = ($lossProblemCount * 100.0)/scalar(@$timeseries);
     if ($lossPerc > $self->{"_lossThresh"})
     {
         $lossProblemFlag = 1;
