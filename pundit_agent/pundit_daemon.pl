@@ -19,14 +19,15 @@ use strict;
 
 use POSIX qw(setsid);
 use Config::General;
-use File::Basename;
+use FindBin qw( $RealBin );
 
-require "detection_main.pm";
-require "infile_scheduler.pm";
+use lib "$RealBin/lib";
+
+use Detection::Detection;
+use InfileScheduler::InfileScheduler;
 
 # TODO: Take this on command line or use this as a default if not specified
-my $scriptPath = dirname(__FILE__);
-my $configFile = $scriptPath . "/etc/pundit_agent.conf";
+my $configFile = $RealBin . "/etc/pundit_agent.conf";
 
 umask 0;
 open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
@@ -42,6 +43,9 @@ my $sites_string = $cfgHash{"pundit_agent"}{"sites"};
 $sites_string =~ s/,/ /g;
 my @sites = split(/\s+/, $sites_string);
 
+# Save the script path for libs to use
+$cfgHash{"exePath"} = $RealBin;
+
 # TODO: Init one per site
 my $detectionModule = new Detection(\%cfgHash, $sites[0]);
 my $infileScheduler = new InfileScheduler(\%cfgHash, $detectionModule);
@@ -53,8 +57,6 @@ print "Starting server..\n";
 
 while(1)
 {
-	#`perl tree.pl`;
-#	`perl scandir.pl >> run.log 2>&1`;
     $infileScheduler->runSchedule();
     sleep(1);
 }

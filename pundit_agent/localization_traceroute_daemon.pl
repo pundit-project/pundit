@@ -26,8 +26,10 @@ use Thread::Queue;
 use Config::General;
 use File::Basename;
 
+use lib 'lib';
+
 # local modules
-use localization_traceroute;
+use LocalizationTraceroute::LocalizationTraceroute;
 
 # debug. remove this later
 use Data::Dumper;
@@ -51,7 +53,7 @@ my %cfgHash = Config::General::ParseConfig($cfg);
 sub child {
     my ($start_time, $host_id, $in_queue) = @_;
     
-    my $tr_helper = new localizationTraceroute(\%cfgHash, $site, $start_time, $host_id);
+    my $tr_helper = new LocalizationTraceroute(\%cfgHash, $site, $start_time, $host_id);
     while( my $peer = $in_queue->dequeue ) {
         $tr_helper->runTrace($peer);
     }
@@ -61,10 +63,10 @@ sub child {
 my $start_time = time();
 
 # host id is fqdn or ip
-my $host_id = localizationTraceroute::get_hostname();
+my $host_id = LocalizationTraceroute::get_hostname();
 if (!$host_id)
 {
-    $host_id = localizationTraceroute::get_local_ip_address();    
+    $host_id = LocalizationTraceroute::get_local_ip_address();    
 }
 
 my $work_queue = new Thread::Queue;

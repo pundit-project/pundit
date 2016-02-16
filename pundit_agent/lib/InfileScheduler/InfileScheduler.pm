@@ -18,7 +18,7 @@
 # handles input file detection and queueing
 package InfileScheduler;
 
-require "check_mk_reporter.pm";
+use InfileScheduler::CheckMkReporter;
 
 use Data::Dumper;
 use File::Find;
@@ -33,18 +33,16 @@ sub new
     my ($class, $cfgHash, $detObj) = @_;
     
     # initialise check mk reporter to periodically write stats
-    my $checkMkReporter = new CheckMkReporter($cfgHash);
+    my $checkMkReporter = new InfileScheduler::CheckMkReporter($cfgHash);
     
     my ($owampPath) = $cfgHash->{"pundit_agent"}{"owamp_data"}{"path"};
     
-    my $scriptPath = dirname(__FILE__);
-        
     my $self = {
         _det => $detObj,
         _owampPath => $owampPath,
         
         _saveProblems => 1, # flag to indicate whether or not owps with problems will be saved
-        _saveProblemsPath => $scriptPath . "/savedProblems", # path where owps with detected problems will be saved
+        _saveProblemsPath => $cfgHash->{"exePath"} . "/savedProblems", # path where owps with detected problems will be saved
         
         _runTrace => 0, # flag that indicates 
         
@@ -130,7 +128,7 @@ sub _processOwpfile
     
     # TODO: Find the matching measurement federation and call the processFile function of that corresponding object
     print time . " Processing $filepath...\n";
-    my $return = $self->{'_det'}->processFile($filepath); # returns the number of problems detected
+    my ($return, $stats) = $self->{'_det'}->processFile($filepath); # returns the number of problems detected
     
     if ($return > 0 && $self->{'runTrace'})
     {
@@ -143,6 +141,12 @@ sub _processOwpfile
         my($filename, $dirs, $suffix) = fileparse($filepath);
         
         move($filepath, $self->{'_saveProblemsPath'} . '/' . $filename . $suffix);
+        
+        # write the stats in the corresponding file
+        my $statFile = $self->{'_saveProblemsPath'} . '/' . $filename . ".txt";
+        open my $statFh, ">", $statFile; 
+        print $statFh Dumper( $stats );
+        close $statFh;
     }
     # TODO: Make sure we don't delete files belonging to other sites
     else # delete it

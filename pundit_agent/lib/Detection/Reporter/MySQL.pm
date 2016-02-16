@@ -22,6 +22,22 @@ package Detection::Reporter::MySQL;
 use strict;
 use DBI;
 
+# returns a value to 1 decimal place
+sub _oneDecimalPlace
+{
+    my ($val) = @_;
+    
+    return sprintf("%.1f", $val);
+}
+
+# returns a value to 2 decimal places
+sub _twoDecimalPlace
+{
+    my ($val) = @_;
+    
+    return sprintf("%.2f", $val);
+}
+
 # fake rounding function, so we don't need to include posix
 sub _roundOff
 {
@@ -38,7 +54,7 @@ sub _roundOff
     }
 }
 
-
+# Constructor
 sub new
 {
     my ($class, $cfgHash, $site) = @_;
@@ -53,11 +69,19 @@ sub new
     my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $password) or die "Critical error: cannot connect to DB";
     
     my $self = {
-        _dbh => $dbh,
+        '_dbh' => $dbh,
     };
     
     bless $self, $class;
     return $self;
+}
+
+# Destructor
+sub DESTROY
+{
+    my ($self) = @_;
+    
+    $self->{'_dbh'}->disconnect;
 }
 
 # Legacy format. Will be removed soon
@@ -101,17 +125,19 @@ sub writeStatus
         my $currEntry = $status->{'entries'}->[$i];
         
         # placeholder
-        my $detectionCode = $currEntry->{'delayProblem'} * 2 + $currEntry->{'lossProblem'} * 4;
+        my $detectionCode = $currEntry->{'delayProblem'} << 1 | 
+                            $currEntry->{'lossProblem'} << 2 | 
+                            $currEntry->{'contextSwitch'} << 7;
 #        print "Mysql: inserting " . int($currEntry->{'firstTimestamp'}) . " to " . int($currEntry->{'lastTimestamp'}) . "\n";
         
         $sth->bind_param((9 * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
         $sth->bind_param((9 * $i) + 2, _roundOff($currEntry->{'lastTimestamp'}));
         $sth->bind_param((9 * $i) + 3, $status->{"srchost"});
         $sth->bind_param((9 * $i) + 4, $status->{"dsthost"});
-        $sth->bind_param((9 * $i) + 5, $status->{'baselineDelay'});
+        $sth->bind_param((9 * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
         $sth->bind_param((9 * $i) + 6, $detectionCode);
-        $sth->bind_param((9 * $i) + 7, $currEntry->{'queueingDelay'});
-        $sth->bind_param((9 * $i) + 8, $currEntry->{'lossPerc'});
+        $sth->bind_param((9 * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
+        $sth->bind_param((9 * $i) + 8, _oneDecimalPlace($currEntry->{'lossPerc'}));
         $sth->bind_param((9 * $i) + 9, 0.0);
     }
 

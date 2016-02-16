@@ -17,7 +17,7 @@
 
 use strict;
 
-package paristr_parser;
+package LocalizationTraceroute::ParisTrParser;
 
 my $debug = 0;
 

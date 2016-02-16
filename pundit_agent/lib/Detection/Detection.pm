@@ -21,7 +21,7 @@ use strict;
 
 use Data::Dumper;
 
-require "detection_reporter.pm";
+use Detection::Reporter;
 
 # used for time conversion
 use Math::BigInt;
@@ -64,7 +64,7 @@ sub new
         '_incompleteBinCullTime' => 0, # last time incomplete entries were culled
         
         '_contextSwitchThresh' => 0.0001, # gaps smaller than this for context switch detection (in s)
-        '_contextSwitchConsecutivePkts' => 5, # number of consecutive packets to consider as context switch
+        '_contextSwitchConsecPkts' => 5, # number of consecutive packets to consider as context switch
     };
     
     bless $self, $class;
@@ -85,7 +85,7 @@ sub processFile
     {
         print "Skipping $dsthost. Not in peerlist\n";
         
-        return -1;
+        return (-1, undef);
     }
     
     # perform detection and return a summary
@@ -103,7 +103,7 @@ sub processFile
 
     $self->{'_reporter'}->writeStatus($statusMsg);
     
-    return $problemFlags;
+    return ($problemFlags, $statusMsg);
 }
 
 
@@ -238,7 +238,7 @@ sub _readFile
 
         # check for lost packet
         my $lost_flag = 0;
-        my $delay = -1.0;
+        my $delay = undef;
         my $sndTS = -1;
         my $rcvTS = -1;
         if($line !~ /LOST/)
@@ -481,7 +481,7 @@ sub _detection
         }
         
         # get the min across the windows
-        elsif ($timeseries->[$i]{delay} && ($windowMinDelay > $timeseries->[$i]{delay}))
+        elsif ($timeseries->[$i]{delay} && (($windowMinDelay > $timeseries->[$i]{delay}) || !defined($windowMinDelay)))
         {
             $windowMinDelay = $timeseries->[$i]{delay}; 
         }
@@ -581,7 +581,7 @@ sub _detection2
         }
         
         # get the min across the windows
-        elsif ($timeseries->[$i]{delay} && ($windowMinDelay > $timeseries->[$i]{delay}))
+        elsif ($timeseries->[$i]{delay} && (($windowMinDelay > $timeseries->[$i]{delay})|| !defined($windowMinDelay)))
         {
             $windowMinDelay = $timeseries->[$i]{delay};
             if ($windowMinDelay < $sessionMinDelay)
@@ -620,23 +620,25 @@ sub _detection_suite
     my ($self, $timeseries, $windowMinDelay, $sessionMinDelay) = @_;
     
     my ($stats, $problemCount) = $self->_detect_problems($timeseries, $windowMinDelay, $sessionMinDelay);
-            
+         
+    # set this flag ahead of time
+    $stats->{'contextSwitch'} = 0;
+       
+    # Call these functions only if there is a problem in this window
+    if ($problemCount > 0)
+    {
         # disabled
 #       my ($ret) = $self->route_change_detect($tsSlice);
 #       print $ret . "\n";
-
-    my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
-    if ($contextSwitch)
-    {
-        $stats->{'contextSwitch'} = 1;
-        # reset problemcount here. Issues are due to context switch
-        $problemCount = 0;
+        
+        my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
+        if ($contextSwitch)
+        {
+            $stats->{'contextSwitch'} = 1;
+            # reset problemcount here. Issues are due to context switch
+            $problemCount = 0;
+        }
     }
-    else
-    {
-        $stats->{'contextSwitch'} = 0;
-    }
-    
     return ($stats, $problemCount);
 }
 
@@ -852,6 +854,9 @@ sub _detectContextSwitch
     for my $i (1.. scalar(@{$timeseries}))
     {
         my $rcvTs = $timeseries->[$i]{'rcvts'};
+        
+        next if (!defined($rcvTs));
+        
         my $timediff = $rcvTs - $lastRcv;
         
         # increase counter if time difference is unrealistically small (1 microsecond)
@@ -864,7 +869,7 @@ sub _detectContextSwitch
             $counter = 0;
         }
         
-        if ($counter > $self->{'_contextSwitchConsecutivePackets'})
+        if ($counter > $self->{'_contextSwitchConsecPkts'})
         {
             return 1;
         }

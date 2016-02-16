@@ -15,13 +15,11 @@
 # limitations under the License.
 #
 
-package CheckMkReporter;
+package InfileScheduler::CheckMkReporter;
 
 sub new
 {
-    my ($class, $cfg) = @_;
-    
-    my %cfgHash = Config::General::ParseConfig($cfg);
+    my ($class, $cfgHash) = @_;
     
     my $self = {
         '_processedCountInterval' => 60, # interval between reports, in seconds

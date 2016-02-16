@@ -20,7 +20,7 @@ package Detection::Reporter;
 
 use strict;
 
-require "detection_reporter_mysql.pm";
+use Detection::Reporter::MySQL;
 
 sub new
 {
