@@ -17,8 +17,6 @@
 
 use strict;
 use Config::General;
-use threads;
-use threads::shared;
 
 use FindBin qw( $RealBin );
 
@@ -43,7 +41,6 @@ my $siteName = 'site1';
 
 #$cfgHash{'pundit_central'}{$siteName}{'ev_receiver'}{'type'} = 'test';
 
-my %evQueues :shared = ();
 my $evRcv;
 
 my $delay = 120; # time to delay by, in seconds
@@ -56,7 +53,7 @@ sub main
     
     while (1)
     {
-        my $eventArr = Localization::EvReceiver::get_event_table(\%evQueues, $timestart, $timestart + 5);
+        my $eventArr = $evRcv->getEventTable($timestart, $timestart + 5);
         
         print "Event Array\n";
         print Dumper($eventArr);
@@ -70,10 +67,5 @@ sub main
     }
 }
 
-#my $evHash = $evRcv->{'_rcv'}->getLatestEvents(time - 60);
-#print Dumper($evHash);
-#$evRcv->_addHashToEvQueues($evHash);
-print "Starting Thread\n";
-my $evThread = threads->create( sub {$evRcv = new Localization::EvReceiver(\%cfgHash, $siteName, \%evQueues); $evRcv->run} );
-print "Thread Started\n";    
+$evRcv = new Localization::EvReceiver(\%cfgHash, $siteName);
 main();

@@ -20,6 +20,7 @@ package Localization::EvReceiver;
 use strict;
 use Localization::EvReceiver::MySQL;
 use Localization::EvReceiver::Test;
+use threads;
 use threads::shared;
 
 # debug. Remove this for production
@@ -45,28 +46,17 @@ sub new
 {
 	my ($class, $cfgHash, $siteName, $evQueues) = @_;
     
-	# init the sub-receiver
-	my $subType = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'type'};
-	my $subRcv;
-	if ($subType eq "mysql")
-	{
-	    $subRcv = new Localization::EvReceiver::MySQL($cfgHash, $siteName);
-	}
-	elsif ($subType eq "rabbitmq")
-	{
-	    $subRcv = 'rabbitmq';
-	}
-	else # init the test receiver (debug)
-	{
-	    $subRcv = new Localization::EvReceiver::Test();
-	}
-	return undef if (!$subRcv);
-	
+    # Shared structure that will hold the event queues
+    my $evQueues = &share({});
+    return undef if (!$evQueues);
+    
+    # Start the backend-specific receiver thread here
+    my $rcvThread = threads->create(sub { run($cfgHash, $siteName, $evQueues); });
+    return undef if (!$rcvThread);
+    
 	my $self = {
-#        '_config' => $cfgHash,
-        '_rcv' => $subRcv,
+        '_rcvThr' => $rcvThread,
         '_evQueues' => $evQueues,
-        '_sleepTime' => 10, # The number of seconds to sleep between polling
 	};
     
     bless $self, $class;
@@ -78,44 +68,68 @@ sub new
 sub DESTROY
 {
 	# Do nothing?
+	my ($self) = @_;
+	
+	$runLoop = 0;
+	$self->{'_rcvThr'}->join();
 }
 
-# Returns the event table for the specified time
-sub get_event_table 
+# Returns the event table for the specified time period
+sub getEventTable 
 {
-	my ($evQueues, $refStart, $refEnd) = @_;
+	my ($self, $refStart, $refEnd) = @_;
 
-    print time . ": Requested $refStart to $refEnd\n";
+#    print time . ": Requested $refStart to $refEnd\n";
 
-    return _getWindowFromQueues($evQueues, $refStart, $refEnd);
+    return _getWindowFromQueues($self->{'_evQueues'}, $refStart, $refEnd);
 }
 
 # starts an infinte loop that pulls values out of a location into an internal structure
 sub run
 {
-    my ($self) = @_;
+    my ($cfgHash, $siteName, $evQueues) = @_;
+        
+    my $sleepTime = 10;
+    
+    # init the sub-receiver based on the configuration settings
+    my $subType = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'type'};
+    my $subRcv;
+    if ($subType eq "mysql")
+    {
+        $subRcv = new Localization::EvReceiver::MySQL($cfgHash, $siteName);
+    }
+    elsif ($subType eq "rabbitmq")
+    {
+        $subRcv = 'rabbitmq';
+    }
+    else # init the test receiver (debug)
+    {
+        $subRcv = new Localization::EvReceiver::Test();
+    }
+    thread_exit(-1) if (!$subRcv);
     
     my $lastTime = time - 300;
     
     while ($runLoop)
     {
-        my $evHash = $self->{'_rcv'}->getLatestEvents($lastTime);
-#        print "Got evHash\n";
-#        print Dumper($evHash);
-        $self->_addHashToEvQueues($evHash);
-#        print "evQueues:\n";
-#        print Dumper($self->{'_evQueues'});
-        my $lastTime += $self->{'_sleepTime'};
-        sleep($self->{'_sleepTime'});
+        # Get the events from the sub-receiver
+        my $evHash = $subRcv->getLatestEvents($lastTime);
+        # Add it to the EvQueues
+        _addHashToEvQueues($evQueues, $evHash);
+        my $lastTime += $sleepTime;
+        sleep($sleepTime);
     }
 }
 
+# Gets the reference window from the evQueues
 sub _getWindowFromQueues
 {
     my ($evQueues, $refStart, $refEnd) = @_;
     
+    # Sanity check that evQueues has been populated before continuing
     return [] if (!%{$evQueues});
     
+    # Loop over the evQueue entries 
     my @outArray = ();
     while (my ($srchost, $dstHash) = each %{$evQueues}) 
     {
@@ -124,6 +138,7 @@ sub _getWindowFromQueues
             # Extract from this queue
             my $currWindow = _selectNextWindow($evQueues->{$srchost}{$dsthost}, $srchost, $dsthost, $refStart, $refEnd);
             
+            # push onto the output array
             push(@outArray, $currWindow);            
         }    
     }
@@ -132,7 +147,7 @@ sub _getWindowFromQueues
 }
 
 # Selects the window closest to the reference time from an evQueue
-# If there are any entries earlier than this refernce time, they will be discarded 
+# Modifies the queue: If there are any entries earlier than this refernce time, they will be discarded 
 # Assumes the queues are packed with no gaps between 2 consecutive windows
 sub _selectNextWindow
 {
@@ -157,8 +172,8 @@ sub _selectNextWindow
     }
     
     # Return unknown if
-    # 1. Empty queue
-    # 2. First entry is far ahead of reftime
+    # 1. First entry is far ahead of reftime OR
+    # 2. Empty queue
     if (($evQueue->{'firstTime'} > $refEnd) || 
         (scalar(@{$evQueue->{'queue'}}) == 0))
     {
@@ -175,20 +190,23 @@ sub _selectNextWindow
     my %selected = %{$evQueue->{'queue'}[0]};
     my $selOverlap = _calcOverlap($refStart, $refEnd, $selected{'startTime'}, $selected{'endTime'});
     
+    # Case 1: Significant overlap
     if (($selOverlap > 0.6) || 
         (scalar(@{$evQueue->{'queue'}}) == 1)) 
     {
         return \%selected;
     }
-    else # average the first and second entries if both have problems
+    # Case 2+: Nonsignificant overlap
+    else 
     {
+        # Check the next entry's overlap
         my %next = %{$evQueue->{'queue'}[1]}; # we already checked the length of the list before
         my $nextOverlap = _calcOverlap($refStart, $refEnd, $next{'startTime'}, $next{'endTine'});
         
-        # next window doesn't have problems
+        # Case 2a: If next window doesn't have problems or is unknown, use first window
         if ($next{'detectionCode'} <= 0)
         {
-            # if selected is unknown, skip it
+            # Case 2b: Use next window if selected is unknown
             if ($selected{'detectionCode'} < 0)
             {
                 return \%next; # choose the next entry
@@ -199,7 +217,8 @@ sub _selectNextWindow
             }
         }
         
-        if ($selected{'detectionCode'} > 0) # both have problems
+        # Case 3: Both have problems, return the average of both
+        if ($selected{'detectionCode'} > 0)
         {
             # average it here in this block
             my $avg = {
@@ -210,6 +229,7 @@ sub _selectNextWindow
                 'detectionCode' => $selected{'detectionCode'} || $next{'detectionCode'},
             };
             
+            # Do a simple averaging here
             while (my $key = keys %selected)
             {
                 # skip these fields
@@ -225,6 +245,7 @@ sub _selectNextWindow
                 $avg->{$key} = ($selected{$key} + $next{$key}) / 2; 
             }
         }
+        # Case 4: First window doesn't have problems, next does. Prefer the problematic one
         else
         {
             return \%next;
@@ -235,33 +256,35 @@ sub _selectNextWindow
 # Adds a hash of events (multiple src, dst pairs) to their respective evQueues
 sub _addHashToEvQueues
 {
-    my ($self, $inHash) = @_;
+    my ($evQueues, $inHash) = @_;
     
     my $lastTime;
     
     # Loop over srchost and dsthost, creating hashes where needed
     while (my ($srchost, $dstHash) = each %$inHash) 
     {
-        if (!exists($self->{'_evQueues'}{$srchost}))
+        # Don't auto vivify. Manually create shared hashes
+        if (!exists($evQueues->{$srchost}))
         {
-            $self->{'_evQueues'}{$srchost} = &share({});
+            $evQueues->{$srchost} = &share({});
         }
         
         while (my ($dsthost, $evArray) = each %$dstHash) 
         {
-            if (!exists($self->{'_evQueues'}{$srchost}{$dsthost}))
+            # Don't auto vivify. Manually create shared hashes
+            if (!exists($evQueues->{$srchost}{$dsthost}))
             {
-                $self->{'_evQueues'}{$srchost}{$dsthost} = &share({});
+                $evQueues->{$srchost}{$dsthost} = &share({});
                 my @newArr :shared = ();
-                $self->{'_evQueues'}{$srchost}{$dsthost}{'queue'} = \@newArr;
+                $evQueues->{$srchost}{$dsthost}{'queue'} = \@newArr;
                 my $firstTime :shared = 0;
-                $self->{'_evQueues'}{$srchost}{$dsthost}{'firstTime'} = $firstTime;
+                $evQueues->{$srchost}{$dsthost}{'firstTime'} = $firstTime;
                 my $lastTime :shared = 0;
-                $self->{'_evQueues'}{$srchost}{$dsthost}{'lastTime'} = $lastTime;
+                $evQueues->{$srchost}{$dsthost}{'lastTime'} = $lastTime;
             }
             
             # Once the queue is found or created, add it to the list
-            my $evQueue = $self->{'_evQueues'}{$srchost}{$dsthost};
+            my $evQueue = $evQueues->{$srchost}{$dsthost};
             my $currLast = _addArrayToEvQueue($evQueue, $srchost, $dsthost, $evArray);
             
             # get the min of all the lasttimes from all queues
@@ -297,8 +320,8 @@ sub _addArrayToEvQueue
         return $evQueue->{'lastTime'}; 
     }
     
-    my $currTime = time;
-    print $currTime . "\tstart add: $srchost to $dsthost\t" . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . "\t";
+#    my $currTime = time;
+#    print $currTime . "\tstart add: $srchost to $dsthost\t" . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . "\t";
     
     # pad with unknown value if there is a gap greater than 1 second
     if ((($evArray->[0]{'startTime'} - $evQueue->{'lastTime'}) * 1.0) > 1)
@@ -316,7 +339,7 @@ sub _addArrayToEvQueue
     # append to end of queue
     {
         lock(@{$evQueue->{'queue'}});
-        my $sharedArr = shared_clone($evArray);
+        my $sharedArr = shared_clone($evArray); # Make a shared copy of the arrayref so both threads can access it
         push(@{$evQueue->{'queue'}}, @{$sharedArr})
     }
     
@@ -324,7 +347,7 @@ sub _addArrayToEvQueue
     $evQueue->{'firstTime'} = $evQueue->{'queue'}[0]{'startTime'};
     $evQueue->{'lastTime'} = $evQueue->{'queue'}[-1]{'endTime'};
     
-    print " => " . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . " delay " . ($currTime - $evQueue->{'lastTime'}) . "\n";
+#    print " => " . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . " delay " . ($currTime - $evQueue->{'lastTime'}) . "\n";
     
     return $evQueue->{'lastTime'};
 }
