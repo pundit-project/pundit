@@ -42,7 +42,7 @@ sub new
         _owampPath => $owampPath,
         
         _saveProblems => 1, # flag to indicate whether or not owps with problems will be saved
-        _saveProblemsPath => $cfgHash->{"exePath"} . "/savedProblems", # path where owps with detected problems will be saved
+        _saveProblemsPath => $cfgHash->{"exePath"} . "/../savedProblems", # path where owps with detected problems will be saved
         
         _runTrace => 0, # flag that indicates 
         
