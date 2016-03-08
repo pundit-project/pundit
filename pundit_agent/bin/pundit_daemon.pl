@@ -17,6 +17,7 @@
 
 use strict;
 
+use Log::Log4perl qw(:easy);
 use POSIX qw(setsid);
 use Config::General;
 use FindBin qw( $RealBin );
@@ -25,9 +26,16 @@ use lib "$RealBin/../lib";
 
 use Detection::Detection;
 use InfileScheduler::InfileScheduler;
+use Utils::CleanOwamp;
 
 # TODO: Take this on command line or use this as a default if not specified
 my $configFile = $RealBin . "/../etc/pundit_agent.conf";
+
+# do sanity check that the config file exists
+if ( ! -e "$configFile" ) {
+    warn " Configuration file $configFile doesn't exist. Refusing to run.\n";
+    exit;
+}
 
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $logFile = $cfgHash{"pundit_agent"}{"log"}{"filename"};
@@ -40,25 +48,29 @@ defined(my $pid = fork) or die "Can't fork: $!";
 exit if $pid;
 setsid or die "Can't start a new session: $!";
 
-# Get the list of sites
-my $sites_string = $cfgHash{"pundit_agent"}{"sites"};
-$sites_string =~ s/,/ /g;
-my @sites = split(/\s+/, $sites_string);
+# Get the list of measurement federations
+my $feds_string = $cfgHash{"pundit_agent"}{"measurement_federations"};
+$feds_string =~ s/,/ /g;
+my @federations = split(/\s+/, $feds_string);
 
 # Save the script path for libs to use
 $cfgHash{"exePath"} = $RealBin;
 
-# TODO: Init one detection module per site. Needs some way of differentiating the owamp files
-my $detectionModule = new Detection(\%cfgHash, $sites[0]);
+# TODO: Init one detection module per federation. Needs some way of differentiating the owamp files
+my $detectionModule = new Detection(\%cfgHash, $federations[0]);
 my $infileScheduler = new InfileScheduler(\%cfgHash, $detectionModule);
 
 print "Starting server..\n";
 
-# run this only on startup
-`perl cleanowamp.pl >> run.log 2>&1`;
+# Clean old owamp files
+my $cleanupThreshold = $cfgHash{"pundit_agent"}{"owamp_data"}{"cleanup_threshold"};
+my $owampPath = $cfgHash{"pundit_agent"}{"owamp_data"}{"path"};  
+Utils::CleanOwamp::cleanOldFiles($cleanupThreshold, $owampPath);
 
-while(1)
+my $runLoop = 1;
+
+while($runLoop)
 {
     $infileScheduler->runSchedule();
-    sleep(1);
+    sleep(10);
 }

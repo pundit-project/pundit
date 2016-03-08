@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+package Utils::CleanOwamp;
 use strict;
 
 # Cleans old files in the owamp directories
@@ -22,9 +23,19 @@ sub cleanOldFiles
 {
     my ($threshold, $datadir) = @_;
     
+    if (!defined($threshold))
+    {
+        $threshold = 1;
+    }
+    if (!defined($datadir) || !(-e $datadir))
+    {
+        warn "Couldn't find $datadir to cleanup\n";
+        return;
+    }
+    
 	print "cleaning owamp files older than $threshold hours in the past.\n";
 	my $mintime = $threshold * 60;
 	system("find $datadir/* -name \"*.owp\" -type f -mmin +$mintime -delete");
 }
 
-cleanOldFiles(1, "/var/lib/perfsonar/regulartesting/");
+1;
