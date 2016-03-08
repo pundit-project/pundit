@@ -123,11 +123,7 @@ sub writeStatus
     for (my $i = 0; $i < scalar(@{$status->{'entries'}}); $i++)
     {
         my $currEntry = $status->{'entries'}->[$i];
-        
-        # placeholder
-        my $detectionCode = $currEntry->{'delayProblem'} << 1 | 
-                            $currEntry->{'lossProblem'} << 2 | 
-                            $currEntry->{'contextSwitch'} << 7;
+
 #        print "Mysql: inserting " . int($currEntry->{'firstTimestamp'}) . " to " . int($currEntry->{'lastTimestamp'}) . "\n";
         
         $sth->bind_param((9 * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
@@ -135,7 +131,7 @@ sub writeStatus
         $sth->bind_param((9 * $i) + 3, $status->{"srchost"});
         $sth->bind_param((9 * $i) + 4, $status->{"dsthost"});
         $sth->bind_param((9 * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
-        $sth->bind_param((9 * $i) + 6, $detectionCode);
+        $sth->bind_param((9 * $i) + 6, $currEntry->{'detectionCode'});
         $sth->bind_param((9 * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
         $sth->bind_param((9 * $i) + 8, _oneDecimalPlace($currEntry->{'lossPerc'}));
         $sth->bind_param((9 * $i) + 9, 0.0);
