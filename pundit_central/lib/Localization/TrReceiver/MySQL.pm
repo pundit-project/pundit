@@ -24,7 +24,6 @@ Interface to get traceroutes stored in MySQL
 package Localization::TrReceiver::MySQL;
 
 use strict;
-use threads::shared;
 
 # Database
 use DBI qw(:sql_types);
@@ -104,7 +103,7 @@ sub _get_hosts_timerange
     return undef if (!$sth);
     
     # Init an empty hash
-    my %trHash :shared = ();
+    my %trHash = ();
     
     # variables for error checking
     my $lastTs;
@@ -116,20 +115,20 @@ sub _get_hosts_timerange
         # create hash for src
         if (!exists($trHash{$ref->[1]}))
         {
-            $trHash{$ref->[1]} = &share({}); # hash, for destinations
+            $trHash{$ref->[1]} = {}; # hash for destinations
         }
         
         # create hash for dst
         if (!exists($trHash{$ref->[1]}{$ref->[2]}))
         {
-            $trHash{$ref->[1]}{$ref->[2]} = &share([]); # array, sorted by timestamp
+            $trHash{$ref->[1]}{$ref->[2]} = []; # array, sorted by timestamp
         }
         
         # list of traceroutes, sorted by time
         my $currTrList = $trHash{$ref->[1]}{$ref->[2]};
-        my $currTs :shared = $ref->[0] * 1;
-        my $currHopNo :shared = $ref->[3] * 1; 
-        my %newHop :shared = (
+        my $currTs = $ref->[0] * 1;
+        my $currHopNo = $ref->[3] * 1; 
+        my %newHop = (
             'hop_ip' => $ref->[4], 
             'hop_name' => $ref->[5],
         );
@@ -144,9 +143,9 @@ sub _get_hosts_timerange
         {
 #            print "Adding new entry. \$trList is " . scalar(@$currTrList) . " $lastTs $currTs\t$lastHopNo $currHopNo\n";
 
-            my @newHopList :shared = ( \%newHop );
-            my @newPath :shared = ( \@newHopList, );
-            my %newEntry :shared = (
+            my @newHopList = ( \%newHop );
+            my @newPath = ( \@newHopList, );
+            my %newEntry = (
                       'ts' => $currTs,
                       'path' => \@newPath, # each hop may be load balanced, so each hop_no has an array to hold all possible hosts  
                   );
@@ -164,7 +163,7 @@ sub _get_hosts_timerange
             }
             else # else add new hop
             {
-                my @newHopList :shared = ( \%newHop );
+                my @newHopList = ( \%newHop );
                 push (@{$currTrList->[-1]{'path'}}, \@newHopList); # note each entry is a list of nodes
             }
         }
