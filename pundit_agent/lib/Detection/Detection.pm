@@ -205,6 +205,7 @@ sub _readFile
     my $reorder_metric;
     my $lost_count;
     my @lost_array;
+    my @unsync_array;
     
     if (substr($inputFile, -3) eq "owp")
     {
@@ -241,7 +242,22 @@ sub _readFile
         my $delay = undef;
         my $sndTS = -1;
         my $rcvTS = -1;
-        if($line !~ /LOST/)
+        if ($line =~ /LOST/) # catch lost packets
+        {
+            # note sequence number of loss
+            push(@lost_array, $obj[1]);
+            
+            $lost_flag = 1;
+        }
+        elsif ($line =~ /unsync/)
+        {
+            # note sequence number of unsync
+            push(@unsync_array, $obj[1]);
+            
+            # Delay
+            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+        }
+        else # normal packet
         {
 #            # skip values that are out of range
 #            next if $fileStartTime && $obj[10] < $fileStartTime;
@@ -258,14 +274,7 @@ sub _readFile
             {
                 $sessionMinDelay = $delay;
             }
-        }
-        else
-        {
-            # note sequence number of loss
-            push(@lost_array, $obj[1]);
-            
-            $lost_flag = 1;
-        }
+        }        
         
         my %elem = ();
         $elem{ts} = $sndTS; # sender timestamp
@@ -297,7 +306,7 @@ sub _readFile
     @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
     
     # loop one more time to fill the sender timestamps of lost packets
-    if (scalar(@lost_array) > 0)
+    if (scalar(@lost_array) > 0 || scalar(@unsync_array) > 0)
     {
         open(IN, "owstats -R $inputFile |") or die;
         while(my $line = <IN>)
@@ -306,12 +315,17 @@ sub _readFile
             my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
             
             $seqNo = int($seqNo);
-            if ($seqNo == $lost_array[0])
+            if ((scalar(@lost_array) > 0) && ($seqNo == $lost_array[0]))
             {
                 $timeseries[$seqNo]->{ts} = owptime2exacttime($sTime);
                 shift @lost_array;
             }
-            last if (scalar(@lost_array) == 0);
+            elsif ((scalar(@unsync_array) > 0) && ($seqNo == $unsync_array[0]))
+            {
+                $timeseries[$seqNo]->{'ts'} = owptime2exacttime($sTime);
+                $timeseries[$seqNo]->{'rcvTs'} = owptime2exacttime($rTime);
+            }
+            last if (scalar(@lost_array) == 0 && scalar(@unsync_array) == 0);
         }
         close IN;
     }
@@ -446,17 +460,17 @@ sub _detection
                     delete $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
                     $tsSlice = $incSlice;
                     
-                    my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
                     # Store summary in result
-                    push(@results, $stats);
+                    push(@results, $windowSummary);
                     
                     $problemCount += $windowProblemCount;
                 }
                 elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) > 0.8) # process if greater than 80% full
                 {
-                    my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
                     # Store summary in result
-                    push(@results, $stats);
+                    push(@results, $windowSummary);
                     
                     $problemCount += $windowProblemCount;
                 }
@@ -468,9 +482,9 @@ sub _detection
             }
             else
             {
-                my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
                 # Store summary in result
-                push(@results, $stats);
+                push(@results, $windowSummary);
                 
                 $problemCount += $windowProblemCount;
             }
@@ -508,17 +522,17 @@ sub _detection
             undef $incSlice;
             delete $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
             
-            my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
             # Store summary in result
-            push(@results, $stats);
+            push(@results, $windowSummary);
             
             $problemCount += $windowProblemCount;
         }
         elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) > 0.8 ) # process if greater than 80% full
         {
-            my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
             # Store summary in result
-            push(@results, $stats);
+            push(@results, $windowSummary);
             
             $problemCount += $windowProblemCount;
         }
@@ -549,6 +563,12 @@ sub _detection2
     
     # duration of the session
     my $sessionDuration = $timeseries->[-1]{ts} - $timeseries->[0]{ts};
+    
+    if ($sessionDuration == 0)
+    {
+        return (undef, 0);
+    }
+    
     # number of windows of approximately windowSize
     my $windowCount = _roundOff($sessionDuration/$self->{'_windowSize'});
     # The actual width of each window to use
@@ -569,9 +589,9 @@ sub _detection2
             
 #            print "tsSlice is " . scalar(@$tsSlice) . "\n";
             
-            my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
             # Store summary in result
-            push(@results, $stats);
+            push(@results, $windowSummary);
             
             $problemCount += $windowProblemCount;
             
@@ -598,9 +618,9 @@ sub _detection2
         
 #        print "LAST: tsSlice is " . scalar(@$tsSlice) . "\n";
         
-        my ($stats, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+        my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
         # Store summary in result
-        push(@results, $stats);
+        push(@results, $windowSummary);
         
         $problemCount += $windowProblemCount;
                 
@@ -619,44 +639,12 @@ sub _detection_suite
 {
     my ($self, $timeseries, $windowMinDelay, $sessionMinDelay) = @_;
     
-    my ($stats, $problemCount) = $self->_detect_problems($timeseries, $windowMinDelay, $sessionMinDelay);
-         
-    # set this flag ahead of time
-    $stats->{'contextSwitch'} = 0;
-       
-    # Call these functions only if there is a problem in this window
-    if ($problemCount > 0)
-    {
-        # disabled
-#       my ($ret) = $self->route_change_detect($tsSlice);
-#       print $ret . "\n";
-        
-        my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
-        if ($contextSwitch)
-        {
-            $stats->{'contextSwitch'} = 1;
-            # reset problemcount here. Issues are due to context switch
-            $problemCount = 0;
-        }
-    }
-    return ($stats, $problemCount);
-}
-
-# detects problems in a 5 second window
-# this is the base for detection
-sub _detect_problems
-{
-    my ($self, $timeseries, $windowMinDelay, $sessionMinDelay) = @_;
-    my $delayProblemCount = 0;
-    my $lossProblemCount = 0;
-    my $delaySum = 0.0;
-    
-    if (scalar(@$timeseries) == 0)
-    {
-        return ({
+    my $windowSummary = {
         'delayProblem' => 0,
         'lossProblem' => 0,
         'reorderProblem' => 0,
+        'contextSwitch' => 0,
+        'detectionCode' => 0,
         
         'firstTimestamp' => 0,
         'lastTimestamp' => 0,
@@ -670,8 +658,46 @@ sub _detect_problems
         
         'lossCount' => 0,
         'lossPerc' => 0
-         }, 
-         0);
+         }
+    
+    my $problemCount = $self->_detectLossLatencyReordering($timeseries, $windowSummary, $sessionMinDelay);
+    
+    # Call these functions only if there is a problem in this window
+    if ($problemCount > 0)
+    {
+        # disabled
+#       my ($ret) = $self->route_change_detect($tsSlice);
+#       print $ret . "\n";
+        
+        # Context switch detection
+        my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
+        if ($contextSwitch)
+        {
+            $windowSummary->{'contextSwitch'} = 1;
+            # reset problemcount here. Issues are due to context switch
+            $problemCount = 0;
+        }
+    }
+    
+    # generate the detection code for output
+    $windowSummary->{'detectionCode'} = $windowSummary->{'delayProblem'} << 1 | 
+                                        $windowSummary->{'lossProblem'} << 2 | 
+                                        $windowSummary->{'contextSwitch'} << 7;
+    return ($windowSummary, $problemCount);
+}
+
+# detects problems in a 5 second window
+# this is the base for detection
+sub _detectLossLatencyReordering
+{
+    my ($self, $timeseries, $windowSummary, $sessionMinDelay) = @_;
+    my $delayProblemCount = 0;
+    my $lossProblemCount = 0;
+    my $delaySum = 0.0;
+    
+    if (scalar(@$timeseries) == 0)
+    {
+        return 0;
     }
     
     my $delayLimit;
@@ -734,29 +760,26 @@ sub _detect_problems
     my $reorderProblemFlag = 0;
     # TODO: Use RFC method of calculating reordering 
     
-    # Summarise stats
-    my $stats = {
-        'delayProblem' => $delayProblemFlag,
-        'lossProblem' => $lossProblemFlag,
-        'reorderProblem' => $reorderProblemFlag,
+    # Update stats
+    $windowSummary{'delayProblem'} = $delayProblemFlag;
+    $windowSummary{'lossProblem'} = $lossProblemFlag;
+    $windowSummary{'reorderProblem'} = $reorderProblemFlag;
         
-        'queueingDelay' => $queueingDelay,
+    $windowSummary{'queueingDelay'} = $queueingDelay;
         
-        'firstTimestamp' => $timeseries->[0]->{'ts'},
-        'lastTimestamp' => $timeseries->[-1]->{'ts'},
+    $windowSummary{'firstTimestamp'} = $timeseries->[0]->{'ts'};
+    $windowSummary{'lastTimestamp'} = $timeseries->[-1]->{'ts'};
         
-        'packetCount' => scalar(@$timeseries),
-        'windowMinDelay' => $windowMinDelay,
+    $windowSummary{'packetCount'} = scalar(@$timeseries);
         
-        'delayLimit' => $delayLimit,
-        'delayAvg' => $delayAvg,
-        'delayPerc' => $delayPerc,
+    $windowSummary{'delayLimit'} = $delayLimit;
+    $windowSummary{'delayAvg'} = $delayAvg;
+    $windowSummary{'delayPerc'} = $delayPerc;
         
-        'lossCount' => $lossProblemCount,
-        'lossPerc' => $lossPerc
-         };
+    $windowSummary{'lossCount'} = $lossProblemCount;
+    $windowSummary{'lossPerc'} = $lossPerc;
     
-    return ($stats, $delayProblemFlag + $lossProblemFlag + $reorderProblemFlag); 
+    return ($delayProblemFlag + $lossProblemFlag + $reorderProblemFlag); 
 }
 
 # uses a histogram approach
