@@ -417,6 +417,9 @@ sub _detection
 {
     my ($self, $timeseries, $dsthost, $sessionMinDelay) = @_;
     
+    # Flag whether to combine consecutive sessions or not
+    my $combineSessions = 0; 
+    
     # index of the start of a 5 sec window and the corresponding timestamp
     my $windowStart = 0;
     my $problemCount = 0;
@@ -446,7 +449,8 @@ sub _detection
                 print "First bin is incomplete " . scalar(@$tsSlice) ."\n";
                 
                 # check whether there's a matching bin in the incomplete bin hash
-                if (exists $self->{'_incompleteBinHash'}{$dsthost} &&
+                if ($combineSessions &&
+                    exists $self->{'_incompleteBinHash'}{$dsthost} &&
                     defined $self->{'_incompleteBinHash'}{$dsthost}{$currentBin})
                 {
                     print "Found remainder in incompleteBinHash\n";
@@ -474,7 +478,7 @@ sub _detection
                     
                     $problemCount += $windowProblemCount;
                 }
-                else # store it in the incompleteBinHash if not enough samples
+                elsif ($combineSessions) # store it in the incompleteBinHash if not enough samples
                 {
                     print "Adding first packet to incompleteBinHash\n";
                     $self->{'_incompleteBinHash'}{$dsthost}{$currentBin} = $tsSlice;
@@ -509,7 +513,8 @@ sub _detection
         print "LAST: tsSlice is " . scalar(@$tsSlice) . "\n";
         
         # check whether there's a matching bin in the incomplete bin hash
-        if (exists $self->{'_incompleteBinHash'}{$dsthost} &&
+        if ($combineSessions &&
+            exists $self->{'_incompleteBinHash'}{$dsthost} &&
             defined $self->{'_incompleteBinHash'}{$dsthost}{$currentBin})
         {
             print "Found remainder in incompleteBinHash\n";
@@ -536,7 +541,7 @@ sub _detection
             
             $problemCount += $windowProblemCount;
         }
-        else # store it in the incompleteBinHash 
+        elsif ($combineSessions) # store it in the incompleteBinHash 
         {
             print "Adding last packet to incompleteBinHash\n";
             $self->{'_incompleteBinHash'}{$dsthost}{$currentBin} = $tsSlice;
@@ -658,7 +663,7 @@ sub _detection_suite
         
         'lossCount' => 0,
         'lossPerc' => 0
-         }
+         };
     
     my $problemCount = $self->_detectLossLatencyReordering($timeseries, $windowSummary, $sessionMinDelay);
     
@@ -701,13 +706,17 @@ sub _detectLossLatencyReordering
     }
     
     my $delayLimit;
-    if ($self->{"_delayType"} eq "absolute")
+    if (!defined($sessionMinDelay))
     {
-        $delayLimit = $windowMinDelay + $self->{"_delayVal"}; 
+        $delayLimit = LONG_MAX;
+    }
+    elsif ($self->{"_delayType"} eq "absolute")
+    {
+        $delayLimit = $sessionMinDelay + $self->{"_delayVal"}; 
     }
     elsif ($self->{"_delayType"} eq "relative")
     {
-        $delayLimit = $windowMinDelay * (1.0 + $self->{"_delayVal"});
+        $delayLimit = $sessionMinDelay * (1.0 + $self->{"_delayVal"});
     }
 #    print $delayLimit . "\n";
     foreach my $item (@$timeseries)
@@ -726,7 +735,6 @@ sub _detectLossLatencyReordering
             }
             $delaySum += (1.0 * $item->{"delay"});
         }
-        
     }
     
     # Processs delays in this window
@@ -745,7 +753,14 @@ sub _detectLossLatencyReordering
         $delayAvg = $delaySum/(scalar(@$timeseries) - $lossProblemCount);
         
         # TODO: We use the session minimum delay here. Need to check if this is sane to use after a route change
-        $queueingDelay = $delayAvg - $sessionMinDelay;
+        if (defined($sessionMinDelay))
+        {
+            $queueingDelay = $delayAvg - $sessionMinDelay;
+        }
+        else
+        {
+            $queueingDelay = 0.0;
+        }
     }
         
     # Process losses in this window
@@ -761,23 +776,23 @@ sub _detectLossLatencyReordering
     # TODO: Use RFC method of calculating reordering 
     
     # Update stats
-    $windowSummary{'delayProblem'} = $delayProblemFlag;
-    $windowSummary{'lossProblem'} = $lossProblemFlag;
-    $windowSummary{'reorderProblem'} = $reorderProblemFlag;
+    $windowSummary->{'delayProblem'} = $delayProblemFlag;
+    $windowSummary->{'lossProblem'} = $lossProblemFlag;
+    $windowSummary->{'reorderProblem'} = $reorderProblemFlag;
         
-    $windowSummary{'queueingDelay'} = $queueingDelay;
+    $windowSummary->{'queueingDelay'} = $queueingDelay;
         
-    $windowSummary{'firstTimestamp'} = $timeseries->[0]->{'ts'};
-    $windowSummary{'lastTimestamp'} = $timeseries->[-1]->{'ts'};
+    $windowSummary->{'firstTimestamp'} = $timeseries->[0]->{'ts'};
+    $windowSummary->{'lastTimestamp'} = $timeseries->[-1]->{'ts'};
         
-    $windowSummary{'packetCount'} = scalar(@$timeseries);
+    $windowSummary->{'packetCount'} = scalar(@$timeseries);
         
-    $windowSummary{'delayLimit'} = $delayLimit;
-    $windowSummary{'delayAvg'} = $delayAvg;
-    $windowSummary{'delayPerc'} = $delayPerc;
+    $windowSummary->{'delayLimit'} = $delayLimit;
+    $windowSummary->{'delayAvg'} = $delayAvg;
+    $windowSummary->{'delayPerc'} = $delayPerc;
         
-    $windowSummary{'lossCount'} = $lossProblemCount;
-    $windowSummary{'lossPerc'} = $lossPerc;
+    $windowSummary->{'lossCount'} = $lossProblemCount;
+    $windowSummary->{'lossPerc'} = $lossPerc;
     
     return ($delayProblemFlag + $lossProblemFlag + $reorderProblemFlag); 
 }
