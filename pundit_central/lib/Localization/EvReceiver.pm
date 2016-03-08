@@ -18,10 +18,11 @@
 package Localization::EvReceiver;
 
 use strict;
-use Localization::EvReceiver::MySQL;
-use Localization::EvReceiver::Test;
 use threads;
 use threads::shared;
+
+use Localization::EvReceiver::MySQL;
+use Localization::EvReceiver::Test;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -44,7 +45,7 @@ sub exit_handler{
 # Top-level init for event receiver
 sub new
 {
-	my ($class, $cfgHash, $siteName, $evQueues) = @_;
+	my ($class, $cfgHash, $siteName) = @_;
     
     # Shared structure that will hold the event queues
     my $evQueues = &share({});
@@ -191,7 +192,7 @@ sub _selectNextWindow
     my $selOverlap = _calcOverlap($refStart, $refEnd, $selected{'startTime'}, $selected{'endTime'});
     
     # Case 1: Significant overlap
-    if (($selOverlap > 0.6) || 
+    if (($selOverlap > 0.8) || 
         (scalar(@{$evQueue->{'queue'}}) == 1)) 
     {
         return \%selected;
@@ -202,6 +203,12 @@ sub _selectNextWindow
         # Check the next entry's overlap
         my %next = %{$evQueue->{'queue'}[1]}; # we already checked the length of the list before
         my $nextOverlap = _calcOverlap($refStart, $refEnd, $next{'startTime'}, $next{'endTine'});
+        
+        # selected overlap is not significant. Choose next.
+        if ($selOverlap <= 0.2)
+        {
+            return \%next; # choose the next entry
+        }
         
         # Case 2a: If next window doesn't have problems or is unknown, use first window
         if ($next{'detectionCode'} <= 0)
@@ -301,13 +308,14 @@ sub _addHashToEvQueues
 
 # inserts a newly retrieved array into the event queue
 # Returns the earliest inserted timestamp
+# Note: This inserts padding records if there is a gap between the last entry in the queue and first entry in the array
 sub _addArrayToEvQueue
 {
     my ($evQueue, $srchost, $dsthost, $evArray) = @_;
     
     return $evQueue->{'lastTime'} if ((scalar(@$evArray) == 0) || ($evArray->[-1]{'endTime'} < $evQueue->{'startTime'}));
     
-    # discard duplicate entries
+    # discard duplicate entries from the array based on timestamp
     while ((scalar(@$evArray) > 0) && 
            ($evQueue->{'lastTime'} > $evArray->[0]{'startTime'})) 
     {
@@ -336,7 +344,7 @@ sub _addArrayToEvQueue
         push(@{$evQueue->{'queue'}}, \%newHash);
     }
     
-    # append to end of queue
+    # append the entire array to the end of queue
     {
         lock(@{$evQueue->{'queue'}});
         my $sharedArr = shared_clone($evArray); # Make a shared copy of the arrayref so both threads can access it
