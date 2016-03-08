@@ -708,7 +708,7 @@ sub _detectLossLatencyReordering
     my $delayLimit;
     if (!defined($sessionMinDelay))
     {
-        $delayLimit = LONG_MAX;
+        $delayLimit = 9999999999;
     }
     elsif ($self->{"_delayType"} eq "absolute")
     {
