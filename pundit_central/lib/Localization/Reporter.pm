@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright 2012 Georgia Institute of Technology
+# Copyright 2016 Georgia Institute of Technology
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,37 +15,30 @@
 # limitations under the License.
 #
 
-package Loc::Reporter;
+package Localization::Reporter;
 
 use strict;
-require "loc_reporter_range.pl";
-require "loc_reporter_bool.pl";
+use Localization::Reporter::MySQL;
 
 ## debug. Remove this for production
 #use Data::Dumper;
-#require "loc_config.pl";
-#my $cfg = new Loc::Config("localization.conf");
 
 sub new
 {
-	my $class = shift;
-    my $cfg = shift;
+	my ($class, $cfgHash, $fedName) = @_;
     
-	# init the sub-receiver
-	my $delay_rpt = new Loc::Reporter::Range($cfg, 'delayMetric');
-	return undef if (!$delay_rpt);
-	
-	my $loss_rpt = new Loc::Reporter::Bool($cfg, 'lossMetric');
-	return undef if (!$loss_rpt);
-	
-	my $reorder_rpt = new Loc::Reporter::Bool($cfg, 'reorderMetric');
-	return undef if (!$reorder_rpt);
+	# init the sub-reporter
+	my $subType = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'type'};
+    
+    my $rpt;
+    if ( $subType eq "mysql" )
+    {
+	   $rpt = new Localization::Reporter::MySQL($cfgHash, $fedName);
+    }
+	return undef if (!defined($rpt));
 	
 	my $self = {
-        _config => $cfg,
-        _delay_rpt => $delay_rpt,
-        _loss_rpt => $loss_rpt,
-        _reorder_rpt => $reorder_rpt,
+        '_rpt' => $rpt,
     };
     
     bless $self, $class;
@@ -53,37 +46,14 @@ sub new
 }
 
 # Write to database
-sub write_data
+sub writeData
 {
-	my ($self, $metric, $start_time, $data_array) = @_;
+	my ($self, $start_time, $tomo, $detectionCode, $data_array) = @_;
 	
-	if ($metric eq 'delayMetric')
-	{
-		$self->{'_delay_rpt'}->write_data($start_time, $data_array);
+    foreach my $event (@{$data_array})
+    {
+        $self->{"_rpt"}->writeData($start_time, $tomo, $detectionCode, $event);
 	}
-	elsif ($metric eq 'lossMetric')
-	{
-		$self->{'_loss_rpt'}->write_data($start_time, $data_array);
-	}
-	elsif ($metric eq 'reorderMetric')
-	{
-		$self->{'_reorder_rpt'}->write_data($start_time, $data_array);
-	}  
 }
 
 1;
-
-=pod
-my $rpt = new Loc::Reporter($cfg);
-my @data_array = (
-	{
-		'link' => "1.1.3.1",
-		'range' => [2.5, 9.75],
-	},
-	{
-		'link' => "1.1.4.2",
-		'range' => [2.5, 6.75],
-	}
-);
-$rpt->write_data(100, \@data_array);
-=cut
