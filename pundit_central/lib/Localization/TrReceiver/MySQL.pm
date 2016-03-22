@@ -28,6 +28,9 @@ use strict;
 # Database
 use DBI qw(:sql_types);
 
+# local pms
+use Utils::TrHop;
+
 # debug
 use Data::Dumper;
 
@@ -36,14 +39,14 @@ use Data::Dumper;
 # 1 if success, 0 otherwise
 sub new
 {
-    my ($class, $cfgHash, $siteName) = @_;
+    my ($class, $cfgHash, $fedName) = @_;
     
     # init the DBI
-    my $host = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'mysql'}{"host"};
-    my $port = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'mysql'}{"port"};
-    my $database = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'mysql'}{"database"};
-    my $user = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'mysql'}{"user"};
-    my $pw = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'mysql'}{"password"};
+    my $host = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"host"};
+    my $port = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"port"};
+    my $database = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"database"};
+    my $user = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"user"};
+    my $pw = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"password"};
     
     my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or return undef;
     
@@ -128,11 +131,7 @@ sub _get_hosts_timerange
         my $currTrList = $trHash{$ref->[1]}{$ref->[2]};
         my $currTs = $ref->[0] * 1;
         my $currHopNo = $ref->[3] * 1; 
-        my %newHop = (
-            'hop_ip' => $ref->[4], 
-            'hop_name' => $ref->[5],
-        );
-        
+
         # create hash for new trace if
         # 1. TrList is empty
         # 2. Time mismatch with last entry for that src dst pair
@@ -143,13 +142,16 @@ sub _get_hosts_timerange
         {
 #            print "Adding new entry. \$trList is " . scalar(@$currTrList) . " $lastTs $currTs\t$lastHopNo $currHopNo\n";
 
-            my @newHopList = ( \%newHop );
-            my @newPath = ( \@newHopList, );
+            my $newHop = new Utils::TrHop($ref->[5], $ref->[4]);
+            my @newPath = ( $newHop );
             my %newEntry = (
                       'ts' => $currTs,
                       'path' => \@newPath, # each hop may be load balanced, so each hop_no has an array to hold all possible hosts  
+                      'src' => $ref->[1],
+                      'dst' => $ref->[2],
                   );
             push (@{$currTrList}, \%newEntry);
+            
         }
         else # append to the last path 
         {
@@ -159,12 +161,12 @@ sub _get_hosts_timerange
             if ($lastHopNo == $currHopNo)
             {
                 # append to last hop at the same level
-                push (@{$currTrList->[-1]{'path'}[-1]}, \%newHop);
+                $currTrList->[-1]{'path'}[-1]->addHopEntry($ref->[5], $ref->[4]);
             }
             else # else add new hop
             {
-                my @newHopList = ( \%newHop );
-                push (@{$currTrList->[-1]{'path'}}, \@newHopList); # note each entry is a list of nodes
+                my $newHop = new Utils::TrHop($ref->[5], $ref->[4]);
+                push(@{$currTrList->[-1]{'path'}}, $newHop); 
             }
         }
         
