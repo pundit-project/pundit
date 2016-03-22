@@ -37,9 +37,9 @@ This is a test library for verifying EvReceiver behaviour
 
 my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
-my $siteName = 'site1';
+my $fedName = 'federation1';
 
-#$cfgHash{'pundit_central'}{$siteName}{'ev_receiver'}{'type'} = 'test';
+#$cfgHash{'pundit_central'}{$fedName}{'ev_receiver'}{'type'} = 'test';
 
 my $evRcv;
 
@@ -67,5 +67,5 @@ sub main
     }
 }
 
-$evRcv = new Localization::EvReceiver(\%cfgHash, $siteName);
+$evRcv = new Localization::EvReceiver(\%cfgHash, $fedName);
 main();

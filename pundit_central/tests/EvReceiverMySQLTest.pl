@@ -36,9 +36,9 @@ This is a test library for verifying EvReceiverMySQL behaviour
 
 my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
-my $siteName = 'site1';
+my $fedName = 'federation1';
 
-my $evRcv = new Localization::EvReceiver::MySQL(\%cfgHash, $siteName);
+my $evRcv = new Localization::EvReceiver::MySQL(\%cfgHash, $fedName);
 
 my $evHash = $evRcv->getLatestEvents(time - 60);
 print Dumper($evHash);
