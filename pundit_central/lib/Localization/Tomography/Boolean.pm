@@ -322,7 +322,7 @@ sub runTomo
 			my $problemPaths = $failurePathSetList{$problemLink}; 
 			
 			# add to hypothesis set
-			push (@hypothesisSet, $problemLink);
+			push (@hypothesisSet, { 'hopId' => $problemLink });
 			
 			# mark as explained in path and link sets and update the counts
 			($pathSetCount) = _markExplainedPaths($problemPaths, $pathSet, $pathSetCount);
