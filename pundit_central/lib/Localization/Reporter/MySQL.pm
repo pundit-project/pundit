@@ -20,8 +20,13 @@ package Localization::Reporter::MySQL;
 use strict;
 use DBI;
 
-# debug. Remove this for production
-#use Data::Dumper;
+=pod
+
+Localization::Reporter::MySQL
+
+Handles the writing back of localization events to the MySQL database backend
+
+=cut
 
 # Creates a new object
 sub new
@@ -78,23 +83,12 @@ sub DESTROY
 # Writes the result array to the database
 sub writeData
 {
-	my ($self, $start_time, $tomo, $detectionCode, $event) = @_;
+	my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
 	
 	my $sth = $self->{'_sth'};
 	my $dbh = $self->{'_dbh'};
 	
-	my $trHop = $event->{'link'};
-	foreach my $hopInfo (@{$trHop->getRawList()})
-	{
-	    if ($tomo eq "range_sum")
-        {
-            $sth->execute($start_time, $hopInfo->{'hopIp'}, $hopInfo->{'hopName'}, $detectionCode, int($event->{'range'}[0] * 10), int($event->{'range'}[1] * 10)) or print "$dbh->errstr\n";
-        }
-        elsif ($tomo eq "boolean")
-        {
-            $sth->execute($start_time, $hopInfo->{'hopIp'}, $hopInfo->{'hopName'}, $detectionCode, undef, undef) or print "$dbh->errstr\n";
-        }
-	}
+    $sth->execute($startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) or print "$dbh->errstr\n";
 }
 
 1;

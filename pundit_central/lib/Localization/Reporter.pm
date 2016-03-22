@@ -19,9 +19,16 @@ package Localization::Reporter;
 
 use strict;
 use Localization::Reporter::MySQL;
+use Utils::TrHop;
 
-## debug. Remove this for production
-#use Data::Dumper;
+=pod
+
+Localization::Reporter
+
+Handles the writing back of localization events to the appropriate backend
+
+=cut
+
 
 sub new
 {
@@ -45,15 +52,32 @@ sub new
     return $self;
 }
 
-# Write to database
+# Uses the backend submodule to write events, one per link, per event 
 sub writeData
 {
-	my ($self, $start_time, $tomo, $detectionCode, $data_array) = @_;
+	my ($self, $startTime, $tomo, $detectionCode, $resultArray, $nodeIdTrHopList) = @_;
 	
-    foreach my $event (@{$data_array})
+	my $val1;
+	my $val2;
+    foreach my $event (@{$resultArray})
     {
-        $self->{"_rpt"}->writeData($start_time, $tomo, $detectionCode, $event);
-	}
+        if ($tomo eq "range_sum")
+        {
+            $val1 = int($event->{'range'}[0] * 10);
+            $val2 = int($event->{'range'}[1] * 10);
+        }
+        
+        if (!exists($nodeIdTrHopList->{$event->{'link'}}))
+        {
+            warn "Couldn't find $event->{'link'} in nodeIdTrHopList. Skipping ";
+            next;
+        }
+        my $trHop = $nodeIdTrHopList->{$event->{'link'}};
+        foreach my $hopInfo (@{$trHop->getRawList()})
+        {
+            $self->{"_rpt"}->writeData($startTime, $hopInfo->{'hopIp'}, $hopInfo->{'hopName'}, $detectionCode, $val1, $val2);
+        }
+    }
 }
 
 1;

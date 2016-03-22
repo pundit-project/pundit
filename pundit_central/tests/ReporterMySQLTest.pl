@@ -41,22 +41,7 @@ my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
 my $reporter = new Localization::Reporter::MySQL(\%cfgHash, $fedName);
-my $trHop1 = new Utils::TrHop();
-$trHop1->addHopEntry("a","1.1.1.1");
-my $trHop2 = new Utils::TrHop();
-$trHop2->addHopEntry("b","1.1.1.2");
-$trHop2->addHopEntry("c","1.1.1.3");
 
-my $ev1 =
-    {
-        'link' => $trHop1,
-        'range' => [2.5, 2.75],
-    };
-my $ev2 =    
-    {
-        'link' => $trHop2,
-        'range' => [2.5, 3.75],
-    };
+$reporter->writeData(time - 100, "1.1.1.1", "a", 1, undef, undef);
+$reporter->writeData(time - 50, "1.1.1.2", "b", 1, 25, 27.5);
 
-$reporter->writeData(time - 100, "boolean", 1, $ev1);
-$reporter->writeData(time - 50, "range_sum",2, $ev2);

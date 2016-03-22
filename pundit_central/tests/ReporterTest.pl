@@ -41,22 +41,28 @@ my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
 my $reporter = new Localization::Reporter(\%cfgHash, $fedName);
+
+my $eventsList =
+[
+    {
+        'link' => "x",
+        'range' => [2.5, 2.75],
+    },    
+    {
+        'link' => "y_z",
+        'range' => [2.5, 3.75],
+    }
+];
+
 my $trHop1 = new Utils::TrHop();
 $trHop1->addHopEntry("x","1.1.2.1");
 my $trHop2 = new Utils::TrHop();
 $trHop2->addHopEntry("y","1.1.2.2");
 $trHop2->addHopEntry("z","1.1.2.3");
+my $nodeIdTrHopList = {
+    "x" => $trHop1,
+    "y_z" => $trHop2,
+};
 
-my $eventsList =
-[
-    {
-        'link' => $trHop1,
-        'range' => [2.5, 2.75],
-    },    
-    {
-        'link' => $trHop2,
-        'range' => [2.5, 3.75],
-    }
-];
-$reporter->writeData(time - 100, "boolean", 2, $eventsList);
-$reporter->writeData(time - 50, "range_sum", 1, $eventsList);
+$reporter->writeData(time - 100, "boolean", 2, $eventsList, $nodeIdTrHopList);
+$reporter->writeData(time - 50, "range_sum", 1, $eventsList, $nodeIdTrHopList);
