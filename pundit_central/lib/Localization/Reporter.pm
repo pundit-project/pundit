@@ -21,6 +21,9 @@ use strict;
 use Localization::Reporter::MySQL;
 use Utils::TrHop;
 
+# debug 
+#use Data::Dumper;
+
 =pod
 
 Localization::Reporter
@@ -67,12 +70,12 @@ sub writeData
             $val2 = int($event->{'range'}[1] * 10);
         }
         
-        if (!exists($nodeIdTrHopList->{$event->{'link'}}))
+        if (!exists($nodeIdTrHopList->{$event->{'hopId'}}))
         {
             warn "Couldn't find $event->{'link'} in nodeIdTrHopList. Skipping ";
             next;
         }
-        my $trHop = $nodeIdTrHopList->{$event->{'link'}};
+        my $trHop = $nodeIdTrHopList->{$event->{'hopId'}};
         foreach my $hopInfo (@{$trHop->getRawList()})
         {
             $self->{"_rpt"}->writeData($startTime, $hopInfo->{'hopIp'}, $hopInfo->{'hopName'}, $detectionCode, $val1, $val2);

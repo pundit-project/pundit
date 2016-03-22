@@ -45,11 +45,11 @@ my $reporter = new Localization::Reporter(\%cfgHash, $fedName);
 my $eventsList =
 [
     {
-        'link' => "x",
+        'hopId' => "x",
         'range' => [2.5, 2.75],
     },    
     {
-        'link' => "y_z",
+        'hopId' => "y_z",
         'range' => [2.5, 3.75],
     }
 ];
