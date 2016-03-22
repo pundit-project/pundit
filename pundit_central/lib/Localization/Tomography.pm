@@ -19,6 +19,8 @@ package Localization::Tomography;
 
 use strict;
 
+use Storable 'dclone';
+
 # local modules
 use Localization::Reporter; # for writing back to backend
 use Localization::Tomography::Boolean; # Boolean Tomography
@@ -27,7 +29,7 @@ use Utils::DetectionCode; # used for problem code to tomography mapping
 use Utils::TrHop; # used for extracting hop IDs
 
 # debug
-#use POSIX qw(floor);
+#use Data::Dumper;
 
 =pod
 
@@ -51,10 +53,10 @@ sub new
 	my $bool_tomo = new Localization::Tomography::Boolean($cfgHash, $fedName);
     return undef if (!$bool_tomo);
 	
-	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}('problem_types');
+	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'problem_types'};
 	my @problem_types_list = split(/[\s+|,]/, $problem_types_string);
 	
-	my $window_size = $cfgHash->{'pundit_central'}{$fedName}{'localization'}('window_size');
+	my $window_size = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'window_size'};
 	
 	my $self = {
         '_loc_reporter' => $loc_reporter,
@@ -78,20 +80,27 @@ sub DESTROY
 # Filters events by problem type
 sub _filterEvents
 {
-	my ($self, $problemName, $ev_table) = @_;
+	my ($self, $problemName, $evTable) = @_;
+	
+	my $metric = Utils::DetectionCode::getDetectionCodeMetric($problemName);
 	
 	# Filter the events based on detectionCode flag, also renaming the metric field
-	my @filtered_events = map { 
-		(Utils::DetectionCode::getDetectionCodeBitValid($_->{'detectionCode'}, $problemName) == 1) 
-		? 
-		{
-			'srchost' => $_->{'srchost'}, 
-			'dsthost' => $_->{'dsthost'}, 
-			'metric' => $_->{Utils::DetectionCode::getDetectionCodeMetric($problemName)} 
-		} 
-		: 
-		() 
-	} @$ev_table;
+	my @filtered_events = ();
+	foreach my $event (@{$evTable})
+	{
+	    my $problemFlag = Utils::DetectionCode::getDetectionCodeBitValid($event->{'detectionCode'}, $problemName);
+	    
+	    if ($problemFlag == 1)
+	    {
+	        my $newEntry = {
+                'srchost' => $event->{'srchost'}, 
+                'dsthost' => $event->{'dsthost'}, 
+                'metric' => $event->{$metric},
+                'processed' => 0,
+            };
+            push (@filtered_events, $newEntry);
+	    }
+	}
 	
 	return \@filtered_events;	
 }
@@ -99,25 +108,24 @@ sub _filterEvents
 
 # Builds a set of all paths and links from the traceroute table
 # Params:
-# $tr_table - Reference to the TraceRoute table, an hash of hashes where $tr_table{src}{dst} = pathInfo
+# $trMatrix - Reference to the TraceRoute table, an hash of hashes where $trMatrix{src}{dst} = pathInfo
 # Returns:
-# $path_set - A hash of hashes %path_set{$src}{$dst} = bad/good value
-# $link_set - A flat hash of all %link_set{$node} = bad/good value
+# $pathSet - A hash of hashes %path_set{$src}{$dst} = bad/good value
+# $linkSet - A flat hash of all %link_set{$node} = bad/good value
 # $trNodePath - List of node id to paths. Used for tomography algorithms 
 # $nodeIdTrHopList - List of node_id to TrHop mappings. Used for lookup during reporting
 sub _buildPathLinkSet
 {
-    my ($tr_table) = @_;
+    my ($trMatrix) = @_;
     
-    my %path_set = ();
-    my %link_set = ();
+    my %pathSet = ();
+    my %linkSet = ();
     my %trNodePath = ();
     my %nodeIdTrHopList = ();
     
-    print Dumper $tr_table;
-    while (my ($src, $dest_details) = each(%$tr_table))
+    while (my ($src, $destDetails) = each(%$trMatrix))
     {
-        while (my ($dst, $pathInfo) = each(%$dest_details))
+        while (my ($dst, $pathInfo) = each(%$destDetails))
         {
             # this is an arrayref of TrHops
             my $path = $pathInfo->{'path'};
@@ -127,7 +135,7 @@ sub _buildPathLinkSet
             
             # add an entry to path set with 0 bad links
             # we don't care about auto vivifying here
-            $path_set{$src}{$dst} = 0;
+            $pathSet{$src}{$dst} = 0;
             
             # now loop over the hops to add them to the link_set
             foreach my $trHop (@$path)
@@ -138,9 +146,9 @@ sub _buildPathLinkSet
                 next if ($hopId eq '*');
                 
 #                print "Adding $hopId with $src $dst \n";
-                if ( !exists( $link_set{$hopId} ) )
+                if ( !exists( $linkSet{$hopId} ) )
                 {
-                    $link_set{$hopId} = 0;
+                    $linkSet{$hopId} = 0;
                 }
                 
                 # we put these in a separate structs because link_set will be copied/modified later
@@ -159,7 +167,7 @@ sub _buildPathLinkSet
         }
     }
 
-    return (\%path_set, \%link_set, \%trNodePath, \%nodeIdTrHopList);
+    return (\%pathSet, \%linkSet, \%trNodePath, \%nodeIdTrHopList);
 }
 
 # Public interface
@@ -168,55 +176,53 @@ sub processTimeWindow
 {
 	my ($self, $refTime, $trMatrix, $evTable) = @_;
 	
-	my ($path_set, $link_set, $trNodePath, $nodeIdTrHopList) = _buildPathLinkSet($trMatrix);
-	
+	my ($pathSet, $linkSet, $trNodePath, $nodeIdTrHopList) = _buildPathLinkSet($trMatrix);
+		
 	# Run for each enabled problem 
 	foreach my $problemName (@{$self->{'_problem_types_list'}})
 	{
-		print "$problemName:\t";
+#		print "$problemName:\n";
 		
 		# keep events relevant only for the specific metric
-		my $filtered_events = $self->_filterEvents($problemName, $evTable);
-				
+		my $filteredEvents = $self->_filterEvents($problemName, $evTable);
+		
 		# Optimisation. Skip tomography if 1 or fewer paths
-		if (scalar($filtered_events) <= 1 || !$filtered_events)
+		if (scalar($filteredEvents) <= 1 || !$filteredEvents)
 		{
 			print "1 or 0 events to process. Not enough info to localise. Skipping.\n";
 			next;
 		}
 		
 		# make a copy of the path_set and link_set so this run of the algorithm can modify it
-		# These are 1 layer hashes to a direct shallow copy should work. 
-		# If the struct changes later, use Storable dclone
-		my %tomoPathSet = %{$path_set};
-		my %tomoLinkSet = %{$link_set};
-		    
+		my $tomoPathSet = dclone($pathSet);
+		my $tomoLinkSet = dclone($linkSet);
+		
         # Determine which algo corresponds to which tomography and run it
-        my $tomo;
-        my $tomo_type = Utils::DetectionCode::getDetectionCodeTomography($problemName);
-        if ($tomo_type eq "range_sum")
+        my $tomoObj;
+        my $tomoType = Utils::DetectionCode::getDetectionCodeTomography($problemName);
+        if ($tomoType eq "range_sum")
         {
-            $tomo = $self->{'_sum_tomo'};
+            $tomoObj = $self->{'_sum_tomo'};
         }
-        elsif ($tomo_type eq "boolean")
+        elsif ($tomoType eq "boolean")
         {
-            $tomo = $self->{'_bool_tomo'};
+            $tomoObj = $self->{'_bool_tomo'};
         }
-        if (!defined($tomo))
+        if (!defined($tomoObj))
         {
-            print "Error: undefined tomography type $tomo_type\n";
+            print "Error: undefined tomography type $tomoType\n";
         }
-        my $loc_result_table = $tomo->runTomo($filtered_events, $trMatrix, $trNodePath, \%tomoPathSet, \%tomoLinkSet);
-        
-        #print Dumper $loc_result_table;
-        
-        if (scalar(@{$loc_result_table}) > 0)
+        my $locResultTable = $tomoObj->runTomo($filteredEvents, $trMatrix, $trNodePath, $tomoPathSet, $tomoLinkSet);
+                
+        if (scalar(@{$locResultTable}) > 0)
         {
             # generate a detectionCode with a single bit set, used for reporting
             my $detectionCode = Utils::DetectionCode::setDetectionCodeBit(0, $problemName, 1);
             
+#            print "detCode $detectionCode\n";
+            
             # Store the table of results to db
-            $self->{'_loc_reporter'}->writeData($tomo, $detectionCode, $refTime, $loc_result_table, $nodeIdTrHopList);
+            $self->{'_loc_reporter'}->writeData($refTime, $tomoType, $detectionCode, $locResultTable, $nodeIdTrHopList);
         }
 	}
 }
