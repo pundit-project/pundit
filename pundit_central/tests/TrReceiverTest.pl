@@ -39,7 +39,7 @@ This is a test library for verifying TrReceiver behaviour
 
 my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
-my $siteName = 'site1';
+my $fedName = 'federation1';
 
 my $trRcv;
 
@@ -53,14 +53,11 @@ sub main
     
     while (1)
     {
-        my ($trMatrix, $nodeList) = $trRcv->getTrMatrix($timestart, $timestart + 5 + 60);
+        my $trMatrix = $trRcv->getTrMatrix($timestart, $timestart + 5 + 60);
         
-        print "TR Matrix";
+        print "TR Matrix ";
         print Dumper($trMatrix);
-        
-        print "Node List";
-        print Dumper($nodeList);
-        
+                
         $timestart += 5; # advance window by 5
         
         while ((time - $delay) < $timestart)
@@ -70,5 +67,5 @@ sub main
     }
 }
 
-$trRcv = new Localization::TrReceiver(\%cfgHash, $siteName);
+$trRcv = new Localization::TrReceiver(\%cfgHash, $fedName);
 main();

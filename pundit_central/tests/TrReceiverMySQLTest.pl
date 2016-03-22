@@ -36,9 +36,9 @@ This is a test library for verifying TrReceiverMySQL behaviour
 
 my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
-my $siteName = 'site1';
+my $fedName = 'federation1';
 
-my $trRcv = new Localization::TrReceiver::MySQL(\%cfgHash, $siteName);
+my $trRcv = new Localization::TrReceiver::MySQL(\%cfgHash, $fedName);
 
 my $trHash = $trRcv->getLatestTraces(time - 30*60);
 print Dumper($trHash);
