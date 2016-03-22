@@ -27,10 +27,11 @@ e.g., some problems should be ignored if the contextSwtich flag is set
 =cut
 
 # hash that maps problem codes to bits
+# note the indexes start from 0
 my $bitMapping = {
-    "delayProblem" => 1,
-    "lossProblem" => 2,
-    "contextSwitch" => 7,
+    "delayProblem" => 0,
+    "lossProblem" => 1,
+    "contextSwitch" => 6,
 };
 
 # Map the problem code to associated tomography and metric. Also defines whether another condition invalidates the result
@@ -50,15 +51,14 @@ sub setDetectionCodeBit
     # problem codes map to specific bits
     my $bitOffset = $bitMapping->{$problemName};
     
-    my $setValue; # flag to set or unset this bit
-    $setValue = 1 if (value > 0);
-
-    if ($setValue > 0)
+    if ($value > 0)
     {
+#        print "Setting bit $bitOffset to 1\n";
         $detCode |= 1 << $bitOffset;
     }
     else
     {
+#        print "Unsetting bit $bitOffset to 0\n";
         $detCode &= 0 << $bitOffset;
     }
     return $detCode;
@@ -82,6 +82,7 @@ sub getDetectionCodeBitValid
     return undef if (!exists($bitMapping->{$problemName}));
     
     my $rawProblemBit = ($detCode >> $bitMapping->{$problemName}) & 1;
+    
     my $invalidBit = 0;
     if (exists($metricMapping->{$problemName}) && defined($metricMapping->{$problemName}{"invalidatedBy"}))
     {
@@ -94,12 +95,18 @@ sub getDetectionCodeBitValid
 # This function gets the metric value corresponding to a problem
 sub getDetectionCodeMetric
 {
+    my ($problemName) = @_;
+    
     return undef if (!exists($metricMapping->{$problemName}));
     return $metricMapping->{$problemName}{"metric"};
 }
 
 sub getDetectionCodeTomography
 {
+    my ($problemName) = @_;
+    
     return undef if (!exists($metricMapping->{$problemName}));
     return $metricMapping->{$problemName}{"tomography"};
 }
+
+1;
