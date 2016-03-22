@@ -31,7 +31,7 @@ use Localization::TrReceiver::MySQL;
 
 =head1 DESCRIPTION
 
-TrReceiver.pl
+TrReceiver.pm
 
 This class reads the events from the database and processes it into a data structure that the Processor can use.
 
@@ -53,10 +53,7 @@ sub new
     my $self = {
         '_rcvThr' => $rcvThread,
         '_trQueues' => $trQueues,
-        '_netMap' => { 
-            'tr_matrix' => {},
-            'node_list' => {},
-        }, # blank cached network map
+        '_trMatrix' => {}, # cached tr matrix
     };
 
     bless $self, $class;
@@ -77,14 +74,14 @@ sub DESTROY
 # $refEnd - timestamp of the last traceroute to get. Leave as 0 if you want all
 # Returns an array containing:
 # $tr_matrix - Hash of Hashes pointing to arrays of traceroutes. Simulates adjacency list
-# $node_list - Hash of Nodes to Src/Dst pairs. This is to faciliate reverse lookup from a node to path
 sub getTrMatrix
 {
     # Get the range from the function call
     my ( $self, $refStart, $refEnd ) = @_;
 
     $self->_updateNetworkMap($refStart, $refEnd);
-    return ($self->{'_netMap'}{'tr_matrix'}, $self->{'_netMap'}{'node_list'});
+    
+    return ($self->{'_trMatrix'});
 }
 
 # starts an infinte loop that pulls values out of the receiver into an internal structure
@@ -253,9 +250,9 @@ sub _updateNetworkMap
             next unless defined($currTrace);
             
             # Update cached network map if current path doesn't exist or head is newer
-            if ((!exists($self->{'_netMap'}{'tr_matrix'}{$srchost})) ||
-                (!exists($self->{'_netMap'}{'tr_matrix'}{$srchost}{$dsthost})) || 
-                ($self->{'_netMap'}{'tr_matrix'}{$srchost}{$dsthost}{'ts'} < $currTrace->{'ts'}))
+            if ((!exists($self->{'_trMatrix'}{$srchost})) ||
+                (!exists($self->{'_trMatrix'}{$srchost}{$dsthost})) || 
+                ($self->{'_trMatrix'}{$srchost}{$dsthost}{'ts'} < $currTrace->{'ts'}))
             {
                 $self->_updateNetworkMapSinglePath($currTrace->{'ts'}, $srchost, $dsthost, $currTrace);
                 $changedCount += 1;
@@ -311,21 +308,20 @@ sub _updateNetworkMapSinglePath
     my ($self, $currTs, $srchost, $dsthost, $currTrace) = @_;
     
     # If is an existing path, remove the old entry
-    # TODO: Change this to a new version that only removes the difference
-    if ((exists($self->{'_netMap'}{'tr_matrix'}{$srchost})) &&
-        (exists($self->{'_netMap'}{'tr_matrix'}{$srchost}{$dsthost})))
+    if ((exists($self->{'_trMatrix'}{$srchost})) &&
+        (exists($self->{'_trMatrix'}{$srchost}{$dsthost})))
     {
-#        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_netMap'}{'tr_matrix'}{$srchost}{$dsthost}{'ts'} . "\n";
-        _remove_tr_entry($srchost, $dsthost, $self->{'_netMap'}{'tr_matrix'}, $self->{'_netMap'}{'node_list'});
+#        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_trMatrix'}{$srchost}{$dsthost}{'ts'} . "\n";
+        _remove_tr_entry($srchost, $dsthost, $self->{'_trMatrix'});
     }
-    _insert_tr_entry($srchost, $dsthost, $currTrace, $self->{'_netMap'}{'tr_matrix'}, $self->{'_netMap'}{'node_list'});
+    _insert_tr_entry($srchost, $dsthost, $currTrace, $self->{'_trMatrix'});
 }
 
 # Static method
 # removes a traceroute entry from the network map.
 sub _remove_tr_entry
 {
-    my ($srchost, $dsthost, $tr_matrix, $node_list) = @_;
+    my ($srchost, $dsthost, $tr_matrix) = @_;
     
     if ((!exists($tr_matrix->{$srchost})) ||
         (!exists($tr_matrix->{$srchost}{$dsthost})))
@@ -333,35 +329,10 @@ sub _remove_tr_entry
          return undef;
     }
     
-    my $remove_trace = $tr_matrix->{$srchost}{$dsthost};
-    
 #    print "remove_tr_entry: removing this trace\n";
 #    print Dumper $remove_trace;
-    
-    # loop over each hop number, an array of hops
-    foreach my $nodeArray (@{$remove_trace->{'path'}})
-    {
-#        print Dumper $nodeArray;
         
-        # skip stars
-        next if ( scalar(@{$nodeArray}) == 1 && $nodeArray->[0]{'hop_name'} eq '*' );
-        
-        # Generate node_id from all names in array
-        my $node_name = _generate_node_name($nodeArray);
-
-        next if (!exists($node_list->{$node_name}));
-        
-#        print "Removing $srchost $dsthost from $node_name\n";
-
-        my @new_entry = ( $srchost, $dsthost );
-        my $maxIdx = scalar(@{$node_list->{$node_name}}) - 1;
-        my @del_list = grep {@{$node_list->{$node_name}[$_]} eq @new_entry} 0..$maxIdx;
-#        print Dumper \@del_list;
-        foreach my $idx (reverse(@del_list)) # Reverse the list to avoid index renumbering  
-        {
-            splice( @{ $node_list->{$node_name} }, $idx, 1); # delete one at $idx
-        }
-    }
+    delete($tr_matrix->{$srchost}{$dsthost});
 }
 
 # Build tr matrix from a traceroute entry
@@ -370,19 +341,17 @@ sub _remove_tr_entry
 # $in_tr_dst - Destination address
 # $in_tr_entry - The traceroute. An array of addresses
 # $in_out_tr_matrix - Hash of traceroute paths. May be partially filled
-# $in_out_node_list - Hash of Node to Src/Dst pairs. For Reverse lookup later. May be partially-filled
 # Returns
 # The timestamp of the traceroute, or undef if skipped
 sub _insert_tr_entry
 {
-    my ( $in_tr_src, $in_tr_dst, $in_tr_entry, $in_out_tr_matrix, $in_out_node_list ) = @_;
+    my ($in_tr_src, $in_tr_dst, $in_tr_entry, $in_out_tr_matrix) = @_;
 
 #    print "inserting tr...\n";
 #    print Dumper $in_tr_entry;
 
     # skip self traces
-    if ((scalar(@{$in_tr_entry->{'path'}}) == 1) &&
-        ($in_tr_src eq $in_tr_entry->{'path'}[0][0]{'hop_name'}) )
+    if ($in_tr_src eq $in_tr_entry->{'path'}[0]->getHopId())
     {
         return undef;
     }
@@ -390,94 +359,7 @@ sub _insert_tr_entry
     # Add to the tr matrix
     $in_out_tr_matrix->{$in_tr_src}{$in_tr_dst} = $in_tr_entry;
 
-    # Add the source node to the node list
-    if ( !exists( $in_out_node_list->{$in_tr_src} ) )
-    {
-        my @new_array = ();
-        $in_out_node_list->{$in_tr_src} = \@new_array;
-    }
-
-    # Add the path nodes to the node list
-    foreach my $nodeArray (@{$in_tr_entry->{'path'}})
-    {
-        # skip stars
-        next if (scalar(@{$nodeArray}) == 1 && $nodeArray->[0]{'hop_name'} eq '*' );
-        
-        # Generate node_id from all names in array
-        my $node_name = _generate_node_name($nodeArray);
-        
-#        print "Adding $node with $in_tr_src $in_tr_dst \n";
-        if ( !exists( $in_out_node_list->{$node_name} ) )
-        {
-            my @new_array = ();
-            $in_out_node_list->{$node_name} = \@new_array;
-        }
-
-        # avoid repeats when inserting
-        my @new_entry = ( $in_tr_src, $in_tr_dst );
-        unless (grep {@$_ eq @new_entry} @{$in_out_node_list->{$node_name}}) {
-            push( @{ $in_out_node_list->{$node_name} }, \@new_entry ); # mapping from node to src/dst pair
-        }
-    }
     return $in_tr_entry->{'ts'};
-}
-
-# generates nodes from all the nodes
-sub _generate_node_name
-{
-    my ($nodeArray) = @_;
-    
-    # optimisation for 1 node
-    if (scalar(@{$nodeArray}) == 1)
-    {
-        return $nodeArray->[0]{'hop_name'};
-    }
-    # sort to make sure the order is predictable
-    my @nameArray = map { $_->{'hop_name'} } @{$nodeArray}; 
-    my @snameArray = sort {lc $a cmp lc $b} @nameArray;
-    return join("_", @snameArray); # node name is just a concatenation
-}
-
-sub build_node_idx
-{
-    my ($in_tr_list) = @_;
-
-    my %node_list  = ();
-    my %edge_list  = ();
-    my @path_list  = ();
-    my $node_count = 0;
-
-    foreach my $entry (@$in_tr_list)
-    {
-        my $tr_list = $entry->{'tr_list'};
-        my $src_str = $entry->{'src'};
-
-        # Do mapping to src_id
-        if ( !exists( $node_list{$src_str} ) )
-        {
-            $node_list{$src_str} = $node_count++;
-        }
-        my $src_id = $node_list{$src_str};
-
-        foreach my $tr_entry (@$tr_list)
-        {
-            my $i;
-            my $path = $tr_entry->{'path'};
-
-            my $count = scalar(@$path);
-
-            for ( $i = 0 ; $i < $count ; $i++ )
-            {
-                my $node_str = $$path[$i];
-                if ( !exists( $node_list{$node_str} ) )
-                {
-                    $node_list{$node_str} = $node_count++;
-                }
-            }
-        }
-    }
-
-    return \%node_list;
 }
 
 1;
