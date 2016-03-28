@@ -31,6 +31,7 @@ and open the template in the editor.
         <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-area-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
@@ -63,7 +64,11 @@ and open the template in the editor.
                     <div class="col-md-12">
                         <h1><b>PuNDIT site report:</b> <i>aglt2.org</i></h1>
                         <h2>Open problems</h2>
-                        <div class="wp-table" data-channel="report/aglt2.org"></div>
+                        <div class="wp-table" data-channel="report/aglt2.org" data-selection-channel="loc/selection"></div>
+                        <div class="wp-show-hide" data-channel="loc/selection">
+                            <h2>Selected something</h2>
+                            <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/delay&quot;))"></div>
+                        </div>
                         <h2>Problem history</h2>
                         <div class="wp-time-area-graph" data-channel="problems/count/aglt2.org"></div>
                         <h2>Delay history from ps-development.bnl.gov to perfsonar.unl.edu</h2>
