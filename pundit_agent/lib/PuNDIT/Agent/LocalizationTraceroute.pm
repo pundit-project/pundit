@@ -1,0 +1,138 @@
+#!perl -w
+#
+# Copyright 2016 Georgia Institute of Technology
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+# localization_traceroute.pm
+#
+# Support library for the localization_traceroute_daemon
+# This is also designed to be called from the detection logic, so traceroutes can be done on demand
+
+package PuNDIT::Agent::LocalizationTraceroute;
+
+use strict;
+use DBI qw(:sql_types);
+#use Log::Log4perl qw(get_logger);
+
+use PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
+
+#my $logger = get_logger(__PACKAGE__);
+
+# Constructor
+sub new
+{
+    my ($class, $cfgHash, $site, $start_time, $host_id) = @_;
+    
+    # DB Params
+    my ($host) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"host"};
+    my ($port) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"port"};
+    my ($database) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"database"};
+    my ($user) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"user"};
+    my ($password) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"password"};
+    
+    # make the db connection here, for the lifetime of this object
+    my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $password) or die "Critical error: cannot connect to DB";
+    
+    my $self = {
+        _dbh => $dbh,
+        _start_time => $start_time,
+        _host_id => $host_id,
+    };
+    
+    bless $self, $class;
+    return $self;
+}
+
+# Destructor
+sub DESTROY
+{
+    my ($self) = @_;
+    
+    # Cleanup
+    $self->{'_dbh'}->disconnect;
+}
+
+sub runTrace
+{
+    my ($self, $target) = @_;
+    
+    my $tr_result = `paris-traceroute $target`;
+    my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse($tr_result);
+    $self->storeTraceMySql($parse_result);
+}
+
+sub storeTraceMySql
+{
+    my ($self, $trace_hash) = @_;
+    
+    my $sql = "INSERT INTO traceroutes ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES ";
+    for (my $i = scalar(@{$trace_hash->{'path'}}); $i > 0; $i--)
+    {
+        $sql .= "(?, ?, ?, ?, ?, ?)";
+        if ($i > 1)
+        {
+            $sql .= ", ";
+        }
+    }
+    
+    my $sth = $self->{'_dbh'}->prepare($sql);
+    
+    my $param_cnt = 6; # variable so we don't hardcode the number of params
+    for (my $i = 0; $i < scalar(@{$trace_hash->{'path'}}); $i++)
+    {
+        my $hop = $trace_hash->{'path'}[$i];
+        
+        $sth->bind_param(($i*$param_cnt) + 1, $self->{'_start_time'}, SQL_INTEGER);
+        $sth->bind_param(($i*$param_cnt) + 2, $self->{'_host_id'}, SQL_VARCHAR);
+        $sth->bind_param(($i*$param_cnt) + 3, $trace_hash->{'dest_name'}, SQL_VARCHAR);
+        $sth->bind_param(($i*$param_cnt) + 4, $hop->{'hop_count'}, SQL_INTEGER);
+        $sth->bind_param(($i*$param_cnt) + 5, $hop->{'hop_ip'}, SQL_VARCHAR);
+        $sth->bind_param(($i*$param_cnt) + 6, $hop->{'hop_name'}, SQL_VARCHAR);
+    }
+    
+    $sth->execute;
+    $sth->finish;
+}
+
+# This idea was stolen from Net::Address::IP::Local::connected_to()
+sub get_local_ip_address 
+{
+    use IO::Socket::INET;
+    
+    my $socket = IO::Socket::INET->new(
+        Proto       => 'udp',
+        PeerAddr    => '198.41.0.4', # a.root-servers.net
+        PeerPort    => '53', # DNS
+    );
+
+    # A side-effect of making a socket connection is that our IP address
+    # is available from the 'sockhost' method
+    my $local_ip_address = $socket->sockhost;
+
+    return $local_ip_address;
+}
+
+sub get_hostname
+{
+#    use Net::Domain qw(hostfqdn);
+#      
+#    return hostfqdn();    
+    
+    use Sys::Hostname;
+    
+    return hostname();
+}
+
+1;
