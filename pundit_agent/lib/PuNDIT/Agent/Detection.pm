@@ -105,7 +105,7 @@ sub processFile
     }
     
     # perform detection and return a summary
-    my ($summary, $problemFlags) = $self->_detection2($timeseries, $dsthost, $sessionMinDelay);
+    my ($summary, $problemFlags) = $self->_detection($timeseries, $dsthost, $sessionMinDelay);
 
     my $startTime = _roundOff($timeseries->[0]{ts});
     my $statusMsg = {
@@ -584,7 +584,6 @@ sub _detection2
     
     # duration of the session
     my $sessionDuration = $timeseries->[-1]{ts} - $timeseries->[0]{ts};
-    
     if ($sessionDuration == 0)
     {
         return (undef, 0);
@@ -592,6 +591,11 @@ sub _detection2
     
     # number of windows of approximately windowSize
     my $windowCount = _roundOff($sessionDuration/$self->{'_windowSize'});
+    if ($windowCount == 0)
+    {
+        return (undef, 0);
+    }
+    
     # The actual width of each window to use
     my $windowDuration = $sessionDuration / $windowCount;
     
