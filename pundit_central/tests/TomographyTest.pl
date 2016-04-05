@@ -22,9 +22,9 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::Tomography;
-use Utils::TrHop;
-use Utils::DetectionCode;
+use PuNDIT::Central::Localization::Tomography;
+use PuNDIT::Utils::TrHop;
+use PuNDIT::Utils::DetectionCode;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -41,18 +41,18 @@ my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
-my $tomo = new Localization::Tomography(\%cfgHash, $fedName);
+my $tomo = new PuNDIT::Central::Localization::Tomography(\%cfgHash, $fedName);
 
 # Y shaped topology
 # Endpoints are A1 B1 C1
 sub build_y_topology
 {
-    my $a1 = new Utils::TrHop('A1','1.1.1.1');
-    my $b1 = new Utils::TrHop('B1','1.1.1.2');
-    my $c1 = new Utils::TrHop('C1','1.1.1.3');
-    my $da = new Utils::TrHop('D.A','1.1.1.4');
-    my $db = new Utils::TrHop('D.B','1.1.1.5');
-    my $dc = new Utils::TrHop('D.C','1.1.1.6');
+    my $a1 = new PuNDIT::Utils::TrHop('A1','1.1.1.1');
+    my $b1 = new PuNDIT::Utils::TrHop('B1','1.1.1.2');
+    my $c1 = new PuNDIT::Utils::TrHop('C1','1.1.1.3');
+    my $da = new PuNDIT::Utils::TrHop('D.A','1.1.1.4');
+    my $db = new PuNDIT::Utils::TrHop('D.B','1.1.1.5');
+    my $dc = new PuNDIT::Utils::TrHop('D.C','1.1.1.6');
     return {
         'A1' => {
                     'A1' => { 'src' => 'A1', 'dst' => 'A1', 'path' => [$a1,]},

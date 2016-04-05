@@ -22,7 +22,7 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::EvReceiver;
+use PuNDIT::Central::Localization::EvReceiver;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -67,5 +67,5 @@ sub main
     }
 }
 
-$evRcv = new Localization::EvReceiver(\%cfgHash, $fedName);
+$evRcv = new PuNDIT::Central::Localization::EvReceiver(\%cfgHash, $fedName);
 main();

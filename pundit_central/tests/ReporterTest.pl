@@ -22,8 +22,8 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::Reporter;
-use Utils::TrHop;
+use PuNDIT::Central::Localization::Reporter;
+use PuNDIT::Utils::TrHop;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -40,7 +40,7 @@ my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
-my $reporter = new Localization::Reporter(\%cfgHash, $fedName);
+my $reporter = new PuNDIT::Central::Localization::Reporter(\%cfgHash, $fedName);
 
 my $eventsList =
 [
@@ -54,7 +54,7 @@ my $eventsList =
     }
 ];
 
-my $trHop1 = new Utils::TrHop();
+my $trHop1 = new PuNDIT::Utils::TrHop();
 $trHop1->addHopEntry("x","1.1.2.1");
 my $trHop2 = new Utils::TrHop();
 $trHop2->addHopEntry("y","1.1.2.2");

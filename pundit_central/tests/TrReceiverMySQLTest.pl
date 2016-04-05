@@ -21,7 +21,7 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::TrReceiver::MySQL;
+use PuNDIT::Central::Localization::TrReceiver::MySQL;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -38,7 +38,7 @@ my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
-my $trRcv = new Localization::TrReceiver::MySQL(\%cfgHash, $fedName);
+my $trRcv = new PuNDIT::Central::Localization::TrReceiver::MySQL(\%cfgHash, $fedName);
 
 my $trHash = $trRcv->getLatestTraces(time - 30*60);
 print Dumper($trHash);

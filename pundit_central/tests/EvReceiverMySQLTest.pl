@@ -21,7 +21,7 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::EvReceiver::MySQL;
+use PuNDIT::Central::Localization::EvReceiver::MySQL;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -38,7 +38,7 @@ my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
-my $evRcv = new Localization::EvReceiver::MySQL(\%cfgHash, $fedName);
+my $evRcv = new PuNDIT::Central::Localization::EvReceiver::MySQL(\%cfgHash, $fedName);
 
 my $evHash = $evRcv->getLatestEvents(time - 60);
 print Dumper($evHash);

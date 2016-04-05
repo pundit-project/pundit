@@ -22,8 +22,8 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::Reporter::MySQL;
-use Utils::TrHop;
+use PuNDIT::Central::Localization::Reporter::MySQL;
+use PuNDIT::Utils::TrHop;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -40,7 +40,7 @@ my $configFile = $RealBin . "/../etc/pundit_central.conf";
 my %cfgHash = Config::General::ParseConfig($configFile);
 my $fedName = 'federation1';
 
-my $reporter = new Localization::Reporter::MySQL(\%cfgHash, $fedName);
+my $reporter = new PuNDIT::Central::Localization::Reporter::MySQL(\%cfgHash, $fedName);
 
 $reporter->writeData(time - 100, "1.1.1.1", "a", 1, undef, undef);
 $reporter->writeData(time - 50, "1.1.1.2", "b", 1, 25, 27.5);

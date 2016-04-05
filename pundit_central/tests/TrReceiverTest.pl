@@ -24,7 +24,7 @@ use FindBin qw( $RealBin );
 
 use lib "$RealBin/../lib";
 
-use Localization::TrReceiver;
+use PuNDIT::Central::Localization::TrReceiver;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -67,5 +67,5 @@ sub main
     }
 }
 
-$trRcv = new Localization::TrReceiver(\%cfgHash, $fedName);
+$trRcv = new PuNDIT::Central::Localization::TrReceiver(\%cfgHash, $fedName);
 main();
