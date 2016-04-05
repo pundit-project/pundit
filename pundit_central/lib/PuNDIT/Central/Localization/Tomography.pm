@@ -15,18 +15,18 @@
 # limitations under the License.
 #
 
-package Localization::Tomography;
+package PuNDIT::Central::Localization::Tomography;
 
 use strict;
-
+use Log::Log4perl qw(get_logger);
 use Storable 'dclone';
 
 # local modules
-use Localization::Reporter; # for writing back to backend
-use Localization::Tomography::Boolean; # Boolean Tomography
-use Localization::Tomography::RangeSum; # Range Tomography - Sum
-use Utils::DetectionCode; # used for problem code to tomography mapping
-use Utils::TrHop; # used for extracting hop IDs
+use PuNDIT::Central::Localization::Reporter; # for writing back to backend
+use PuNDIT::Central::Localization::Tomography::Boolean; # Boolean Tomography
+use PuNDIT::Central::Localization::Tomography::RangeSum; # Range Tomography - Sum
+use PuNDIT::Utils::DetectionCode; # used for problem code to tomography mapping
+use PuNDIT::Utils::TrHop; # used for extracting hop IDs
 
 # debug
 #use Data::Dumper;
@@ -39,18 +39,20 @@ This module handles the tomography processing for the event tables and the input
 
 =cut
 
+my $logger = get_logger(__PACKAGE__);
+
 sub new
 {
 	my ($class, $cfgHash, $fedName) = @_;
     
 	# init the subcomponents
-	my $loc_reporter = new Localization::Reporter($cfgHash, $fedName);
+	my $loc_reporter = new PuNDIT::Central::Localization::Reporter($cfgHash, $fedName);
 	return undef if (!$loc_reporter);
 	
-	my $sum_tomo = new Localization::Tomography::RangeSum($cfgHash, $fedName);
+	my $sum_tomo = new PuNDIT::Central::Localization::Tomography::RangeSum($cfgHash, $fedName);
 	return undef if (!$sum_tomo);
 	
-	my $bool_tomo = new Localization::Tomography::Boolean($cfgHash, $fedName);
+	my $bool_tomo = new PuNDIT::Central::Localization::Tomography::Boolean($cfgHash, $fedName);
     return undef if (!$bool_tomo);
 	
 	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'problem_types'};
@@ -181,15 +183,15 @@ sub processTimeWindow
 	# Run for each enabled problem 
 	foreach my $problemName (@{$self->{'_problem_types_list'}})
 	{
-#		print "$problemName:\n";
+		$logger->debug("Preparing to run tomography for $problemName");
 		
 		# keep events relevant only for the specific metric
 		my $filteredEvents = $self->_filterEvents($problemName, $evTable);
 		
 		# Optimisation. Skip tomography if 1 or fewer paths
-		if (scalar($filteredEvents) <= 1 || !$filteredEvents)
+		if (scalar(@{$filteredEvents}) <= 1 || !$filteredEvents)
 		{
-			print "1 or 0 events to process. Not enough info to localise. Skipping.\n";
+			$logger->debug("1 or 0 events to process. Not enough info to localise. Skipping.");
 			next;
 		}
 		
@@ -210,16 +212,17 @@ sub processTimeWindow
         }
         if (!defined($tomoObj))
         {
-            print "Error: undefined tomography type $tomoType\n";
+            $logger->error("Error: undefined tomography type $tomoType for problem $problemName. Skipping");
+            next;
         }
         my $locResultTable = $tomoObj->runTomo($filteredEvents, $trMatrix, $trNodePath, $tomoPathSet, $tomoLinkSet);
-                
+        
         if (scalar(@{$locResultTable}) > 0)
         {
             # generate a detectionCode with a single bit set, used for reporting
             my $detectionCode = Utils::DetectionCode::setDetectionCodeBit(0, $problemName, 1);
             
-#            print "detCode $detectionCode\n";
+            $logger->debug("Inserting records with detCode $detectionCode");
             
             # Store the table of results to db
             $self->{'_loc_reporter'}->writeData($refTime, $tomoType, $detectionCode, $locResultTable, $nodeIdTrHopList);

@@ -15,23 +15,26 @@
 # limitations under the License.
 #
 
-package Localization::Reporter;
+package PuNDIT::Central::Localization::Reporter;
 
 use strict;
-use Localization::Reporter::MySQL;
-use Utils::TrHop;
+use Log::Log4perl qw(get_logger);
+
+use PuNDIT::Central::Localization::Reporter::MySQL;
+use PuNDIT::Utils::TrHop;
 
 # debug 
 #use Data::Dumper;
 
 =pod
 
-Localization::Reporter
+=head1 PuNDIT::Central::Localization::Reporter
 
 Handles the writing back of localization events to the appropriate backend
 
 =cut
 
+my $logger = get_logger(__PACKAGE__);
 
 sub new
 {
@@ -43,7 +46,7 @@ sub new
     my $rpt;
     if ( $subType eq "mysql" )
     {
-	   $rpt = new Localization::Reporter::MySQL($cfgHash, $fedName);
+	   $rpt = new PuNDIT::Central::Localization::Reporter::MySQL($cfgHash, $fedName);
     }
 	return undef if (!defined($rpt));
 	
@@ -72,7 +75,7 @@ sub writeData
         
         if (!exists($nodeIdTrHopList->{$event->{'hopId'}}))
         {
-            warn "Couldn't find $event->{'link'} in nodeIdTrHopList. Skipping ";
+            $logger->warn("Couldn't find " . $event->{'link'} . " in nodeIdTrHopList. Skipping ");
             next;
         }
         my $trHop = $nodeIdTrHopList->{$event->{'hopId'}};

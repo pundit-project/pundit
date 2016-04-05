@@ -15,33 +15,37 @@
 # limitations under the License.
 #
 
-=pod
-Localization::EvReceiver::MySQL.pm
-
-Interface to get events stored in MySQL
-=cut
-
-
-package Localization::EvReceiver::MySQL;
+package PuNDIT::Central::Localization::EvReceiver::MySQL;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 use threads;
 use threads::shared;
 
 # Database
 use DBI;
 
+=pod
+
+=head1 PuNDIT::Central::Localization::EvReceiver::MySQL.pm
+
+Interface to get events stored in MySQL
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
+
 # Init the db connection
 sub new
 {
-	my ($class, $cfgHash, $siteName) = @_;
+	my ($class, $cfgHash, $fedName) = @_;
     
 	# init the DBI
-	my $host = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'mysql'}{"host"};
-	my $port = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'mysql'}{"port"};
-	my $database = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'mysql'}{"database"};
-	my $user = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'mysql'}{"user"};
-	my $pw = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'mysql'}{"password"};
+	my $host = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"host"};
+	my $port = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"port"};
+	my $database = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"database"};
+	my $user = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"user"};
+	my $pw = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"password"};
 	
 	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or return undef;
 		
@@ -84,6 +88,8 @@ sub getEventsDb
 	
 	if (defined($endTS))
 	{
+	    $logger->debug("Querying events from $startTS to $endTS");
+	    
 		# Normal case: Bounded query
 		my $sql = 
 		"SELECT startTime, endTime, srchost, dsthost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
@@ -97,6 +103,8 @@ sub getEventsDb
 	}
 	else
 	{
+	    $logger->debug("Querying events from $startTS onwards");
+	    
 		# Special case when no endTS: Get everything until the end
 		my $sql = 
 		"SELECT startTime, endTime, srchost, dsthost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 

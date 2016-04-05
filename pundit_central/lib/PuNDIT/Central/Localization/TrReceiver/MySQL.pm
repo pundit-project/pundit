@@ -15,24 +15,29 @@
 # limitations under the License.
 #
 
-=pod
-Localization::TrReceiver::MySQL.pm
-
-Interface to get traceroutes stored in MySQL
-=cut
-
-package Localization::TrReceiver::MySQL;
+package PuNDIT::Central::Localization::TrReceiver::MySQL;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 
 # Database
 use DBI qw(:sql_types);
 
 # local pms
-use Utils::TrHop;
+use PuNDIT::Utils::TrHop;
 
 # debug
 use Data::Dumper;
+
+=pod
+
+=head1 PuNDIT::Central::Localization::TrReceiver::MySQL.pm
+
+Interface to get traceroutes stored in MySQL
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
 
 # Init the db connection
 # Returns

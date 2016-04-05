@@ -14,36 +14,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-=pod
-tr_receiver_paristr.pl
 
-Interface to paris traceroute
-=cut
-
-package Loc::TrReceiver::Paristr;
+package PuNDIT::Central::Localization::TrReceiver::ParisTr;
 
 use strict;
+use Log::Log4perl qw(get_logger);
+use Net::SSH::Perl;
+use Math::BigInt::GMP; # needed for faster SSH
 
-require "paristr_parser.pl";
+use PuNDIT::Central::Localization::TrReceiver::ParisTrParser;
+
+=pod
+
+=head1 PuNDIT::Central::Localization::TrReceiver::ParisTr
+
+This receiver will SSH into a remote host and perform a paris-traceroute run.
+This is not used currently, since paris-traceroute may take a long time to return.
+
+Instead, paris-traceroute is run on the agents with a cron job and the results stored in the MySQL database
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
 
 # init the module
 sub new
 {
-    use Net::SSH::Perl;
-    use Math::BigInt::GMP; # needed for faster SSH
-
-    my $class = shift;
-    my $cfg = shift;
+    my ($class, $cfgHash, $fedName) = @_;
     
     # needed for ssh
-    my $id_file = $cfg->get_param("paristr", "id_file");
+    my $username = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{"paristr"}{'ssh'}{"username"};
+    my $id_file = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{"paristr"}{'ssh'}{"id_file"};
     
     # we need the hosts info so we can do checking
-    my $hosts = $cfg->get_param("traceroute", "hosts");
-    my $tr_freq = $cfg->get_param("traceroute", "tr_frequency");
+    my $hosts = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{"paristr"}{"hosts"};
+    my $tr_freq = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{"paristr"}{"tr_frequency"};
         
     my $self = {
-        _config => $cfg,
+        _username = > $username,
         _id_file => $id_file,
         _hosts => $hosts,
         _tr_freq => $tr_freq,
@@ -61,7 +69,7 @@ sub make_tr_query
 	
 	my($stdout, $stderr, $exit) = $ssh->cmd("paris-traceroute $dst_host");
 	
-	my $res = paristr_parser::parse($stdout);
+	my $res = ParisTrParser::parse($stdout);
 	
 	unless (defined $res)
 	{
@@ -92,7 +100,7 @@ sub get_tr_host
 	
 	# open connection
     my $ssh = Net::SSH::Perl->new($src_host, identity_files => $self->{'_id_file'}, options => ["StrictHostKeyChecking no", "UserKnownHostsFile /dev/null"]);
-    $ssh->login("pundit");
+    $ssh->login($self->{'_username'});
     
 	# Get the array of src and dst for that endpoint
 	my $dest_array = $self->get_tr_targets($src_host);
@@ -143,6 +151,6 @@ sub get_tr_hosts_all()
 
 
 # debug
-use Data::Dumper;
+#use Data::Dumper;
 #print Dumper get_tr_host("punditdev2.aglt2.org");
-print Dumper get_tr_hosts_all();
+#print Dumper get_tr_hosts_all();

@@ -15,27 +15,30 @@
 # limitations under the License.
 #
 
-package Localization::TrReceiver;
+package PuNDIT::Central::Localization::TrReceiver;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 use threads;
 use threads::shared;
 
 # debug
 use Data::Dumper;
 
-use Localization::TrReceiver::MySQL;
-#use Localization::TrReceiver::ParisTr; # not used right now. Agents will report traceroutes to the MySQL database
+use PuNDIT::Central::Localization::TrReceiver::MySQL;
+#use PuNDIT::Central::Localization::TrReceiver::ParisTr; # not used right now. Agents will report traceroutes to the MySQL database
 
 =pod
 
-=head1 DESCRIPTION
+=head1 PuNDIT::Central::Localization::TrReceiver
 
-TrReceiver.pm
-
-This class reads the events from the database and processes it into a data structure that the Processor can use.
+This class reads the events from the database and processes it into a data structure that the Localization object can use.
+Starts a traceroute receiver thread.
 
 =cut
+
+my $logger = get_logger(__PACKAGE__);
+my $runLoop = 1;
 
 # Top-level init for trace receiver
 sub new
@@ -44,11 +47,19 @@ sub new
 
     # Shared structure that will hold the trace queues
     my $trQueues = &share({});
-    return undef if (!$trQueues);
+    if (!defined($trQueues))
+    {
+        $logger->error("Couldn't initialize trQueues. Quitting");
+        return undef;
+    }
     
     # Start the backend-specific receiver thread here
     my $rcvThread = threads->create(sub { run($cfgHash, $siteName, $trQueues); });
-    return undef if (!$rcvThread);
+    if (!$rcvThread)
+    {
+        $logger->error("Couldn't initialize tr revThread. Quitting");
+        return undef;
+    }
     
     my $self = {
         '_rcvThr' => $rcvThread,
@@ -99,31 +110,32 @@ sub run
     my $trRcv;
     if ( $subType eq "mysql" )
     {
-        $trRcv = new Localization::TrReceiver::MySQL( $cfgHash, $siteName );
+        $trRcv = new PuNDIT::Central::Localization::TrReceiver::MySQL( $cfgHash, $siteName );
     }
     elsif ( $subType eq "paristr" )
     {
-#        $trRcv = new Localization::TrReceiver::ParisTr( $cfgHash, $siteName );
+#        $trRcv = new PuNDIT::Central::Localization::TrReceiver::ParisTr( $cfgHash, $siteName );
     }
     # Failsafe if failed to initialise
     if ( !$trRcv )
     {
-        print "Warning. Couldn't init traceroute receiver $subType\n";
+        $logger->error("Couldn't init traceroute receiver $subType");
         thread_exit(-1);
     }
     
-    my $runLoop = 1;
     while ($runLoop == 1)
     {
-        print "TrRcv thread woke at " . time . " querying for traces later than $lastTime\n";
+        $logger->debug("TrRcv thread woke. Querying for traces later than $lastTime");
+        
         # Get the events from the sub-receiver
         my $trHash = $trRcv->getLatestTraces($lastTime);
         
-        # Add it to the EvQueues
+        # Add it to the TrQueues
         _addHashToTrQueues($trQueues, $trHash);
         
         $lastTime += $sleepTime;
         sleep($sleepTime);
+        
         # sleep more so the threshold time isn't exceeded
         while ((time - (15 * 60)) < $lastTime)
         {

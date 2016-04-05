@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# Copyright 2012 Georgia Institute of Technology
+# Copyright 2016 Georgia Institute of Technology
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,21 @@
 # limitations under the License.
 #
 
+package PuNDIT::Central::Localization::TrReceiver::Debug;
+
 use strict;
-require "tr_receiver.pl";
+use Log::Log4perl qw(get_logger);
 use Data::Dumper;
+
+=pod
+
+=head1 PuNDIT::Central::Localization::TrReceiver::Debug
+
+Dummy module to generate traces for testing
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
 
 # Creates a list of edges
 sub dbg_create_loc_lists
@@ -193,10 +205,4 @@ sub dbg_print_path_list2
 	print ")\n";
 }
 
-#my ($node_list, $edge_list, $path_list) = dbg_create_loc_lists(get_tr_list());
-#my $node_list = build_node_idx(get_tr_list());
-#dbg_print_node_list($node_list);
-#dbg_print_edge_list($edge_list);
-#dbg_print_path_list($path_list);
-
-dbg_print_path_list2(get_tr_list());
+1;

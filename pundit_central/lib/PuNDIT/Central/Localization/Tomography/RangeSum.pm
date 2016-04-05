@@ -15,25 +15,27 @@
 # limitations under the License.
 #
 
-package Localization::Tomography::RangeSum;
+package PuNDIT::Central::Localization::Tomography::RangeSum;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 
-use Utils::TrHop;
+use PuNDIT::Utils::TrHop;
 
 # debug
 #use Data::Dumper;
 
 =pod
 
-=head1 DESCRIPTION
+=head1 PuNDIT::Central::Localization::Tomography::RangeSum
 
-This is the implementation of the sum_tomo algorithm
+This is the implementation of the Sum Tomography algorithm (Range tomography)
 The inputs to this algorithm are the traceroute matrix, traceroute node list and event list
 It returns a hash of suspect node to range mappings 
 
 =cut
 
+my $logger = get_logger(__PACKAGE__);
 
 ## FUNCTIONS
 
@@ -45,7 +47,7 @@ sub new
 	if (!$alpha)
 	{
 		$alpha = 0.5;
-		print "Warning: config file doesn't specify range_tomo alpha value. Using default of $alpha\n";
+		$logger->warn("Warning: config file doesn't specify range_tomo alpha value. Using default of $alpha");
 	}
 	
 	my $self = {
@@ -90,7 +92,7 @@ sub _removeGoodPathsLinks
 			}
 			elsif ($pathSet->{$srcHost}{$dstHost} == 1)
 			{
-			    warn "Warning. Duplicated event from $srcHost to $dstHost. Ignoring\n";
+			    $logger->warn("Warning. Duplicated event from $srcHost to $dstHost. Ignoring");
 			    next;
 			}
 			
@@ -99,7 +101,7 @@ sub _removeGoodPathsLinks
 			foreach my $trHop (@$pathref)
 			{
 			    my $hopId = $trHop->getHopId();
-				if ($linkSet->{$hopId} == 0)
+				if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 0)
 				{
 					$linkSet->{$hopId} = 1;
 					$linkSetCount++;
@@ -110,7 +112,7 @@ sub _removeGoodPathsLinks
 		}
 		else
 		{
-			warn "Warning: Couldn't find path from $srcHost to $dstHost in traceroute history. Skipping this entry\n";
+			$logger->warn("Warning: Couldn't find path from $srcHost to $dstHost in traceroute history. Skipping this entry");
 			#print Dumper $event;
 		}
 	}
@@ -128,7 +130,7 @@ sub _removeGoodPathsLinks
 			foreach my $trHop (@$pathref)
 			{
 			    my $hopId = $trHop->getHopId();
-				if ($linkSet->{$hopId} == 1)
+				if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 1)
 				{
 					$linkSet->{$hopId} = 0;
 					$linkSetCount--;
@@ -156,7 +158,7 @@ sub _addToIncidenceList
 	# lookup pair in tr_table
 	if (!exists($trMatrix->{$src}{$dst}))
 	{
-		warn "Path from '$src' to '$dst' couldn't be found in traceroute! Skipping\n";
+		$logger->warn("Path from '$src' to '$dst' couldn't be found in traceroute! Skipping");
 		return;
 	}
 	my $trPath = $trMatrix->{$src}{$dst}{'path'};
@@ -354,7 +356,7 @@ sub _updateMetric
 	
 	if (!exists($trNodePath->{$problemLink}))
 	{
-		print "Warning: No paths for this node. No metrics to update.\n";
+		$logger->warn("No paths for this node $problemLink. Possible inconsistent traceroute. No metrics updated.");
 		return;
 	}
 	
@@ -398,7 +400,9 @@ sub _updateMetric
 sub runTomo
 {
 	my ($self, $evTable, $trMatrix, $trNodePath, $pathSet, $linkSet) = @_;
-		
+
+    $logger->debug("Running Range Tomography (Sum)");
+    
 	my $alpha = $self->{'_alpha'};
 	
 	# New table to hold the results
@@ -452,7 +456,7 @@ sub runTomo
 		# If somehow we didn't get a problem node from the set, exclude it
 		if (!$problemLink)
 		{
-			print "Warning. Got paths without possible problem links\n";
+			$logger->warn("Got problematic paths without possible problem links");
 			#print Dumper \%incidenceList; 
 			#print Dumper $linkSet;
 			
@@ -469,7 +473,7 @@ sub runTomo
 		# Store the ref to the problem paths
 		if (!exists($trNodePath->{$problemLink}))
 		{
-			print "Error. Couldn't find $problemLink in trNodePath\n";
+			$logger->warn("Couldn't find $problemLink in trNodePath. Possible inconsistent traceroute");
 		}
 		
 		my $problemPaths = $trNodePath->{$problemLink};
@@ -497,6 +501,8 @@ sub runTomo
 	    };
 		push (@resultTable, $new_result); 
 	}
+
+    $logger->debug("Produced a hypothesis set with " . scalar(@resultTable) . " nodes");
 	
 	# Return result table
 	return (\@resultTable);

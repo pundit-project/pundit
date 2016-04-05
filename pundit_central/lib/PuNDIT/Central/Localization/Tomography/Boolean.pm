@@ -15,18 +15,19 @@
 # limitations under the License.
 #
 
-package Localization::Tomography::Boolean;
+package PuNDIT::Central::Localization::Tomography::Boolean;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 
-use Utils::TrHop;
+use PuNDIT::Utils::TrHop;
 
 # debug
 #use Data::Dumper;
 
 =pod
 
-=head1 DESCRIPTION
+=head1 PuNDIT::Central::Localization::Tomography::Boolean
 
 This is the implementation of the boolean tomography algorithm
 The inputs to this algorithm are the traceroute matrix, traceroute node list and event list
@@ -34,6 +35,7 @@ It returns a list of suspect nodes
 
 =cut
 
+my $logger = get_logger(__PACKAGE__);
 
 ## FUNCTIONS
 
@@ -82,7 +84,7 @@ sub _removeGoodPathsLinks
             }
             elsif ($pathSet->{$srcHost}{$dstHost} == 1)
             {
-                warn "Warning. Duplicated event from $srcHost to $dstHost. Ignoring\n";
+                $logger->warn("Warning. Duplicated event from $srcHost to $dstHost. Ignoring.");
                 next;
             }
             
@@ -91,7 +93,7 @@ sub _removeGoodPathsLinks
             foreach my $trHop (@$pathref)
             {
                 my $hopId = $trHop->getHopId();
-                if ($linkSet->{$hopId} == 0)
+                if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 0)
                 {
                     $linkSet->{$hopId} = 1;
                     $linkSetCount++;
@@ -102,7 +104,7 @@ sub _removeGoodPathsLinks
         }
         else
         {
-            warn "Warning: Couldn't find path from $srcHost to $dstHost in traceroute history. Skipping this entry\n";
+            $logger->warn("Warning: Couldn't find path from $srcHost to $dstHost in traceroute history. Skipping this entry.");
             #print Dumper $event;
         }
     }
@@ -120,7 +122,7 @@ sub _removeGoodPathsLinks
             foreach my $trHop (@$pathref)
             {
                 my $hopId = $trHop->getHopId();
-                if ($linkSet->{$hopId} == 1)
+                if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 1)
                 {
                     $linkSet->{$hopId} = 0;
                     $linkSetCount--;
@@ -150,7 +152,7 @@ sub _addToFailurePathSetList
 	
 	if (!exists($trNodePath->{$unexplainedLink}))
 	{
-	    warn "Couldn't find $unexplainedLink in trNodePath. Quitting\n";
+	    $logger->warn("Couldn't find $unexplainedLink in trNodePath. Quitting.");
 	    return;
 	}
 	my $containingPaths = $trNodePath->{$unexplainedLink};
@@ -266,6 +268,8 @@ sub runTomo
 {
 	my ($self, $evTable, $trMatrix, $trNodePath, $pathSet, $linkSet) = @_;
 	
+	$logger->debug("Running Boolean Tomography");
+	
 	# The hypothesis set of defective links
 	my @hypothesisSet = ();
 
@@ -329,6 +333,8 @@ sub runTomo
 			($linkSetCount) = _markExplainedLinks($problemLink, $linkSet, $linkSetCount);
 		} 
 	}
+	
+	$logger->debug("Produced a hypothesis set with " . scalar(@hypothesisSet) . " nodes");
 	
 	# Return result table
 	return (\@hypothesisSet);

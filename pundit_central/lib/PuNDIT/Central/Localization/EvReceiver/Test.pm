@@ -15,11 +15,21 @@
 # limitations under the License.
 #
 
-package Localization::EvReceiver::Test;
+package PuNDIT::Central::Localization::EvReceiver::Test;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 use Data::Dumper;
 
+=pod
+
+=head1 PuNDIT::Central::Localization::EvReceiver::Test.pm
+
+Dummy module to generate events for testing
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
 my $windowSize = 5;
 my $testHash = {
     'a' => {
@@ -50,9 +60,7 @@ sub new
 sub getLatestEvents
 {
     my ($self, $lastTS) = @_;
-    
-    
-    
+       
     # return the testarray on the first request
     if ($self->{'_ret'} != 1)
     {

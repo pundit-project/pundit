@@ -16,8 +16,19 @@
 #
 
 use strict;
+use Log::Log4perl qw(get_logger);
 
-package paristr_parser;
+package PuNDIT::Central::Localization::TrReceiver::ParisTrParser;
+
+=pod
+
+=head1 PuNDIT::Central::Localization::TrReceiver::ParisTrParser
+
+Parser module for paris-traceroute output
+
+=cut
+
+my $logger = get_logger(__PACKAGE__);
 
 # Parses the output of paris traceroute into a path
 sub parse
@@ -109,7 +120,3 @@ sub parse
 }
 
 1;
-
-#require Data::Dumper;
-#my $out = `paris-traceroute www.google.com`;
-#print Dumper parse($out);

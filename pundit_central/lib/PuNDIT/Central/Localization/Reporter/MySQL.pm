@@ -15,18 +15,21 @@
 # limitations under the License.
 #
 
-package Localization::Reporter::MySQL;
+package PuNDIT::Central::Localization::Reporter::MySQL;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 use DBI;
 
 =pod
 
-Localization::Reporter::MySQL
+=head1 PuNDIT::Central::Localization::Reporter::MySQL
 
 Handles the writing back of localization events to the MySQL database backend
 
 =cut
+
+my $logger = get_logger(__PACKAGE__);
 
 # Creates a new object
 sub new
@@ -58,8 +61,8 @@ sub new
 	my $sth = $dbh->prepare($sql) or return undef;
 	
 	my $self = {
-        _dbh => $dbh,
-        _sth => $sth,
+        '_dbh' => $dbh,
+        '_sth' => $sth,
     };
     
     bless $self, $class;
@@ -85,10 +88,15 @@ sub writeData
 {
 	my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
 	
+	$logger->debug("writing localization event at $startTime for $hopName to db");
+	
 	my $sth = $self->{'_sth'};
 	my $dbh = $self->{'_dbh'};
 	
-    $sth->execute($startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) or print "$dbh->errstr\n";
+    if (!$sth->execute($startTime, $hopIp, $hopName, $detectionCode, $val1, $val2))
+    { 
+        $logger->error("$dbh->errstr");
+    }
 }
 
 1;

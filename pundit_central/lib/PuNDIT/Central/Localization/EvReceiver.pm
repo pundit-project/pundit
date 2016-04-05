@@ -15,45 +15,51 @@
 # limitations under the License.
 #
 
-package Localization::EvReceiver;
+package PuNDIT::Central::Localization::EvReceiver;
 
 use strict;
+use Log::Log4perl qw(get_logger);
 use threads;
 use threads::shared;
 
-use Localization::EvReceiver::MySQL;
-use Localization::EvReceiver::Test;
+use PuNDIT::Central::Localization::EvReceiver::MySQL;
+use PuNDIT::Central::Localization::EvReceiver::Test;
 
 # debug. Remove this for production
 use Data::Dumper;
 
 =pod
 
-=head1 DESCRIPTION
+=head1 PuNDIT::Central::Localization::EvReceiver
 
-This script reads the events from the database and processes it into a data structure that the loc_processor can use.
+This module reads the events from the backend and processes it into a data structure that the Localization object can use.
+Starts a receiver thread.
 
 =cut
 
-# loop control variable. Declared here so the handler has access to it
+my $logger = get_logger(__PACKAGE__);
 my $runLoop = 1;
-
-sub exit_handler{
-    $runLoop = 0;
-}
 
 # Top-level init for event receiver
 sub new
 {
-	my ($class, $cfgHash, $siteName) = @_;
+	my ($class, $cfgHash, $fedName) = @_;
     
     # Shared structure that will hold the event queues
     my $evQueues = &share({});
-    return undef if (!$evQueues);
+    if (!defined($evQueues))
+    {
+        $logger->error("Couldn't initialize evQueues. Quitting");
+        return undef;
+    }
     
     # Start the backend-specific receiver thread here
-    my $rcvThread = threads->create(sub { run($cfgHash, $siteName, $evQueues); });
-    return undef if (!$rcvThread);
+    my $rcvThread = threads->create(sub { run($cfgHash, $fedName, $evQueues); });
+    if (!$rcvThread)
+    {
+        $logger->error("Couldn't initialize receiver thread. Quitting");
+        return undef;
+    }
     
 	my $self = {
         '_rcvThr' => $rcvThread,
@@ -82,22 +88,24 @@ sub getEventTable
 
 #    print time . ": Requested $refStart to $refEnd\n";
 
+    $logger->debug("Requested evTable from $refStart to $refEnd");
     return _getWindowFromQueues($self->{'_evQueues'}, $refStart, $refEnd);
 }
 
 # starts an infinte loop that pulls values out of a location into an internal structure
 sub run
 {
-    my ($cfgHash, $siteName, $evQueues) = @_;
+    my ($cfgHash, $fedName, $evQueues) = @_;
         
-    my $sleepTime = 10;
+    my $sleepTime = 10; # poll every 10 seconds
+    my $lastTime = time - 5*60; # fixed timelag of 5 minutes
     
     # init the sub-receiver based on the configuration settings
-    my $subType = $cfgHash->{'pundit_central'}{$siteName}{'ev_receiver'}{'type'};
+    my $subType = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'type'};
     my $subRcv;
     if ($subType eq "mysql")
     {
-        $subRcv = new Localization::EvReceiver::MySQL($cfgHash, $siteName);
+        $subRcv = new PuNDIT::Central::Localization::EvReceiver::MySQL($cfgHash, $fedName);
     }
     elsif ($subType eq "rabbitmq")
     {
@@ -105,20 +113,30 @@ sub run
     }
     else # init the test receiver (debug)
     {
-        $subRcv = new Localization::EvReceiver::Test();
+        $subRcv = new PuNDIT::Central::Localization::EvReceiver::Test();
     }
     thread_exit(-1) if (!$subRcv);
     
-    my $lastTime = time - 300;
-    
     while ($runLoop)
     {
-        # Get the events from the sub-receiver
+        $logger->debug("evThread woke");
+        
+        # Get the events from the sub-receiver after lastTime
         my $evHash = $subRcv->getLatestEvents($lastTime);
-        # Add it to the EvQueues
+        
+        # Add them to the EvQueues
         _addHashToEvQueues($evQueues, $evHash);
+        
         my $lastTime += $sleepTime;
+        
+        $logger->debug("evThread sleeping for $sleepTime");
         sleep($sleepTime);
+        
+        # sleep more so the threshold time isn't exceeded
+        while ((time - (5 * 60)) < $lastTime)
+        {
+            sleep(10);
+        }
     }
 }
 
@@ -160,7 +178,7 @@ sub _selectNextWindow
            ($evQueue->{'queue'}[0]->{'endTime'} < $refStart))
     {
         {
-            print "discarding " . $evQueue->{'queue'}[0]{'startTime'} . "\n";
+            $logger->debug("discarding event at " . $evQueue->{'queue'}[0]{'startTime'});
             lock(@{$evQueue->{'queue'}});
             shift(@{$evQueue->{'queue'}});
         }
@@ -189,6 +207,7 @@ sub _selectNextWindow
     
     # Now compare the queue head with the reftime
     my %selected = %{$evQueue->{'queue'}[0]};
+#    $logger->debug(sub { Data::Dumper::Dumper(\%selected) });
     my $selOverlap = _calcOverlap($refStart, $refEnd, $selected{'startTime'}, $selected{'endTime'});
     
     # Case 1: Significant overlap
@@ -202,7 +221,8 @@ sub _selectNextWindow
     {
         # Check the next entry's overlap
         my %next = %{$evQueue->{'queue'}[1]}; # we already checked the length of the list before
-        my $nextOverlap = _calcOverlap($refStart, $refEnd, $next{'startTime'}, $next{'endTine'});
+        
+        my $nextOverlap = _calcOverlap($refStart, $refEnd, $next{'startTime'}, $next{'endTime'});
         
         # selected overlap is not significant. Choose next.
         if ($selOverlap <= 0.2)
@@ -227,6 +247,8 @@ sub _selectNextWindow
         # Case 3: Both have problems, return the average of both
         if ($selected{'detectionCode'} > 0)
         {
+            $logger->debug("Averaging entries at " . $selected{'startTime'} . " and " . $next{'startTime'});
+            
             # average it here in this block
             my $avg = {
                 'startTime' => $selected{'startTime'},
@@ -237,7 +259,7 @@ sub _selectNextWindow
             };
             
             # Do a simple averaging here
-            while (my $key = keys %selected)
+            foreach my $key (keys(%selected))
             {
                 # skip these fields
                 if ($key eq 'startTime' || 
@@ -312,8 +334,12 @@ sub _addHashToEvQueues
 sub _addArrayToEvQueue
 {
     my ($evQueue, $srchost, $dsthost, $evArray) = @_;
-    
-    return $evQueue->{'lastTime'} if ((scalar(@$evArray) == 0) || ($evArray->[-1]{'endTime'} < $evQueue->{'startTime'}));
+
+#    $logger->debug(sub { Data::Dumper::Dumper($evArray) });    
+    if ((scalar(@{$evArray}) == 0) || ($evArray->[-1]{'endTime'} < $evQueue->{'firstTime'}))
+    {
+        return $evQueue->{'lastTime'};
+    }
     
     # discard duplicate entries from the array based on timestamp
     while ((scalar(@$evArray) > 0) && 
