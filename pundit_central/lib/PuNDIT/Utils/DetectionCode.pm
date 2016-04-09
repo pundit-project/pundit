@@ -27,11 +27,11 @@ e.g., some problems should be ignored if the contextSwtich flag is set
 =cut
 
 # hash that maps problem codes to bits
-# note the indexes start from 0
+# note the indexes start from 0 # need to fix this
 my $bitMapping = {
-    "delayProblem" => 0,
-    "lossProblem" => 1,
-    "contextSwitch" => 6,
+    "delayProblem" => 1,
+    "lossProblem" => 2,
+    "contextSwitch" => 7,
 };
 
 # Map the problem code to associated tomography and metric. Also defines whether another condition invalidates the result
@@ -81,12 +81,14 @@ sub getDetectionCodeBitValid
     
     return undef if (!exists($bitMapping->{$problemName}));
     
+    return 0 if ($detCode == -1);
+    
     my $rawProblemBit = ($detCode >> $bitMapping->{$problemName}) & 1;
     
     my $invalidBit = 0;
-    if (exists($metricMapping->{$problemName}) && defined($metricMapping->{$problemName}{"invalidatedBy"}))
+    if (exists($metricMapping->{$problemName}) && exists($metricMapping->{$problemName}{"invalidatedBy"}) && defined($metricMapping->{$problemName}{"invalidatedBy"}) )
     {
-        $invalidBit = getDetectionCodeBitRaw($metricMapping->{$problemName}{"invalidatedBy"});
+        $invalidBit = getDetectionCodeBitRaw($detCode, $metricMapping->{$problemName}{"invalidatedBy"});
         $invalidBit = 0 if (!defined($invalidBit));
     }
     return ($rawProblemBit & ($invalidBit == 0));
