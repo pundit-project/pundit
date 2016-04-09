@@ -29,7 +29,7 @@ use PuNDIT::Utils::DetectionCode; # used for problem code to tomography mapping
 use PuNDIT::Utils::TrHop; # used for extracting hop IDs
 
 # debug
-#use Data::Dumper;
+use Data::Dumper;
 
 =pod
 
@@ -57,7 +57,7 @@ sub new
 	
 	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'problem_types'};
 	my @problem_types_list = split(/[\s+|,]/, $problem_types_string);
-	
+		
 	my $window_size = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'window_size'};
 	
 	my $self = {
@@ -90,7 +90,11 @@ sub _filterEvents
 	my @filtered_events = ();
 	foreach my $event (@{$evTable})
 	{
+	    next if (!defined($event));
+	    
 	    my $problemFlag = Utils::DetectionCode::getDetectionCodeBitValid($event->{'detectionCode'}, $problemName);
+	    
+#	    $logger->debug("detCode " . $event->{'detectionCode'} . " problem $problemName flag $problemFlag");
 	    
 	    if ($problemFlag == 1)
 	    {
@@ -179,7 +183,10 @@ sub processTimeWindow
 	my ($self, $refTime, $trMatrix, $evTable) = @_;
 	
 	my ($pathSet, $linkSet, $trNodePath, $nodeIdTrHopList) = _buildPathLinkSet($trMatrix);
-		
+	
+#	$logger->debug("event table");
+#	$logger->debug(sub { Data::Dumper::Dumper($evTable) });
+	
 	# Run for each enabled problem 
 	foreach my $problemName (@{$self->{'_problem_types_list'}})
 	{
