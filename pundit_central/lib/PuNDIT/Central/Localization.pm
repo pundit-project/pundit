@@ -101,10 +101,12 @@ sub run
     my ($trMatrix, $trNodeList) = $self->{'_trReceiver'}->getTrMatrix($refTime, $refTime + $windowSize);
 
     # grab the event table from db
-    my ($evTable) = $self->{'_evReceiver'}->getEventTable($refTime, $refTime + $windowSize);
-
+    my $evTable = $self->{'_evReceiver'}->getEventTable($refTime, $refTime + $windowSize);
+    
+#    $logger->debug(sub { Data::Dumper::Dumper($evTable) });
+    
     # Process this tr matrix and event table for this reference timestamp
-    $self->{'_tomography'}->processTimeWindow($refTime, $trMatrix, $trNodeList, $evTable);
+    $self->{'_tomography'}->processTimeWindow($refTime, $trMatrix, $evTable);
     
     $refTime += $windowSize; # advance the reference time after processing
     $self->{'_refTime'} = $refTime;
