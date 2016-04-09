@@ -89,7 +89,12 @@ sub getEventTable
 #    print time . ": Requested $refStart to $refEnd\n";
 
     $logger->debug("Requested evTable from $refStart to $refEnd");
-    return _getWindowFromQueues($self->{'_evQueues'}, $refStart, $refEnd);
+    
+    my $outArrayRef = _getWindowFromQueues($self->{'_evQueues'}, $refStart, $refEnd);
+    
+#    $logger->debug(sub { Data::Dumper::Dumper($outArrayRef) });
+    
+    return $outArrayRef;
 }
 
 # starts an infinte loop that pulls values out of a location into an internal structure
@@ -98,7 +103,7 @@ sub run
     my ($cfgHash, $fedName, $evQueues) = @_;
         
     my $sleepTime = 10; # poll every 10 seconds
-    my $lastTime = time - 5*60; # fixed timelag of 5 minutes
+    my $lastTime = time - 6*60; # fixed timelag of 5 minutes
     
     # init the sub-receiver based on the configuration settings
     my $subType = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'type'};
@@ -156,11 +161,16 @@ sub _getWindowFromQueues
         {
             # Extract from this queue
             my $currWindow = _selectNextWindow($evQueues->{$srchost}{$dsthost}, $srchost, $dsthost, $refStart, $refEnd);
-            
-            # push onto the output array
-            push(@outArray, $currWindow);            
+    
+            if (defined($currWindow))
+            {
+                # push onto the output array
+                push(@outArray, $currWindow);
+            }            
         }    
     }
+#    $logger->debug(sub { Data::Dumper::Dumper(\@outArray) });
+    
     return \@outArray;
     
 }
@@ -178,7 +188,7 @@ sub _selectNextWindow
            ($evQueue->{'queue'}[0]->{'endTime'} < $refStart))
     {
         {
-            $logger->debug("discarding event at " . $evQueue->{'queue'}[0]{'startTime'});
+#            $logger->debug("discarding event at " . $evQueue->{'queue'}[0]{'startTime'});
             lock(@{$evQueue->{'queue'}});
             shift(@{$evQueue->{'queue'}});
         }
@@ -210,8 +220,10 @@ sub _selectNextWindow
 #    $logger->debug(sub { Data::Dumper::Dumper(\%selected) });
     my $selOverlap = _calcOverlap($refStart, $refEnd, $selected{'startTime'}, $selected{'endTime'});
     
+#    $logger->debug("selOverlap is $selOverlap");
+    
     # Case 1: Significant overlap
-    if (($selOverlap > 0.8) || 
+    if (($selOverlap >= 0.8) || 
         (scalar(@{$evQueue->{'queue'}}) == 1)) 
     {
         return \%selected;
@@ -236,10 +248,12 @@ sub _selectNextWindow
             # Case 2b: Use next window if selected is unknown
             if ($selected{'detectionCode'} < 0)
             {
+                $logger->debug("Selecting next entry at " . $next{'startTime'} . " over " . $selected{'startTime'});
                 return \%next; # choose the next entry
             }
             else
             {
+                $logger->debug("Selecting entry at " . $selected{'startTime'} . " over " . $next{'startTime'});
                 return \%selected; 
             }
         }
@@ -273,10 +287,12 @@ sub _selectNextWindow
                 # average the rest and store it in the new hash
                 $avg->{$key} = ($selected{$key} + $next{$key}) / 2; 
             }
+            return $avg;
         }
         # Case 4: First window doesn't have problems, next does. Prefer the problematic one
         else
         {
+            $logger->debug("Selecting next entry 2 at " . $next{'startTime'} . " over " . $selected{'startTime'});
             return \%next;
         }
     }
@@ -415,7 +431,7 @@ sub _calcOverlap
     my ($refStart, $refEnd, $cmpStart, $cmpEnd) = @_;
     
     # no overlap. Reject immediately
-    if ($cmpEnd < $refStart || $cmpStart > $refEnd)
+    if ($cmpEnd <= $refStart || $cmpStart >= $refEnd)
     {
         return 0.0;
     }
@@ -430,7 +446,7 @@ sub _calcOverlap2
     my ($start1, $end1, $start2, $end2) = @_;
     
     # error check for overlap
-    if ($end1 < $start2 || $end2 < $start1)
+    if ($end1 <= $start2 || $end2 <= $start1)
     {
         return 0.0;
     }
