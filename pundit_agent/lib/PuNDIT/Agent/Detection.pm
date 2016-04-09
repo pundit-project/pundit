@@ -21,6 +21,7 @@ use strict;
 use Log::Log4perl qw(get_logger);
 
 use PuNDIT::Agent::Detection::Reporter;
+use PuNDIT::Utils::HostInfo;
 
 # used for time conversion
 use Math::BigInt;
@@ -35,6 +36,8 @@ sub new
     my ($class, $cfgHash, $fedName) = @_;
 
     # federation info
+    my $hostId = PuNDIT::Utils::HostInfo::getHostId();
+    
     my $peer_monitor_string = $cfgHash->{"pundit_agent"}{$fedName}{"peers"};
     $peer_monitor_string =~ s/,/ /g;
     my @peer_monitors = split(/\s+/, $peer_monitor_string);
@@ -59,6 +62,7 @@ sub new
     my $self = {
         '_fedName' => $fedName,
         
+        '_hostId' => $hostId,
         '_peers' => \@peer_monitors,
         '_sampleCount' => $sampleCount,
         '_packetInterval' => $packetInterval,
@@ -96,6 +100,12 @@ sub processFile
     # read the file
     my ($srchost, $dsthost, $timeseries, $sessionMinDelay) = $self->_readFile($inputFile);
     
+    if ($srchost ne $self->{'_hostId'})
+    {
+        $logger->debug("Skipping $srchost. Not from this host " . $self->{'_hostId'});
+        return (-1, undef);
+    }
+    
     # filter out destinations not in the current federation
     #TODO: Figure out how to get the data out of the owp files
     if (!grep( /^$dsthost$/, @{$self->{'_peers'}} ) )
@@ -118,6 +128,8 @@ sub processFile
     };
 
     $self->{'_reporter'}->writeStatus($statusMsg);
+    
+    $logger->debug("$srchost $dsthost Returning $problemFlags problemFlags at $startTime");
     
     return ($problemFlags, $statusMsg);
 }
@@ -456,24 +468,24 @@ sub _detection
             # calculate event here
             my $tsSlice = [@$timeseries[$windowStart .. ($i - 1)]]; # this is the subset of the timeseries used for processing
             
-            print "tsSlice is " . scalar(@$tsSlice) . "\n";
+#            print "tsSlice is " . scalar(@$tsSlice) . "\n";
             
             # combining bins at edge of measurements
             # store the first window if too few packets
             if ($windowStart == 0)
             {
-                print "First bin is incomplete " . scalar(@$tsSlice) ."\n";
+#                print "First bin is incomplete " . scalar(@$tsSlice) ."\n";
                 
                 # check whether there's a matching bin in the incomplete bin hash
                 if ($combineSessions &&
                     exists $self->{'_incompleteBinHash'}{$dsthost} &&
                     defined $self->{'_incompleteBinHash'}{$dsthost}{$currentBin})
                 {
-                    print "Found remainder in incompleteBinHash\n";
+#                    print "Found remainder in incompleteBinHash\n";
                     
                     my $incSlice = $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
                     
-                    print "incSlice " . @$incSlice . " tsSlice " . @$tsSlice . "\n";
+#                    print "incSlice " . @$incSlice . " tsSlice " . @$tsSlice . "\n";
                     
                     push(@$incSlice, @$tsSlice); # combine the 2 arrays
                     undef $tsSlice;
@@ -496,7 +508,7 @@ sub _detection
                 }
                 elsif ($combineSessions) # store it in the incompleteBinHash if not enough samples
                 {
-                    print "Adding first packet to incompleteBinHash\n";
+#                    print "Adding first packet to incompleteBinHash\n";
                     $self->{'_incompleteBinHash'}{$dsthost}{$currentBin} = $tsSlice;
                 }
             }
@@ -526,18 +538,18 @@ sub _detection
     {
         my $tsSlice = [@$timeseries[$windowStart .. (@$timeseries - 1)]]; # this is the subset of the timeseries used for processing
         
-        print "LAST: tsSlice is " . scalar(@$tsSlice) . "\n";
+#        print "LAST: tsSlice is " . scalar(@$tsSlice) . "\n";
         
         # check whether there's a matching bin in the incomplete bin hash
         if ($combineSessions &&
             exists $self->{'_incompleteBinHash'}{$dsthost} &&
             defined $self->{'_incompleteBinHash'}{$dsthost}{$currentBin})
         {
-            print "Found remainder in incompleteBinHash\n";
+#            print "Found remainder in incompleteBinHash\n";
             
             my $incSlice = $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
             
-            print "incSlice " . @$incSlice . " tsSlice " . @$tsSlice . "\n";
+#            print "incSlice " . @$incSlice . " tsSlice " . @$tsSlice . "\n";
             
             push(@$tsSlice, @$incSlice); # combine the 2 arrays
             undef $incSlice;
@@ -559,7 +571,7 @@ sub _detection
         }
         elsif ($combineSessions) # store it in the incompleteBinHash 
         {
-            print "Adding last packet to incompleteBinHash\n";
+#            print "Adding last packet to incompleteBinHash\n";
             $self->{'_incompleteBinHash'}{$dsthost}{$currentBin} = $tsSlice;
         }        
                 

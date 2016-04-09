@@ -23,7 +23,7 @@ use Log::Log4perl qw(get_logger);
 # local libs
 use PuNDIT::Agent::Detection;
 use PuNDIT::Agent::InfileScheduler;
-use PuNDIT::Agent::Utils::CleanOwamp;
+use PuNDIT::Utils::CleanOwamp;
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -93,7 +93,7 @@ sub run
     my ($self) = @_;
     
     # Clean old owamp files
-    PuNDIT::Agent::Utils::CleanOwamp::cleanOldFiles($self->{'_cleanupThresh'}, $self->{'_owampPath'});
+    PuNDIT::Utils::CleanOwamp::cleanOldFiles($self->{'_cleanupThresh'}, $self->{'_owampPath'});
     
     my $runLoop = 1;
     

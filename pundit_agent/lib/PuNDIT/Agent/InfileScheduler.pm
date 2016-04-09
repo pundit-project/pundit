@@ -27,6 +27,7 @@ use Data::Dumper; # used for dumping stats
 
 use PuNDIT::Agent::InfileScheduler::CheckMkReporter;
 use PuNDIT::Agent::LocalizationTraceroute;
+use PuNDIT::Utils::HostInfo;
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -51,7 +52,11 @@ sub new
         return undef;
     }
     
+    my $hostId = PuNDIT::Utils::HostInfo::getHostId();
+
     my $self = {        
+        _hostId => $hostId,
+
         _detHash => $detHash,
         _owampPath => $owampPath,
         
@@ -156,8 +161,17 @@ sub _processOwpfile
             # run trace if runTrace option is enabled
             if ($self->{'runTrace'})
             {
-                my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srchost'});
-                $tr_helper->runTrace($stats->{'dsthost'});
+                if ($stats->{'srchost'} eq $self->{'_hostId'})
+                {
+                    $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dsthost'});
+                
+                    my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srchost'});
+                    $tr_helper->runTrace($stats->{'dsthost'});
+                }
+                else
+                {
+                    $logger->debug("runTrace enabled. Can't run trace on this host: It is the destination");
+                }
             }
             
             # user wants to save the problems

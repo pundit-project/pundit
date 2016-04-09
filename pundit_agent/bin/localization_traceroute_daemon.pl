@@ -30,6 +30,7 @@ use lib '../lib/';
 
 # local modules
 use PuNDIT::Agent::LocalizationTraceroute;
+use PuNDIT::Utils::HostInfo;
 
 # debug. remove this later
 use Data::Dumper;
@@ -64,11 +65,7 @@ sub child
 my $start_time = time();
 
 # host id is fqdn or ip
-my $host_id = PuNDIT::Agent::LocalizationTraceroute::get_hostname();
-if (!$host_id)
-{
-    $host_id = PuNDIT::Agent::LocalizationTraceroute::get_local_ip_address();    
-}
+my $host_id = PuNDIT::Utils::HostInfo::getHostId();
 
 my $work_queue = new Thread::Queue;
 my @child_threads = map threads->create( \&child, $start_time, $host_id, $work_queue ), 1 .. $N;

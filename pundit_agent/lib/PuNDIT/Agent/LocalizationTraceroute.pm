@@ -106,33 +106,4 @@ sub storeTraceMySql
     $sth->finish;
 }
 
-# This idea was stolen from Net::Address::IP::Local::connected_to()
-sub get_local_ip_address 
-{
-    use IO::Socket::INET;
-    
-    my $socket = IO::Socket::INET->new(
-        Proto       => 'udp',
-        PeerAddr    => '198.41.0.4', # a.root-servers.net
-        PeerPort    => '53', # DNS
-    );
-
-    # A side-effect of making a socket connection is that our IP address
-    # is available from the 'sockhost' method
-    my $local_ip_address = $socket->sockhost;
-
-    return $local_ip_address;
-}
-
-sub get_hostname
-{
-#    use Net::Domain qw(hostfqdn);
-#      
-#    return hostfqdn();    
-    
-    use Sys::Hostname;
-    
-    return hostname();
-}
-
 1;
