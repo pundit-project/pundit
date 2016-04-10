@@ -177,12 +177,13 @@ sub _processOwpfile
             # user wants to save the problems
             if ($self->{'_saveProblems'})
             {
-                $logger->debug("Saving problematic owp file $filePath");
-                
                 # copy the problematic file to this directory
                 my($filename, $dirs, $suffix) = fileparse($filePath);
-                my $savePath = $self->{'_saveProblemsPath'} . '/' . $fedName . '/';
-                if (-d $savePath)
+                my $savePath = $self->{'_saveProblemsPath'} . $fedName . '/';
+                
+                $logger->debug("Saving problematic owp file $filePath to $savePath");
+                
+                if (!-d $savePath)
                 {
                     $logger->debug("Creating path $savePath for savedProblems");
                     mkdir($savePath);
