@@ -23,7 +23,7 @@ use Log::Log4perl qw(get_logger);
 use PuNDIT::Utils::TrHop;
 
 # debug
-#use Data::Dumper;
+use Data::Dumper;
 
 =pod
 
@@ -248,6 +248,9 @@ sub _calcAvgMetric
 	my $pathCount = 0;
 	my $idx = 0;
 	
+#	$logger->debug(sub { Data::Dumper::Dumper($problemPaths) });
+#	$logger->debug(sub { Data::Dumper::Dumper($evSet) });
+	
 	# Loop over the event table looking for these paths	
 	foreach my $currEv (@$evSet)
 	{
@@ -298,11 +301,11 @@ sub _markJustifiedPaths
 		# Would be faster to store the problem paths in a hash and just do a match
 		foreach my $pathInfo (@$problemPaths)
 		{
-			if (($pathInfo->{'src'} eq $currEv->{'src'}) && 
-			    ($pathInfo->{'dst'} eq $currEv->{'dst'}))
+			if (($pathInfo->{'src'} eq $currEv->{'srchost'}) && 
+			    ($pathInfo->{'dst'} eq $currEv->{'dsthost'}))
 			{
 			    # 0 means justified, will not be used for future calculations
-				$pathSet->{$currEv->{'src'}}{$currEv->{'dst'}} = 0;
+				$pathSet->{$currEv->{'src'}}{$currEv->{'dsthost'}} = 0;
 				$pathSetCount--;
 			}
 		}
