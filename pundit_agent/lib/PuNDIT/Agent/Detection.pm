@@ -352,6 +352,7 @@ sub _readFile
             {
                 $timeseries[$seqNo]->{'ts'} = owptime2exacttime($sTime);
                 $timeseries[$seqNo]->{'rcvTs'} = owptime2exacttime($rTime);
+                shift @unsync_array;
             }
             last if (scalar(@lost_array) == 0 && scalar(@unsync_array) == 0);
         }
@@ -492,15 +493,15 @@ sub _detection
                     delete $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
                     $tsSlice = $incSlice;
                     
-                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
                     # Store summary in result
                     push(@results, $windowSummary);
                     
                     $problemCount += $windowProblemCount;
                 }
-                elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) > 0.8) # process if greater than 80% full
+                elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) >= 0.8) # process if greater than 80% full
                 {
-                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                    my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
                     # Store summary in result
                     push(@results, $windowSummary);
                     
@@ -514,7 +515,7 @@ sub _detection
             }
             else
             {
-                my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+                my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
                 # Store summary in result
                 push(@results, $windowSummary);
                 
@@ -527,7 +528,7 @@ sub _detection
         }
         
         # get the min across the windows
-        elsif ($timeseries->[$i]{delay} && (($windowMinDelay > $timeseries->[$i]{delay}) || !defined($windowMinDelay)))
+        elsif (!defined($windowMinDelay) || ($timeseries->[$i]{delay} && (($windowMinDelay > $timeseries->[$i]{delay}))))
         {
             $windowMinDelay = $timeseries->[$i]{delay}; 
         }
@@ -555,15 +556,15 @@ sub _detection
             undef $incSlice;
             delete $self->{'_incompleteBinHash'}{$dsthost}{$currentBin};
             
-            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
             # Store summary in result
             push(@results, $windowSummary);
             
             $problemCount += $windowProblemCount;
         }
-        elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) > 0.8 ) # process if greater than 80% full
+        elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) >= 0.8 ) # process if greater than 80% full
         {
-            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
             # Store summary in result
             push(@results, $windowSummary);
             
@@ -626,7 +627,7 @@ sub _detection2
             
 #            print "tsSlice is " . scalar(@$tsSlice) . "\n";
             
-            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+            my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $tsSlice->[0]->{'ts'}, $tsSlice->[-1]->{'ts'});
             # Store summary in result
             push(@results, $windowSummary);
             
@@ -655,7 +656,7 @@ sub _detection2
         
 #        print "LAST: tsSlice is " . scalar(@$tsSlice) . "\n";
         
-        my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay);
+        my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $tsSlice->[0]->{'ts'}, $tsSlice->[-1]->{'ts'});
         # Store summary in result
         push(@results, $windowSummary);
         
@@ -674,7 +675,7 @@ sub _detection2
 # add additional algorithms here
 sub _detection_suite
 {
-    my ($self, $timeseries, $windowMinDelay, $sessionMinDelay) = @_;
+    my ($self, $timeseries, $windowMinDelay, $sessionMinDelay, $startTimestamp, $endTimestamp) = @_;
     
     my $windowSummary = {
         'delayProblem' => 0,
@@ -683,8 +684,8 @@ sub _detection_suite
         'contextSwitch' => 0,
         'detectionCode' => 0,
         
-        'firstTimestamp' => 0,
-        'lastTimestamp' => 0,
+        'firstTimestamp' => $startTimestamp,
+        'lastTimestamp' => $endTimestamp,
         
         'packetCount' => 0,
         'windowMinDelay' => $windowMinDelay,
@@ -708,7 +709,7 @@ sub _detection_suite
         
         # Context switch detection
         my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
-        if ($contextSwitch)
+        if ($contextSwitch == 1)
         {
             $windowSummary->{'contextSwitch'} = 1;
             # reset problemcount here. Issues are due to context switch
@@ -813,9 +814,6 @@ sub _detectLossLatencyReordering
     $windowSummary->{'reorderProblem'} = $reorderProblemFlag;
         
     $windowSummary->{'queueingDelay'} = $queueingDelay;
-        
-    $windowSummary->{'firstTimestamp'} = $timeseries->[0]->{'ts'};
-    $windowSummary->{'lastTimestamp'} = $timeseries->[-1]->{'ts'};
         
     $windowSummary->{'packetCount'} = scalar(@$timeseries);
         
@@ -941,6 +939,7 @@ sub _detectContextSwitch
         
         if ($counter > $self->{'_contextSwitchConsecPkts'})
         {
+            $logger->debug("Context switch detected with $counter consecutive packets");
             return 1;
         }
         $lastRcv = $rcvTs;
