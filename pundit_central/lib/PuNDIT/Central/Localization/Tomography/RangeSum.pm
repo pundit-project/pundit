@@ -305,7 +305,7 @@ sub _markJustifiedPaths
 			    ($pathInfo->{'dst'} eq $currEv->{'dsthost'}))
 			{
 			    # 0 means justified, will not be used for future calculations
-				$pathSet->{$currEv->{'src'}}{$currEv->{'dsthost'}} = 0;
+				$pathSet->{$currEv->{'srchost'}}{$currEv->{'dsthost'}} = 0;
 				$pathSetCount--;
 			}
 		}
