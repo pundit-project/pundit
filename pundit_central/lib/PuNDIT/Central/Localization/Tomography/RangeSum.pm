@@ -373,8 +373,8 @@ sub _updateMetric
 		# TODO: Optimise this loop
 		foreach my $pathInfo (@$problemPaths)
 		{
-			if (($pathInfo->{'src'} eq $element->{'src'}) && 
-			    ($pathInfo->{'dst'} eq $element->{'dst'}))
+			if (($pathInfo->{'src'} eq $element->{'srchost'}) && 
+			    ($pathInfo->{'dst'} eq $element->{'dsthost'}))
 			{
 				#say "src: @$path[0] dst: @$path[1] metric: $element->{'metric'}";
 				$element->{'metric'} -= $avgMetric;
