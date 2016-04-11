@@ -32,7 +32,7 @@ and open the template in the editor.
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-area-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-text-monitor.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
@@ -67,7 +67,7 @@ and open the template in the editor.
                         <h2>Open problems</h2>
                         <div class="wp-table" data-channel="report/aglt2.org" data-selection-channel="loc/selection"></div>
                         <div class="wp-show-hide" data-channel="loc/selection">
-                            <h2>Delay history from <span class="wp-text-monitor" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-text-monitor" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
+                            <h2>Delay history from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
                             <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/delay&quot;))"
                                  data-clear-channel="loc/selection"></div>
                         </div>
