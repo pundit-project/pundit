@@ -202,6 +202,8 @@ sub processTimeWindow
 			next;
 		}
 		
+		$logger->debug(scalar(@{$filteredEvents}) . " events to process. ");
+		
 		# make a copy of the path_set and link_set so this run of the algorithm can modify it
 		my $tomoPathSet = dclone($pathSet);
 		my $tomoLinkSet = dclone($linkSet);
