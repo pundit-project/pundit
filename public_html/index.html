@@ -68,7 +68,8 @@ and open the template in the editor.
                         <div class="wp-table" data-channel="report/aglt2.org" data-selection-channel="loc/selection"></div>
                         <div class="wp-show-hide" data-channel="loc/selection">
                             <h2>Delay history from <span class="wp-text-monitor" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-text-monitor" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
-                            <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/delay&quot;))"></div>
+                            <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/delay&quot;))"
+                                 data-clear-channel="loc/selection"></div>
                         </div>
                         <h2>Problem history</h2>
                         <div class="wp-time-area-graph" data-channel="problems/count/aglt2.org"></div>
