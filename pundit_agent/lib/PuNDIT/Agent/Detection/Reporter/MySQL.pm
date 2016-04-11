@@ -96,24 +96,6 @@ sub DESTROY
     $self->{'_dbh'}->disconnect;
 }
 
-# Legacy format. Will be removed soon
-sub writeEvent
-{
-    my ($self, $event) = @_;
-    
-    my $sql = "INSERT INTO events (sendTS, recvTS, srchost, dsthost, diagnosis, plot, filename) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    my $sth = $self->{_dbh}->prepare($sql) or die "It didn't work. [$DBI::errstr]\n";
-=pod
-    $sth->bind_param(1, $startTS);
-    $sth->bind_param(2, $endTS);
-    $sth->bind_param(3, $src);
-    $sth->bind_param(4, $dst);
-    $sth->bind_param(5, $diag);
-=cut
-    $sth->execute or die "It didn't work. [$DBI::errstr]\n";
-    $sth->finish;
-}
-
 sub writeStatus
 {
     my ($self, $status) = @_;
@@ -144,15 +126,17 @@ sub writeStatus
 
 #        print "Mysql: inserting " . int($currEntry->{'firstTimestamp'}) . " to " . int($currEntry->{'lastTimestamp'}) . "\n";
         
-        $sth->bind_param((9 * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
-        $sth->bind_param((9 * $i) + 2, _roundOff($currEntry->{'lastTimestamp'}));
-        $sth->bind_param((9 * $i) + 3, $status->{"srchost"});
-        $sth->bind_param((9 * $i) + 4, $status->{"dsthost"});
-        $sth->bind_param((9 * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
-        $sth->bind_param((9 * $i) + 6, $currEntry->{'detectionCode'});
-        $sth->bind_param((9 * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
-        $sth->bind_param((9 * $i) + 8, _oneDecimalPlace($currEntry->{'lossPerc'}));
-        $sth->bind_param((9 * $i) + 9, 0.0);
+        my $paramCount = 9;
+        
+        $sth->bind_param(($paramCount * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
+        $sth->bind_param(($paramCount * $i) + 2, _roundOff($currEntry->{'lastTimestamp'}));
+        $sth->bind_param(($paramCount * $i) + 3, $status->{"srchost"});
+        $sth->bind_param(($paramCount * $i) + 4, $status->{"dsthost"});
+        $sth->bind_param(($paramCount * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
+        $sth->bind_param(($paramCount * $i) + 6, $currEntry->{'detectionCode'});
+        $sth->bind_param(($paramCount * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
+        $sth->bind_param(($paramCount * $i) + 8, _oneDecimalPlace($currEntry->{'lossPerc'}));
+        $sth->bind_param(($paramCount * $i) + 9, 0.0);
     }
 
     $sth->execute or die "It didn't work. [$DBI::errstr]\n";
