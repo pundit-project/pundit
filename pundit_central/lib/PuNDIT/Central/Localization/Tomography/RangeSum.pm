@@ -166,8 +166,8 @@ sub _addToIncidenceList
 	{
 	    my $hopId = $trHop->getHopId();
 
-		# skip good links
-		next if ($linkSet->{$hopId} == 0);
+		# skip good links and stars
+		next if (!exists($linkSet->{$hopId}) || $linkSet->{$hopId} == 0);
 		
 		if (!exists($incidenceList->{$hopId}))
 		{
