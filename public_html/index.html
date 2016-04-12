@@ -13,10 +13,8 @@ and open the template in the editor.
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/webpods-client.js"></script>
 
         <script>
-            // Calculating URL from document location, so that examples work no
-            // matter where they are deployed. Typical use would hard-code URL
-            var wsUri = document.location.protocol.replace("http", "ws") + "//punditui.aglt2.org/web-pods/socket";
-            var wp = new Client(wsUri);
+            // Set location to punditui server
+            WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
         </script>
         
         <!-- The table widget -->
