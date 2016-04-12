@@ -120,7 +120,7 @@ sub writeStatus
     if ($@)
     {
         # TODO: Put the status on a queue for resending later
-        $logger->warn("Failed to write status to server. Discarding status from " . $status->{'srchost'} . " to " . $status->{'dsthost'} . " at " . $status->{'startTime'});
+        $logger->warn("Failed to write status to server. Discarding status from " . $status->{'srcHost'} . " to " . $status->{'dstHost'} . " at " . $status->{'startTime'});
     }
 }
 

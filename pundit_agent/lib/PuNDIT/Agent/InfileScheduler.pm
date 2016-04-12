@@ -156,17 +156,17 @@ sub _processOwpfile
         # One or more problems were detected
         if ($return > 0)
         {
-            $logger->debug("$fedName analysis: $return problems for " . $stats->{'srchost'} . " to "  . $stats->{'dsthost'});
+            $logger->debug("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
                  
             # run trace if runTrace option is enabled
             if ($self->{'runTrace'})
             {
-                if ($stats->{'srchost'} eq $self->{'_hostId'})
+                if ($stats->{'srcHost'} eq $self->{'_hostId'})
                 {
-                    $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dsthost'});
+                    $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dstHost'});
                 
-                    my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srchost'});
-                    $tr_helper->runTrace($stats->{'dsthost'});
+                    my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srcHost'});
+                    $tr_helper->runTrace($stats->{'dstHost'});
                 }
                 else
                 {

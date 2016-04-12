@@ -100,14 +100,14 @@ sub writeStatus
 {
     my ($self, $status) = @_;
     
-    $logger->debug("Inserting status to MySQL for " . $status->{"srchost"} . " to " . $status->{"dsthost"} . " at " . $status->{"startTime"});
+    $logger->debug("Inserting status to MySQL for " . $status->{"srcHost"} . " to " . $status->{"dstHost"} . " at " . $status->{"startTime"});
     
     unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
     
     # build the sql string
-    my $sql = "INSERT INTO status (startTime, endTime, srchost, dsthost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES ";
+    my $sql = "INSERT INTO status (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES ";
     for (my $i = scalar(@{$status->{'entries'}}); $i > 0; $i--)
     {
         $sql .= "(?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -130,8 +130,8 @@ sub writeStatus
         
         $sth->bind_param(($paramCount * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
         $sth->bind_param(($paramCount * $i) + 2, _roundOff($currEntry->{'lastTimestamp'}));
-        $sth->bind_param(($paramCount * $i) + 3, $status->{"srchost"});
-        $sth->bind_param(($paramCount * $i) + 4, $status->{"dsthost"});
+        $sth->bind_param(($paramCount * $i) + 3, $status->{"srcHost"});
+        $sth->bind_param(($paramCount * $i) + 4, $status->{"dstHost"});
         $sth->bind_param(($paramCount * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
         $sth->bind_param(($paramCount * $i) + 6, $currEntry->{'detectionCode'});
         $sth->bind_param(($paramCount * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
