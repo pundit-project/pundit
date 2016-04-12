@@ -33,13 +33,13 @@ my $logger = get_logger(__PACKAGE__);
 my $windowSize = 5;
 my $testHash = {
     'a' => {
-        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srchost' => 'a', 'dsthost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
+        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srcHost' => 'a', 'dstHost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
     },
     'b' => {
-        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srchost' => 'b', 'dsthost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
+        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srcHost' => 'b', 'dstHost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
     },
     'c' => {
-        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srchost' => 'c', 'dsthost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
+        'd' => [{ 'startTime' => time, 'endTime' => time + $windowSize, 'srcHost' => 'c', 'dstHost' => 'd', 'baselineDelay' => 10, 'detectionCode' => 0, 'queueingDelay' => 1, 'lossRatio' => 0, 'reorderMetric' => 0.0 },],
     },
 };
 

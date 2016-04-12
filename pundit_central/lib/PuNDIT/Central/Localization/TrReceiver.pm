@@ -151,32 +151,32 @@ sub _addHashToTrQueues
     
     my $lastTime;
     
-    # Loop over srchost and dsthost, creating hashes where needed
-    while (my ($srchost, $dstHash) = each %$inHash) 
+    # Loop over srcHost and dstHost, creating hashes where needed
+    while (my ($srcHost, $dstHash) = each %$inHash) 
     {
         # Don't auto vivify. Manually create shared hashes
-        if (!exists($trQueues->{$srchost}))
+        if (!exists($trQueues->{$srcHost}))
         {
-            $trQueues->{$srchost} = &share({});
+            $trQueues->{$srcHost} = &share({});
         }
         
-        while (my ($dsthost, $trArray) = each %$dstHash) 
+        while (my ($dstHost, $trArray) = each %$dstHash) 
         {
             # Don't auto vivify. Manually create shared hashes
-            if (!exists($trQueues->{$srchost}{$dsthost}))
+            if (!exists($trQueues->{$srcHost}{$dstHost}))
             {
-                $trQueues->{$srchost}{$dsthost} = &share({});
+                $trQueues->{$srcHost}{$dstHost} = &share({});
                 my @newArr :shared = ();
-                $trQueues->{$srchost}{$dsthost}{'queue'} = \@newArr;
+                $trQueues->{$srcHost}{$dstHost}{'queue'} = \@newArr;
                 my $firstTime :shared = 0;
-                $trQueues->{$srchost}{$dsthost}{'firstTime'} = $firstTime;
+                $trQueues->{$srcHost}{$dstHost}{'firstTime'} = $firstTime;
                 my $lastTime :shared = 0;
-                $trQueues->{$srchost}{$dsthost}{'lastTime'} = $lastTime;
+                $trQueues->{$srcHost}{$dstHost}{'lastTime'} = $lastTime;
             }
             
             # Once the queue is found or created, add it to the list
-            my $trQueue = $trQueues->{$srchost}{$dsthost};
-            my $currLast = _addArrayToTrQueue($trQueue, $srchost, $dsthost, $trArray);
+            my $trQueue = $trQueues->{$srcHost}{$dstHost};
+            my $currLast = _addArrayToTrQueue($trQueue, $srcHost, $dstHost, $trArray);
             
             # get the min of all the lasttimes from all queues
             if (!defined($lastTime) || 
@@ -195,7 +195,7 @@ sub _addHashToTrQueues
 # There is no padding with unknown values, traceroutes don't need it
 sub _addArrayToTrQueue
 {
-    my ($trQueue, $srchost, $dsthost, $trArray) = @_;
+    my ($trQueue, $srcHost, $dstHost, $trArray) = @_;
     
     # skip if the entries already exist in the current trQueue
     if ((scalar(@$trArray) == 0) || ($trArray->[-1]{'ts'} <= $trQueue->{'lastTime'}))
@@ -220,7 +220,7 @@ sub _addArrayToTrQueue
     }
     
 #    my $currTime = time;
-#    print $currTime . "\tstart add: $srchost to $dsthost\t" . $trQueue->{'firstTime'} . "-" . $trQueue->{'lastTime'} . "\t";
+#    print $currTime . "\tstart add: $srcHost to $dstHost\t" . $trQueue->{'firstTime'} . "-" . $trQueue->{'lastTime'} . "\t";
     
     # append the entire array to the end of queue
     {
@@ -251,22 +251,22 @@ sub _updateNetworkMap
     
     # Loop over the trQueue entries 
     my $changedCount = 0;
-    while (my ($srchost, $dstHash) = each %{$trQueues}) 
+    while (my ($srcHost, $dstHash) = each %{$trQueues}) 
     {
-        while (my ($dsthost, $trArray) = each %$dstHash) 
+        while (my ($dstHost, $trArray) = each %$dstHash) 
         {
             # Extract from this queue, returning whether the window changed 
-            my $currTrace = _selectNextTrace($trQueues->{$srchost}{$dsthost}, $srchost, $dsthost, $refStart, $refEnd);
+            my $currTrace = _selectNextTrace($trQueues->{$srcHost}{$dstHost}, $srcHost, $dstHost, $refStart, $refEnd);
             
             # skip this pair if no returned value
             next unless defined($currTrace);
             
             # Update cached network map if current path doesn't exist or head is newer
-            if ((!exists($self->{'_trMatrix'}{$srchost})) ||
-                (!exists($self->{'_trMatrix'}{$srchost}{$dsthost})) || 
-                ($self->{'_trMatrix'}{$srchost}{$dsthost}{'ts'} < $currTrace->{'ts'}))
+            if ((!exists($self->{'_trMatrix'}{$srcHost})) ||
+                (!exists($self->{'_trMatrix'}{$srcHost}{$dstHost})) || 
+                ($self->{'_trMatrix'}{$srcHost}{$dstHost}{'ts'} < $currTrace->{'ts'}))
             {
-                $self->_updateNetworkMapSinglePath($currTrace->{'ts'}, $srchost, $dsthost, $currTrace);
+                $self->_updateNetworkMapSinglePath($currTrace->{'ts'}, $srcHost, $dstHost, $currTrace);
                 $changedCount += 1;
             }  
         }    
@@ -279,7 +279,7 @@ sub _updateNetworkMap
 # Assumes the queues are packed with no gaps between 2 consecutive windows
 sub _selectNextTrace
 {
-    my ($trQueue, $srchost, $dsthost, $refStart, $refEnd) = @_;
+    my ($trQueue, $srcHost, $dstHost, $refStart, $refEnd) = @_;
     
     # discard values at the start which are out of date
     # 1. when the next entry is before the reference time
@@ -317,26 +317,26 @@ sub _selectNextTrace
 # runs the network map update algorithm based on a single path
 sub _updateNetworkMapSinglePath
 {
-    my ($self, $currTs, $srchost, $dsthost, $currTrace) = @_;
+    my ($self, $currTs, $srcHost, $dstHost, $currTrace) = @_;
     
     # If is an existing path, remove the old entry
-    if ((exists($self->{'_trMatrix'}{$srchost})) &&
-        (exists($self->{'_trMatrix'}{$srchost}{$dsthost})))
+    if ((exists($self->{'_trMatrix'}{$srcHost})) &&
+        (exists($self->{'_trMatrix'}{$srcHost}{$dstHost})))
     {
-#        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_trMatrix'}{$srchost}{$dsthost}{'ts'} . "\n";
-        _remove_tr_entry($srchost, $dsthost, $self->{'_trMatrix'});
+#        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_trMatrix'}{$srcHost}{$dstHost}{'ts'} . "\n";
+        _remove_tr_entry($srcHost, $dstHost, $self->{'_trMatrix'});
     }
-    _insert_tr_entry($srchost, $dsthost, $currTrace, $self->{'_trMatrix'});
+    _insert_tr_entry($srcHost, $dstHost, $currTrace, $self->{'_trMatrix'});
 }
 
 # Static method
 # removes a traceroute entry from the network map.
 sub _remove_tr_entry
 {
-    my ($srchost, $dsthost, $tr_matrix) = @_;
+    my ($srcHost, $dstHost, $tr_matrix) = @_;
     
-    if ((!exists($tr_matrix->{$srchost})) ||
-        (!exists($tr_matrix->{$srchost}{$dsthost})))
+    if ((!exists($tr_matrix->{$srcHost})) ||
+        (!exists($tr_matrix->{$srcHost}{$dstHost})))
     {
          return undef;
     }
@@ -344,7 +344,7 @@ sub _remove_tr_entry
 #    print "remove_tr_entry: removing this trace\n";
 #    print Dumper $remove_trace;
         
-    delete($tr_matrix->{$srchost}{$dsthost});
+    delete($tr_matrix->{$srcHost}{$dstHost});
 }
 
 # Build tr matrix from a traceroute entry

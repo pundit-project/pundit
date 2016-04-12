@@ -99,8 +99,8 @@ sub _filterEvents
 	    if ($problemFlag == 1)
 	    {
 	        my $newEntry = {
-                'srchost' => $event->{'srchost'}, 
-                'dsthost' => $event->{'dsthost'}, 
+                'srcHost' => $event->{'srcHost'}, 
+                'dstHost' => $event->{'dstHost'}, 
                 'metric' => $event->{$metric},
                 'processed' => 0,
             };

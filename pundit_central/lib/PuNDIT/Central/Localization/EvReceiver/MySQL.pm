@@ -92,10 +92,10 @@ sub getEventsDb
 	    
 		# Normal case: Bounded query
 		my $sql = 
-		"SELECT startTime, endTime, srchost, dsthost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
+		"SELECT startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
 			WHERE (startTime >= ?) AND 
 				(startTime <= ?)
-			ORDER BY srchost ASC, dsthost ASC, startTime ASC";
+			ORDER BY srcHost ASC, dstHost ASC, startTime ASC";
 		$sth = $dbh->prepare($sql) or return undef;
 		
 		# Bind the current timestamp
@@ -107,9 +107,9 @@ sub getEventsDb
 	    
 		# Special case when no endTS: Get everything until the end
 		my $sql = 
-		"SELECT startTime, endTime, srchost, dsthost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
+		"SELECT startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
 			WHERE (startTime >= ?) OR (startTime < ? AND ? < endTime)
-			ORDER BY srchost ASC, dsthost ASC, startTime ASC";
+			ORDER BY srcHost ASC, dstHost ASC, startTime ASC";
 		$sth = $dbh->prepare($sql) or return undef;
 		
 		# Bindings have different params
@@ -125,15 +125,15 @@ sub getEventsDb
 	# Supposedly slow
 	while (my $ref = $sth->fetchrow_hashref) 
 	{
-	    if (!exists($evHash{$ref->{'srchost'}}))
+	    if (!exists($evHash{$ref->{'srcHost'}}))
 	    {
-	        $evHash{$ref->{'srchost'}} = {};
+	        $evHash{$ref->{'srcHost'}} = {};
 	    }
-	    if (!exists($evHash{$ref->{'srchost'}}{$ref->{'dsthost'}}))
+	    if (!exists($evHash{$ref->{'srcHost'}}{$ref->{'dstHost'}}))
         {
-            $evHash{$ref->{'srchost'}}{$ref->{'dsthost'}} = ();
+            $evHash{$ref->{'srcHost'}}{$ref->{'dstHost'}} = ();
         }
-		push (@{$evHash{$ref->{'srchost'}}{$ref->{'dsthost'}}}, $ref);
+		push (@{$evHash{$ref->{'srcHost'}}{$ref->{'dstHost'}}}, $ref);
 	}
 	
 	return \%evHash;

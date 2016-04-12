@@ -155,12 +155,12 @@ sub _getWindowFromQueues
     
     # Loop over the evQueue entries 
     my @outArray = ();
-    while (my ($srchost, $dstHash) = each %{$evQueues}) 
+    while (my ($srcHost, $dstHash) = each %{$evQueues}) 
     {
-        while (my ($dsthost, $evArray) = each %$dstHash) 
+        while (my ($dstHost, $evArray) = each %$dstHash) 
         {
             # Extract from this queue
-            my $currWindow = _selectNextWindow($evQueues->{$srchost}{$dsthost}, $srchost, $dsthost, $refStart, $refEnd);
+            my $currWindow = _selectNextWindow($evQueues->{$srcHost}{$dstHost}, $srcHost, $dstHost, $refStart, $refEnd);
     
             if (defined($currWindow))
             {
@@ -180,7 +180,7 @@ sub _getWindowFromQueues
 # Assumes the queues are packed with no gaps between 2 consecutive windows
 sub _selectNextWindow
 {
-    my ($evQueue, $srchost, $dsthost, $refStart, $refEnd) = @_;
+    my ($evQueue, $srcHost, $dstHost, $refStart, $refEnd) = @_;
     
     # discard values at the start which are clearly not suitable
     # 1. Endtimes that are before the requested reference start time
@@ -209,8 +209,8 @@ sub _selectNextWindow
         return {
             'startTime' => $refStart,
             'endTime' => $refEnd,
-            'srchost' => $srchost,
-            'dsthost' => $dsthost,
+            'srcHost' => $srcHost,
+            'dstHost' => $dstHost,
             'detectionCode' => -1,
         }
     }
@@ -267,8 +267,8 @@ sub _selectNextWindow
             my $avg = {
                 'startTime' => $selected{'startTime'},
                 'endTime' => $next{'endTime'},
-                'srchost' => $selected{'srchost'},
-                'dsthost' => $selected{'dsthost'},
+                'srcHost' => $selected{'srcHost'},
+                'dstHost' => $selected{'dstHost'},
                 'detectionCode' => $selected{'detectionCode'} || $next{'detectionCode'},
             };
             
@@ -278,8 +278,8 @@ sub _selectNextWindow
                 # skip these fields
                 if ($key eq 'startTime' || 
                     $key eq 'endTime' || 
-                    $key eq 'srchost' ||
-                    $key eq 'dsthost' ||
+                    $key eq 'srcHost' ||
+                    $key eq 'dstHost' ||
                     $key eq 'detectionCode')
                 {
                     next;
@@ -305,32 +305,32 @@ sub _addHashToEvQueues
     
     my $lastTime;
     
-    # Loop over srchost and dsthost, creating hashes where needed
-    while (my ($srchost, $dstHash) = each %$inHash) 
+    # Loop over srcHost and dstHost, creating hashes where needed
+    while (my ($srcHost, $dstHash) = each %$inHash) 
     {
         # Don't auto vivify. Manually create shared hashes
-        if (!exists($evQueues->{$srchost}))
+        if (!exists($evQueues->{$srcHost}))
         {
-            $evQueues->{$srchost} = &share({});
+            $evQueues->{$srcHost} = &share({});
         }
         
-        while (my ($dsthost, $evArray) = each %$dstHash) 
+        while (my ($dstHost, $evArray) = each %$dstHash) 
         {
             # Don't auto vivify. Manually create shared hashes
-            if (!exists($evQueues->{$srchost}{$dsthost}))
+            if (!exists($evQueues->{$srcHost}{$dstHost}))
             {
-                $evQueues->{$srchost}{$dsthost} = &share({});
+                $evQueues->{$srcHost}{$dstHost} = &share({});
                 my @newArr :shared = ();
-                $evQueues->{$srchost}{$dsthost}{'queue'} = \@newArr;
+                $evQueues->{$srcHost}{$dstHost}{'queue'} = \@newArr;
                 my $firstTime :shared = 0;
-                $evQueues->{$srchost}{$dsthost}{'firstTime'} = $firstTime;
+                $evQueues->{$srcHost}{$dstHost}{'firstTime'} = $firstTime;
                 my $lastTime :shared = 0;
-                $evQueues->{$srchost}{$dsthost}{'lastTime'} = $lastTime;
+                $evQueues->{$srcHost}{$dstHost}{'lastTime'} = $lastTime;
             }
             
             # Once the queue is found or created, add it to the list
-            my $evQueue = $evQueues->{$srchost}{$dsthost};
-            my $currLast = _addArrayToEvQueue($evQueue, $srchost, $dsthost, $evArray);
+            my $evQueue = $evQueues->{$srcHost}{$dstHost};
+            my $currLast = _addArrayToEvQueue($evQueue, $srcHost, $dstHost, $evArray);
             
             # get the min of all the lasttimes from all queues
             if (!defined($lastTime) || 
@@ -349,7 +349,7 @@ sub _addHashToEvQueues
 # Note: This inserts padding records if there is a gap between the last entry in the queue and first entry in the array
 sub _addArrayToEvQueue
 {
-    my ($evQueue, $srchost, $dsthost, $evArray) = @_;
+    my ($evQueue, $srcHost, $dstHost, $evArray) = @_;
 
 #    $logger->debug(sub { Data::Dumper::Dumper($evArray) });    
     if ((scalar(@{$evArray}) == 0) || ($evArray->[-1]{'endTime'} < $evQueue->{'firstTime'}))
@@ -371,7 +371,7 @@ sub _addArrayToEvQueue
     }
     
 #    my $currTime = time;
-#    print $currTime . "\tstart add: $srchost to $dsthost\t" . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . "\t";
+#    print $currTime . "\tstart add: $srcHost to $dstHost\t" . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . "\t";
     
     # pad with unknown value if there is a gap greater than 1 second
     if ((($evArray->[0]{'startTime'} - $evQueue->{'lastTime'}) * 1.0) > 1)
@@ -379,8 +379,8 @@ sub _addArrayToEvQueue
         my %newHash :shared = (  
                 'startTime' => $evQueue->{'lastTime'},
                 'endTime' => $evArray->[0]{'startTime'},
-                'srchost' => $srchost,
-                'dsthost' => $dsthost,
+                'srcHost' => $srcHost,
+                'dstHost' => $dstHost,
                 'detectionCode' => -1,
             );
         push(@{$evQueue->{'queue'}}, \%newHash);

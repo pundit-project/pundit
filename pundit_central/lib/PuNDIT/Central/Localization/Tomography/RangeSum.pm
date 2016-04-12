@@ -79,8 +79,8 @@ sub _removeGoodPathsLinks
 	# loop over ev table, marking paths as bad
 	foreach my $event (@$evTable)
 	{
-        my $srcHost = $event->{'srchost'};
-        my $dstHost = $event->{'dsthost'};
+        my $srcHost = $event->{'srcHost'};
+        my $dstHost = $event->{'dstHost'};
         
 		if (exists($trMatrix->{$srcHost}{$dstHost}))
 		{
@@ -263,8 +263,8 @@ sub _calcAvgMetric
 		foreach my $pathInfo (@$problemPaths)
 		{    
 			# Match. Mark as processed and add to list
-			if (($pathInfo->{'src'} eq $currEv->{'srchost'}) && 
-			    ($pathInfo->{'dst'} eq $currEv->{'dsthost'}))
+			if (($pathInfo->{'src'} eq $currEv->{'srcHost'}) && 
+			    ($pathInfo->{'dst'} eq $currEv->{'dstHost'}))
 			{
 				$currEv->{'processed'} = 1;
 				$totalMetric += $currEv->{'metric'};
@@ -301,11 +301,11 @@ sub _markJustifiedPaths
 		# Would be faster to store the problem paths in a hash and just do a match
 		foreach my $pathInfo (@$problemPaths)
 		{
-			if (($pathInfo->{'src'} eq $currEv->{'srchost'}) && 
-			    ($pathInfo->{'dst'} eq $currEv->{'dsthost'}))
+			if (($pathInfo->{'src'} eq $currEv->{'srcHost'}) && 
+			    ($pathInfo->{'dst'} eq $currEv->{'dstHost'}))
 			{
 			    # 0 means justified, will not be used for future calculations
-				$pathSet->{$currEv->{'srchost'}}{$currEv->{'dsthost'}} = 0;
+				$pathSet->{$currEv->{'srcHost'}}{$currEv->{'dstHost'}} = 0;
 				$pathSetCount--;
 			}
 		}
@@ -373,8 +373,8 @@ sub _updateMetric
 		# TODO: Optimise this loop
 		foreach my $pathInfo (@$problemPaths)
 		{
-			if (($pathInfo->{'src'} eq $element->{'srchost'}) && 
-			    ($pathInfo->{'dst'} eq $element->{'dsthost'}))
+			if (($pathInfo->{'src'} eq $element->{'srcHost'}) && 
+			    ($pathInfo->{'dst'} eq $element->{'dstHost'}))
 			{
 				#say "src: @$path[0] dst: @$path[1] metric: $element->{'metric'}";
 				$element->{'metric'} -= $avgMetric;
@@ -441,7 +441,7 @@ sub runTomo
 			{
 				#print "Selected event: ";
 				#print Dumper $element;
-				_addToIncidenceList($element->{'srchost'}, $element->{'dsthost'}, $trMatrix, $linkSet, \%incidenceList);
+				_addToIncidenceList($element->{'srcHost'}, $element->{'dstHost'}, $trMatrix, $linkSet, \%incidenceList);
 			}
 			else # hit the first node that is outside the metric: quit searching
 			{

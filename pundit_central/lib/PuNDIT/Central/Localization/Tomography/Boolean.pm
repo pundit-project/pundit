@@ -71,8 +71,8 @@ sub _removeGoodPathsLinks
     # loop over ev table, marking paths as bad
     foreach my $event (@$evTable)
     {
-        my $srcHost = $event->{'srchost'};
-        my $dstHost = $event->{'dsthost'};
+        my $srcHost = $event->{'srcHost'};
+        my $dstHost = $event->{'dstHost'};
         
         if (exists($trMatrix->{$srcHost}{$dstHost}))
         {
@@ -203,7 +203,7 @@ sub _findMaxFailureLinks
 	
 	#print "failure link set";
 	#print Dumper \@failureLinkSet;
-	return \@failureLinkSet;
+	return (\@failureLinkSet, $maxVal);
 }
 
 # Marks paths as explained
@@ -223,8 +223,7 @@ sub _markExplainedPaths
 	foreach my $pathInfo (@$problemPaths)
 	{
 		# The current element is a pair (src, dst)
-#		print "Problem Path: ";
-#		print Dumper $pathInfo;
+#		$logger->debug("Marking Problem Path from " . $pathInfo->{'src'} . " to " . $pathInfo->{'dst'} . " as explained");
 		
 		# We want the path set count to remain consistent, so need to check whether we are marking a unexplained path
 		if ($pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} == 1)
@@ -282,6 +281,8 @@ sub runTomo
 #	print "linkSet ";
 #	print Dumper($linkSet);
 
+    my $failureScoreTotal = 0;
+
 	# loop while the sets aren't empty
 	while (($pathSetCount != 0) && ($linkSetCount != 0))
 	{
@@ -303,10 +304,10 @@ sub runTomo
 #    	print Dumper \%failureScoreList;
 		
 		# Get the set of failure link(s)
-		my $failureLinkSet = _findMaxFailureLinks(\%failureScoreList);
+		my ($failureLinkSet, $failureScore) = _findMaxFailureLinks(\%failureScoreList);
 		
 		# Error check so we don't loop forever
-		if (scalar(@{$failureLinkSet}) == 0)
+		if (scalar(@{$failureLinkSet}) == 0 || $failureScore == 0)
 		{
 #			print "Error! no failure links generated but unexplained links remain.\n";
 #			print "Debug: Set of paths:";
@@ -322,16 +323,24 @@ sub runTomo
 		# Loop over failure link set
 		foreach my $problemLink (@{$failureLinkSet})
 		{
-			#print "$problem_link";
+#			$logger->debug("Found problem link $problemLink");
+			
 			my $problemPaths = $failurePathSetList{$problemLink}; 
 			
 			# add to hypothesis set
-			push (@hypothesisSet, { 'hopId' => $problemLink });
+			push (@hypothesisSet, { 'hopId' => $problemLink, 'failureScore' => $failureScore });
+			$failureScoreTotal += $failureScore; 
 			
 			# mark as explained in path and link sets and update the counts
 			($pathSetCount) = _markExplainedPaths($problemPaths, $pathSet, $pathSetCount);
 			($linkSetCount) = _markExplainedLinks($problemLink, $linkSet, $linkSetCount);
 		} 
+	}
+	
+	# finished with boolean tomography. Calc prob based on failureScore
+	foreach my $problemHop (@hypothesisSet)
+	{
+	    $problemHop->{'failureScore'} /= $failureScoreTotal;
 	}
 	
 	$logger->debug("Produced a hypothesis set with " . scalar(@hypothesisSet) . " nodes");
