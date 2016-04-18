@@ -57,8 +57,11 @@ sub new
 	
 	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'problem_types'};
 	my @problem_types_list = split(/[\s+|,]/, $problem_types_string);
-		
-	my $window_size = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'window_size'};
+	if (!$problem_types_string || !@problem_types_list)
+	{
+        $logger->error("No problem types specified to localize. Quitting");
+        return undef; 
+	}
 	
 	my $self = {
         '_loc_reporter' => $loc_reporter,
@@ -66,8 +69,7 @@ sub new
         '_bool_tomo' => $bool_tomo,
                 
         # params
-        _window_size => $window_size,
-        _problem_types_list => \@problem_types_list,
+        '_problem_types_list' => \@problem_types_list,
     };
     
     bless $self, $class;

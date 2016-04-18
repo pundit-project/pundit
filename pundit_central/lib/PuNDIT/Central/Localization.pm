@@ -48,20 +48,20 @@ sub new
         return undef;
     }
     
-    my $lagTime = $cfgHash->{"pundit_central"}{$fedName}{"localization"}{"lag_time"};
-    if (!defined($lagTime))
+    my $processingDelta = $cfgHash->{"pundit_central"}{$fedName}{"localization"}{"processing_time_delta"};
+    if (!defined($processingDelta))
     {
-        $logger->error("Mandatory parameter lag time not defined in federation $fedName config. Quitting");
+        $logger->error("Mandatory parameter processing time delta not defined in federation $fedName config. Quitting");
         return undef;
     }
-    $lagTime = $lagTime * 60; # convert to seconds
+    $processingDelta = $processingDelta * 60; # convert to seconds
     
     # This is the reference time that we want to process. Uses a fixed time lag
-    my $refTime = calc_bucket_id(time(), $windowSize) - $lagTime;
+    my $refTime = calc_bucket_id(time(), $windowSize) - $processingDelta;
     
     my $self = {
         '_windowSize' => $windowSize, # reference window size, in seconds
-        '_lagTime' => $lagTime, # Number of seconds to wait before analyzing
+        '_processingDelta' => $processingDelta, # Number of seconds to wait before analyzing
         
         # submodules
         '_tomography' => $tomography,
@@ -88,13 +88,13 @@ sub run
 
     my $refTime = $self->{'_refTime'};
     my $windowSize = $self->{'_windowSize'};
-    my $lagTime = $self->{'_lagTime'};
+    my $processingDelta = $self->{'_processingDelta'};
     
-    # deadline not reached yet. Sleep until reftime + lagtime has been reached
-    if ((time() - $lagTime) < $refTime)
+    # deadline not reached yet. Sleep until reftime + processingDelta has been reached
+    if ((time() - $processingDelta) < $refTime)
     {
         $logger->debug("Not reached deadline yet.");
-        return $refTime + $lagTime - time();
+        return $refTime + $processingDelta - time();
     }
 
     # Get the current updated traceroute matrix
@@ -112,8 +112,12 @@ sub run
     $self->{'_refTime'} = $refTime;
     
     # sleep until the next run
-    my $sleepTime = $refTime + $lagTime - time();
-    $sleepTime = 0 if $sleepTime < 0;
+    my $sleepTime = $refTime + $processingDelta - time();
+    if ($sleepTime < 0)
+    {
+        $logger->error("Localization Federation missed it's deadline. Central server possibly overloaded");
+        $sleepTime = 0;
+    }
     $logger->debug("Sleeptime is $sleepTime");
     return $sleepTime;
 }

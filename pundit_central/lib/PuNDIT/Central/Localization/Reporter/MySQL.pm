@@ -43,7 +43,12 @@ sub new
     my $user = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"user"};
     my $pw = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"password"};
     
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or return undef;
+	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw); 
+	if (!$dbh)
+    {
+        $logger->error("Couldn't initialize DBI connection. Quitting");
+        return undef; 
+    }
 	
 	# Create the table if it doesn't exist
 	$dbh->do("CREATE TABLE IF NOT EXISTS localization_events (
@@ -57,8 +62,12 @@ sub new
 	
 	my $sql = "INSERT INTO localization_events (ts, link_ip, link_name, det_code, val1, val2) VALUES (FROM_UNIXTIME(?), INET_ATON(?), ?, ?, ?, ?)";
 	
-	return undef if (!defined($sql));
-	my $sth = $dbh->prepare($sql) or return undef;
+	my $sth = $dbh->prepare($sql);
+	if (!$sth)
+	{
+	    $logger->error("Failed to prepare DBH. Quitting");
+        return undef;
+	}
 	
 	my $self = {
         '_dbh' => $dbh,

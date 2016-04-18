@@ -74,8 +74,12 @@ sub new
 # Top-level exit for event receiver
 sub DESTROY
 {
-
-    # Do nothing?
+    my ($self) = @_;
+    
+    $logger->debug("Cleaning up TrReceiver");
+    
+    $runLoop = 0;
+    $self->{'_rcvThr'}->join();
 }
 
 # Public function

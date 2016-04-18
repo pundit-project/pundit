@@ -26,10 +26,6 @@ use PuNDIT::Central::Localization;
 my $logger = get_logger(__PACKAGE__);
 my $runLoop = 1;
 
-sub exit_handler{
-    $runLoop = 0;
-}
-
 # constructor
 sub new
 {
@@ -39,6 +35,11 @@ sub new
     my $fedString = $cfgHash->{"pundit_central"}{"measurement_federations"};
     $fedString =~ s/,/ /g;
     my @fedList = split(/\s+/, $fedString);
+    if (!$fedString || !@fedList)
+    {
+        $logger->error("No federations specified in config file. Quitting.");
+        return undef;
+    }
     
     my %fedHash = ();
     foreach my $fedName (@fedList)
@@ -48,7 +49,7 @@ sub new
         
         if (!defined($locObj))
         {
-            $logger->error("Failed to initialize locObj for $fedName");
+            $logger->error("Failed to initialize locObj for $fedName. Quitting.");
             return undef;
         }
         
@@ -66,6 +67,8 @@ sub new
 sub DESTROY
 {
     my ($self) = @_;
+    
+    $runLoop = 0;
 }
 
 sub run

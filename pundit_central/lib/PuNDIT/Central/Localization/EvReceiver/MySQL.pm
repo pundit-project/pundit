@@ -19,8 +19,6 @@ package PuNDIT::Central::Localization::EvReceiver::MySQL;
 
 use strict;
 use Log::Log4perl qw(get_logger);
-use threads;
-use threads::shared;
 
 # Database
 use DBI;
@@ -47,11 +45,15 @@ sub new
 	my $user = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"user"};
 	my $pw = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"password"};
 	
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or return undef;
-		
+	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw); 
+    if (!$dbh)
+    {
+        $logger->error("Couldn't initialize DBI connection. Quitting");
+        return undef; 
+	}
+	
 	my $self = {
-        _config => $cfgHash,
-        _dbh => $dbh,
+        '_dbh' => $dbh,
     };
     
     bless $self, $class;
@@ -74,7 +76,7 @@ sub getLatestEvents
 {
     my ($self, $lastTS) = @_;
     
-    return $self->getEventsDb($lastTS, undef)
+    return $self->getEventsDb($lastTS, undef);
 }
 
 # Retrieve from db
@@ -96,10 +98,19 @@ sub getEventsDb
 			WHERE (startTime >= ?) AND 
 				(startTime <= ?)
 			ORDER BY srcHost ASC, dstHost ASC, startTime ASC";
-		$sth = $dbh->prepare($sql) or return undef;
+		$sth = $dbh->prepare($sql);
+		if (!$sth)
+		{
+            $logger->error("$dbh->errstr");
+		    return undef;
+		}
 		
 		# Bind the current timestamp
-		$sth->execute($startTS, $endTS) or return undef;
+		if (!$sth->execute($startTS, $endTS))
+        {
+            $logger->error("$dbh->errstr");
+            return undef;
+        }
 	}
 	else
 	{
@@ -110,13 +121,26 @@ sub getEventsDb
 		"SELECT startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric FROM status 
 			WHERE (startTime >= ?) OR (startTime < ? AND ? < endTime)
 			ORDER BY srcHost ASC, dstHost ASC, startTime ASC";
-		$sth = $dbh->prepare($sql) or return undef;
+		$sth = $dbh->prepare($sql);
+        if (!$sth)
+        {
+            $logger->error("$dbh->errstr");
+            return undef;
+        }
 		
 		# Bindings have different params
-		$sth->execute($startTS, $startTS, $startTS) or return undef;
+		if (!$sth->execute($startTS, $startTS, $startTS))
+		{
+		    $logger->error("$dbh->errstr");
+            return undef;    
+		} 
 	}
 	
-	return undef if (!$sth);
+	if (!$sth)
+    {
+        $logger->error("$dbh->errstr");
+        return undef;
+    }
 	
 	# Init an empty hash
 	my %evHash = ();

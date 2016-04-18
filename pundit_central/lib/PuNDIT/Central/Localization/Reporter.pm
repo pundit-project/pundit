@@ -46,9 +46,14 @@ sub new
     my $rpt;
     if ( $subType eq "mysql" )
     {
-	   $rpt = new PuNDIT::Central::Localization::Reporter::MySQL($cfgHash, $fedName);
+        $logger->debug("Initializing MySQL submodule for Localization::Reporter");
+        $rpt = new PuNDIT::Central::Localization::Reporter::MySQL($cfgHash, $fedName);
     }
-	return undef if (!defined($rpt));
+	if (!defined($rpt))
+	{
+	    $logger->error("Couldn't initialize submodule for Localization::Reporter");
+	    return undef;
+	}
 	
 	my $self = {
         '_rpt' => $rpt,

@@ -74,8 +74,9 @@ sub new
 # Top-level exit for event receiver
 sub DESTROY
 {
-	# Do nothing?
 	my ($self) = @_;
+
+    $logger->debug("Cleaning up EvReceiver");
 	
 	$runLoop = 0;
 	$self->{'_rcvThr'}->join();
@@ -120,7 +121,11 @@ sub run
     {
         $subRcv = new PuNDIT::Central::Localization::EvReceiver::Test();
     }
-    thread_exit(-1) if (!$subRcv);
+    if (!$subRcv) # add error message here
+    {
+        $logger->error("Couldn't initialize event sub-receiver $subType. Quitting");
+        thread_exit(-1);
+    }
     
     while ($runLoop)
     {
@@ -201,7 +206,7 @@ sub _selectNextWindow
     }
     
     # Return unknown if
-    # 1. First entry is far ahead of reftime OR
+    # 1. First entry is later than reftime OR
     # 2. Empty queue
     if (($evQueue->{'firstTime'} > $refEnd) || 
         (scalar(@{$evQueue->{'queue'}}) == 0))
@@ -222,13 +227,13 @@ sub _selectNextWindow
     
 #    $logger->debug("selOverlap is $selOverlap");
     
-    # Case 1: Significant overlap
+    # Case 1: Significant overlap or single entry in queue
     if (($selOverlap >= 0.8) || 
         (scalar(@{$evQueue->{'queue'}}) == 1)) 
     {
         return \%selected;
     }
-    # Case 2+: Nonsignificant overlap
+    # Case 2+: Nonsignificant overlap, >1 entry in queue
     else 
     {
         # Check the next entry's overlap
@@ -236,12 +241,19 @@ sub _selectNextWindow
         
         my $nextOverlap = _calcOverlap($refStart, $refEnd, $next{'startTime'}, $next{'endTime'});
         
+        # next overlap is not significant. Stick to selected
+        if ($nextOverlap <= 0.2)
+        {
+            return \%selected;
+        }
+        
         # selected overlap is not significant. Choose next.
         if ($selOverlap <= 0.2)
         {
             return \%next; # choose the next entry
         }
         
+        # Both selected and next are significant. Consider which one to keep or average 
         # Case 2a: If next window doesn't have problems or is unknown, use first window
         if ($next{'detectionCode'} <= 0)
         {
@@ -298,7 +310,7 @@ sub _selectNextWindow
     }
 }
 
-# Adds a hash of events (multiple src, dst pairs) to their respective evQueues
+# Adds a hash of statuses (multiple src, dst pairs) to their respective evQueues
 sub _addHashToEvQueues
 {
     my ($evQueues, $inHash) = @_;
@@ -341,6 +353,8 @@ sub _addHashToEvQueues
         }    
     }
     
+    # returns the min of all the lastTimes from all queues. 
+    # This should ensure that we don't miss entries
     return $lastTime;
 }
 
@@ -351,20 +365,25 @@ sub _addArrayToEvQueue
 {
     my ($evQueue, $srcHost, $dstHost, $evArray) = @_;
 
-#    $logger->debug(sub { Data::Dumper::Dumper($evArray) });    
-    if ((scalar(@{$evArray}) == 0) || ($evArray->[-1]{'endTime'} < $evQueue->{'firstTime'}))
+#    $logger->debug(sub { Data::Dumper::Dumper($evArray) });
+
+    # Skip the input evArray if:
+    # 1. Empty evArray, or
+    # 2. Last element in evArray is before the firstTime of this queue
+    if ((scalar(@{$evArray}) == 0) || 
+        ($evArray->[-1]{'endTime'} < $evQueue->{'firstTime'}))
     {
         return $evQueue->{'lastTime'};
     }
     
-    # discard duplicate entries from the array based on timestamp
+    # Loop: discard duplicate entries from the head of evArray based on timestamp
     while ((scalar(@$evArray) > 0) && 
            ($evQueue->{'lastTime'} > $evArray->[0]{'startTime'})) 
     {
         shift(@{$evArray});
     }
     
-    # nothing to add
+    # Empty evArray: nothing to add
     if (scalar(@$evArray) == 0)
     {
         return $evQueue->{'lastTime'}; 
@@ -373,8 +392,8 @@ sub _addArrayToEvQueue
 #    my $currTime = time;
 #    print $currTime . "\tstart add: $srcHost to $dstHost\t" . $evQueue->{'firstTime'} . "-" . $evQueue->{'lastTime'} . "\t";
     
-    # pad with unknown value if there is a gap greater than 1 second
-    if ((($evArray->[0]{'startTime'} - $evQueue->{'lastTime'}) * 1.0) > 1)
+    # Pad with unknown value if there is a gap greater than 1 second
+    if ((($evArray->[0]{'startTime'} * 1.0) - $evQueue->{'lastTime'}) > 1)
     {
         my %newHash :shared = (  
                 'startTime' => $evQueue->{'lastTime'},
@@ -386,7 +405,8 @@ sub _addArrayToEvQueue
         push(@{$evQueue->{'queue'}}, \%newHash);
     }
     
-    # append the entire array to the end of queue
+    # At this point evArray should be completely non-overlapping with evQueue
+    # Append the entire evArray to the end of evQueue
     {
         lock(@{$evQueue->{'queue'}});
         my $sharedArr = shared_clone($evArray); # Make a shared copy of the arrayref so both threads can access it
@@ -402,6 +422,7 @@ sub _addArrayToEvQueue
     return $evQueue->{'lastTime'};
 }
 
+# return the max of 2 values
 sub max
 {
     my ($v1, $v2) = @_;
@@ -413,6 +434,7 @@ sub max
     return $v2;
 }
 
+# return the min of 2 values
 sub min
 {
     my ($v1, $v2) = @_;
@@ -436,7 +458,7 @@ sub _calcOverlap
         return 0.0;
     }
     
-    return (min($refEnd, $cmpEnd) - max($refStart, $cmpStart)) * 1.0 / ($refEnd - $refStart);
+    return ((min($refEnd, $cmpEnd) * 1.0) - max($refStart, $cmpStart)) / ($refEnd - $refStart);
 }
 
 # Calculates the overlap metric for 2 time periods

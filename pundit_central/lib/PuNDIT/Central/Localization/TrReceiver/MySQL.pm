@@ -53,8 +53,13 @@ sub new
     my $user = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"user"};
     my $pw = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"password"};
     
-    my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw) or return undef;
-    
+    my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw);
+    if (!$dbh)
+    {
+        $logger->error("Couldn't initialize DBI connection. Quitting");
+        return undef; 
+    }
+        
     my $self = {
         '_dbh' => $dbh,
     };
