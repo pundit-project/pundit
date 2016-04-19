@@ -267,6 +267,7 @@ sub _readFile
 
         # check for lost packet
         my $lost_flag = 0;
+        my $unsync_flag = 0;
         my $delay = undef;
         my $sndTS = -1;
         my $rcvTS = -1;
@@ -283,7 +284,8 @@ sub _readFile
             push(@unsync_array, $obj[1]);
             
             # Delay
-            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+#            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+            $unsync_flag = 1;
         }
         else # normal packet
         {
@@ -297,6 +299,12 @@ sub _readFile
             $sndTS = $obj[10] * 1.0;
             $rcvTS = $obj[12] * 1.0;
             
+            # guard against negative values
+            if ($delay < 0.0)
+            {
+                $delay = 0.0;
+            }
+            
             # update the minimum delay in this session
             if (!defined $sessionMinDelay || $delay < $sessionMinDelay)
             {
@@ -309,18 +317,22 @@ sub _readFile
         $elem{rcvts} = $rcvTS; # receiver timestamp
         $elem{seq} = int($obj[1]); # original seq
         $elem{lost} = $lost_flag;
+        $elem{unsync} = $unsync_flag;
         
         # If 2 packets are sent too close to each other, likely induced self queueing 
-        if (@timeseries > 0 && ($elem{ts} != -1) && ($elem{ts} - $prevTS < 100e-6))
+        if (!($lost_flag || $unsync_flag))
         {
-            $elem{delay} = $prevDelay;
-        }
-        else
-        {
-            $elem{delay} = $delay;
+            if (@timeseries > 0 && ($elem{ts} != -1) && ($elem{ts} - $prevTS < 100e-6))
+            {
+                $elem{delay} = $prevDelay;
+            }
+            else
+            {
+                $elem{delay} = $delay;
+            }
         }
         
-        if ($elem{ts} != -1)
+        if (($elem{ts} != -1) && (defined($delay)))
         {
             # keep track of values to overwrite self queueing
             $prevDelay = $delay;
@@ -682,6 +694,8 @@ sub _detection_suite
         'lossProblem' => 0,
         'reorderProblem' => 0,
         'contextSwitch' => 0,
+        'unsyncedClocks' => 0,
+        
         'detectionCode' => 0,
         
         'firstTimestamp' => $startTimestamp,
@@ -720,7 +734,8 @@ sub _detection_suite
     # generate the detection code for output
     $windowSummary->{'detectionCode'} = $windowSummary->{'delayProblem'} << 1 | 
                                         $windowSummary->{'lossProblem'} << 2 | 
-                                        $windowSummary->{'contextSwitch'} << 7;
+                                        $windowSummary->{'contextSwitch'} << 7 |
+                                        $windowSummary->{'unsyncedClocks'} << 8;
     return ($windowSummary, $problemCount);
 }
 
@@ -731,6 +746,7 @@ sub _detectLossLatencyReordering
     my ($self, $timeseries, $windowSummary, $sessionMinDelay) = @_;
     my $delayProblemCount = 0;
     my $lossProblemCount = 0;
+    my $unsyncedClockCount = 0;
     my $delaySum = 0.0;
     
     if (scalar(@$timeseries) == 0)
@@ -759,6 +775,10 @@ sub _detectLossLatencyReordering
         if ($item->{"lost"} == 1)
         {
             $lossProblemCount++;
+        }
+        elsif ($item->{"unsync"} == 1)
+        {
+            $unsyncedClockCount++;
         }
         else
         {
@@ -808,10 +828,17 @@ sub _detectLossLatencyReordering
     my $reorderProblemFlag = 0;
     # TODO: Use RFC method of calculating reordering 
     
+    my $unsyncedClockFlag = 0;
+    if ($unsyncedClockCount > 0)
+    {
+        $unsyncedClockFlag = 1;
+    }
+    
     # Update stats
     $windowSummary->{'delayProblem'} = $delayProblemFlag;
     $windowSummary->{'lossProblem'} = $lossProblemFlag;
     $windowSummary->{'reorderProblem'} = $reorderProblemFlag;
+    $windowSummary->{'unsyncedClocks'} = $unsyncedClockFlag;
         
     $windowSummary->{'queueingDelay'} = $queueingDelay;
         
@@ -824,6 +851,7 @@ sub _detectLossLatencyReordering
     $windowSummary->{'lossCount'} = $lossProblemCount;
     $windowSummary->{'lossPerc'} = $lossPerc;
     
+    # Note: Unsynced clocks is not a problem worth reporting (change if necessary)
     return ($delayProblemFlag + $lossProblemFlag + $reorderProblemFlag); 
 }
 
