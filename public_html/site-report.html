@@ -15,6 +15,17 @@ and open the template in the editor.
         <script>
             // Set location to punditui server
             WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
+
+            function getURLParameter(name) {
+                return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
+            }
+            
+            // Prepare links
+            var site = getURLParameter("site");
+            if (!site) {
+                var index = document.location.href.lastIndexOf("/");
+                window.location = document.location.href.substring(0, index) + "/";
+            }
         </script>
         
         <!-- The table widget -->
@@ -61,13 +72,18 @@ and open the template in the editor.
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <h1><b>PuNDIT web interface</b></h1>
-                        <h2>Site reports</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="site-report.html?site=aglt2.org">aglt2.org</a>
-                            <a class="btn btn-primary" href="site-report.html?site=mwt2.org">mwt2.org</a>
-                            <a class="btn btn-primary" href="site-report.html?site=bnl.gov">bnl.gov</a>
+                        <h1><b>PuNDIT site report:</b> <i>aglt2.org</i></h1>
+                        <h2>Open problems</h2>
+                        <div id="report" class="wp-table" data-selection-channel="loc/selection"></div>
+                        <script>document.getElementById("report").setAttribute("data-channel", "report/" + site);</script>
+                        <div class="wp-show-hide" data-channel="loc/selection">
+                            <h2>Delay history from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
+                            <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/delay&quot;))"
+                                 data-clear-channel="loc/selection"></div>
                         </div>
+                        <h2>Problem history</h2>
+                        <div id="problemHistory" class="wp-time-area-graph"></div>
+                        <script>document.getElementById("problemHistory").setAttribute("data-channel", "problems/count/" + site);</script>
                     </div>
                 </div>
             </div>
