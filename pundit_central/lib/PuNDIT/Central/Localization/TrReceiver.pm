@@ -27,6 +27,7 @@ use Data::Dumper;
 
 use PuNDIT::Central::Localization::TrReceiver::MySQL;
 #use PuNDIT::Central::Localization::TrReceiver::ParisTr; # not used right now. Agents will report traceroutes to the MySQL database
+use PuNDIT::Utils::TrHop;
 
 =pod
 
@@ -262,6 +263,8 @@ sub _updateNetworkMap
             # Extract from this queue, returning whether the window changed 
             my $currTrace = _selectNextTrace($trQueues->{$srcHost}{$dstHost}, $srcHost, $dstHost, $refStart, $refEnd);
             
+#            $logger->debug(sub { Data::Dumper::Dumper($currTrace) });
+            
             # skip this pair if no returned value
             next unless defined($currTrace);
             
@@ -318,6 +321,70 @@ sub _selectNextTrace
     return $trQueue->{'queue'}[0];
 }
 
+# Replaces all stars with virtual interfaces that represent possible nodes
+# Also collapses loops, and if the loop is in the last N entries, will replace it with a star
+# this makes a copy of the trace, which is also an unshared verson 
+sub _replaceStarsAndLoopsInTrace
+{
+    my ($trOriginal) = @_;
+    
+    # output array
+    my $trProcessed = {
+        'ts' => $trOriginal->{'ts'},
+        'path' => [],   
+        'src' => $trOriginal->{'src'},
+        'dst' => $trOriginal->{'dst'},
+    };
+    
+    my $lastNonStarHop;
+    my $lastStar = 0;
+    my $lastLoop = 0;
+    foreach my $trHop (@{$trOriginal->{'path'}})
+    {
+        my $currHopId = $trHop->getHopId(); 
+        if ($currHopId ne '*')
+        {
+            # check whether it's a loop or not
+            if ($lastNonStarHop ne $currHopId)
+            {
+                if ($lastStar) # was preceded by a star
+                {
+                    my $virtualNode = new PuNDIT::Utils::TrHop($lastNonStarHop . "|*|" . $currHopId, "123");
+                    push @{$trProcessed->{'path'}}, $virtualNode;
+                    $lastStar = 0;
+                }
+                push @{$trProcessed->{'path'}}, $trHop->clone();
+                $lastLoop = 0;
+            }
+            else
+            {
+                $lastLoop = 1;
+            }
+            $lastNonStarHop = $currHopId; 
+        }
+        else # this is a star
+        {
+            $lastStar = 1;
+        }
+    }
+    # last hop. Check whether it reached the destination
+    if ($trProcessed->{'path'}[-1]->getHopId() ne $trOriginal->{'dst'})
+    {
+        # stars and loops don't reveal the last few hops before the destination, so insert 
+        if ($lastStar || $lastLoop)
+        {
+            my $virtualNode = new PuNDIT::Utils::TrHop($lastNonStarHop . "|*|" . $trOriginal->{'dst'}, "123");
+            push @{$trProcessed->{'path'}}, $virtualNode;
+        }
+        my $lastNode = new PuNDIT::Utils::TrHop($trOriginal->{'dst'}, "123");
+        push @{$trProcessed->{'path'}}, $lastNode;
+    }
+    
+#    $logger->debug(sub { Data::Dumper::Dumper($trProcessed) });
+    
+    return $trProcessed;
+}
+
 # runs the network map update algorithm based on a single path
 sub _updateNetworkMapSinglePath
 {
@@ -330,6 +397,7 @@ sub _updateNetworkMapSinglePath
 #        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_trMatrix'}{$srcHost}{$dstHost}{'ts'} . "\n";
         _remove_tr_entry($srcHost, $dstHost, $self->{'_trMatrix'});
     }
+
     _insert_tr_entry($srcHost, $dstHost, $currTrace, $self->{'_trMatrix'});
 }
 
@@ -372,8 +440,9 @@ sub _insert_tr_entry
         return undef;
     }
 
+    # clean stars from the new trace
     # Add to the tr matrix
-    $in_out_tr_matrix->{$in_tr_src}{$in_tr_dst} = $in_tr_entry;
+    $in_out_tr_matrix->{$in_tr_src}{$in_tr_dst} = _replaceStarsAndLoopsInTrace($in_tr_entry);
 
     return $in_tr_entry->{'ts'};
 }

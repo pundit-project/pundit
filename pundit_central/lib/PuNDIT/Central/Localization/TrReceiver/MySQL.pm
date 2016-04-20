@@ -152,7 +152,7 @@ sub _get_hosts_timerange
         {
 #            print "Adding new entry. \$trList is " . scalar(@$currTrList) . " $lastTs $currTs\t$lastHopNo $currHopNo\n";
 
-            my $newHop = new Utils::TrHop($ref->[5], $ref->[4]);
+            my $newHop = new PuNDIT::Utils::TrHop($ref->[5], $ref->[4]);
             my @newPath = ( $newHop );
             my %newEntry = (
                       'ts' => $currTs,
@@ -175,7 +175,7 @@ sub _get_hosts_timerange
             }
             else # else add new hop
             {
-                my $newHop = new Utils::TrHop($ref->[5], $ref->[4]);
+                my $newHop = new PuNDIT::Utils::TrHop($ref->[5], $ref->[4]);
                 push(@{$currTrList->[-1]{'path'}}, $newHop); 
             }
         }

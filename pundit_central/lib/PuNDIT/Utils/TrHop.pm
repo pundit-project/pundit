@@ -21,7 +21,7 @@ Utils::TrHop.pm
 Object to hold hop information. This represents all the hosts for a hop number 
 =cut
 
-package Utils::TrHop;
+package PuNDIT::Utils::TrHop;
 
 # Top-level init for traceroute hop. Just a list of hops
 sub new
@@ -104,6 +104,18 @@ sub _generateHopId
     
     # HopId is just a concatenation
     return join("_", @snameArray); 
+}
+
+sub clone
+{
+    my ($self) = @_;
+    my $clone = new PuNDIT::Utils::TrHop();
+    
+    foreach my $hop (@{$self->{'_hopList'}})
+    {
+        $clone->addHopEntry($hop->{'hopName'}, $hop->{'hopIp'});
+    }
+    return $clone;
 }
 
 1;

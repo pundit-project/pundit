@@ -86,7 +86,7 @@ sub _filterEvents
 {
 	my ($self, $problemName, $evTable) = @_;
 	
-	my $metric = Utils::DetectionCode::getDetectionCodeMetric($problemName);
+	my $metric = PuNDIT::Utils::DetectionCode::getDetectionCodeMetric($problemName);
 	
 	# Filter the events based on detectionCode flag, also renaming the metric field
 	my @filtered_events = ();
@@ -94,7 +94,7 @@ sub _filterEvents
 	{
 	    next if (!defined($event));
 	    
-	    my $problemFlag = Utils::DetectionCode::getDetectionCodeBitValid($event->{'detectionCode'}, $problemName);
+	    my $problemFlag = PuNDIT::Utils::DetectionCode::getDetectionCodeBitValid($event->{'detectionCode'}, $problemName);
 	    
 #	    $logger->debug("detCode " . $event->{'detectionCode'} . " problem $problemName flag $problemFlag");
 	    
@@ -212,7 +212,7 @@ sub processTimeWindow
 		
         # Determine which algo corresponds to which tomography and run it
         my $tomoObj;
-        my $tomoType = Utils::DetectionCode::getDetectionCodeTomography($problemName);
+        my $tomoType = PuNDIT::Utils::DetectionCode::getDetectionCodeTomography($problemName);
         if ($tomoType eq "range_sum")
         {
             $tomoObj = $self->{'_sum_tomo'};
@@ -231,7 +231,7 @@ sub processTimeWindow
         if (scalar(@{$locResultTable}) > 0)
         {
             # generate a detectionCode with a single bit set, used for reporting
-            my $detectionCode = Utils::DetectionCode::setDetectionCodeBit(0, $problemName, 1);
+            my $detectionCode = PuNDIT::Utils::DetectionCode::setDetectionCodeBit(0, $problemName, 1);
             
             $logger->debug("Inserting records with detCode $detectionCode");
             
