@@ -44,7 +44,7 @@ my $runLoop = 1;
 # Top-level init for trace receiver
 sub new
 {
-    my ( $class, $cfgHash, $siteName ) = @_;
+    my ( $class, $cfgHash, $fedName ) = @_;
 
     # Shared structure that will hold the trace queues
     my $trQueues = &share({});
@@ -55,7 +55,7 @@ sub new
     }
     
     # Start the backend-specific receiver thread here
-    my $rcvThread = threads->create(sub { run($cfgHash, $siteName, $trQueues); });
+    my $rcvThread = threads->create(sub { run($cfgHash, $fedName, $trQueues); });
     if (!$rcvThread)
     {
         $logger->error("Couldn't initialize tr revThread. Quitting");
@@ -72,7 +72,7 @@ sub new
     return $self;
 }
 
-# Top-level exit for event receiver
+# Top-level exit for trace receiver
 sub DESTROY
 {
     my ($self) = @_;
@@ -89,7 +89,7 @@ sub DESTROY
 # $refStart - timestamp of the first traceroute to get. Leave as 0 if you want all
 # $refEnd - timestamp of the last traceroute to get. Leave as 0 if you want all
 # Returns an array containing:
-# $tr_matrix - Hash of Hashes pointing to arrays of traceroutes. Simulates adjacency list
+# $trMatrix - Hash of Hashes pointing to arrays of traceroutes. Simulates adjacency list
 sub getTrMatrix
 {
     # Get the range from the function call
@@ -103,23 +103,29 @@ sub getTrMatrix
 # starts an infinte loop that pulls values out of the receiver into an internal structure
 sub run
 {
-    my ($cfgHash, $siteName, $trQueues) = @_;
+    my ($cfgHash, $fedName, $trQueues) = @_;
     
     # Configuration Parameters
     my $sleepTime = 60; # interval between checks, in seconds. Configure this
     my $lastTime = time - 30*60; # check starting from 30 minutes in the past
     
     # init the sub-receiver based on the configuration settings
-    my $subType = $cfgHash->{'pundit_central'}{$siteName}{'tr_receiver'}{'type'};
+    my $subType = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'type'};
     
     my $trRcv;
+    my $trStore; # Used only for rabbitmq and traceroutema to write back results to mysql
     if ( $subType eq "mysql" )
     {
-        $trRcv = new PuNDIT::Central::Localization::TrReceiver::MySQL( $cfgHash, $siteName );
+        $trRcv = new PuNDIT::Central::Localization::TrReceiver::MySQL( $cfgHash, $fedName );
     }
     elsif ( $subType eq "paristr" )
     {
-#        $trRcv = new PuNDIT::Central::Localization::TrReceiver::ParisTr( $cfgHash, $siteName );
+#        $trRcv = new PuNDIT::Central::Localization::TrReceiver::ParisTr( $cfgHash, $fedName );
+    }
+    elsif ( $subType eq "rabbitmq" )
+    {
+#        $trRcv = new PuNDIT::Central::Localization::TrReceiver::RabbitMQ( $cfgHash, $fedName );        
+        $trStore = new PuNDIT::Central::Localization::TrStore( $cfgHash, $fedName );
     }
     # Failsafe if failed to initialise
     if ( !$trRcv )
@@ -134,6 +140,12 @@ sub run
         
         # Get the events from the sub-receiver
         my $trHash = $trRcv->getLatestTraces($lastTime);
+        
+        # if trStore is defined, it means we are using it
+        if (defined($trStore))
+        {
+            $trStore->writeTrToDb($trHash);
+        }
         
         # Add it to the TrQueues
         _addHashToTrQueues($trQueues, $trHash);
@@ -345,7 +357,7 @@ sub _replaceStarsAndLoopsInTrace
         if ($currHopId ne '*')
         {
             # check whether it's a loop or not
-            if ($lastNonStarHop ne $currHopId)
+            if (defined($lastNonStarHop) && $lastNonStarHop ne $currHopId)
             {
                 if ($lastStar) # was preceded by a star
                 {
@@ -356,7 +368,7 @@ sub _replaceStarsAndLoopsInTrace
                 push @{$trProcessed->{'path'}}, $trHop->clone();
                 $lastLoop = 0;
             }
-            else
+            else # duplicate hop detected
             {
                 $lastLoop = 1;
             }
@@ -395,20 +407,20 @@ sub _updateNetworkMapSinglePath
         (exists($self->{'_trMatrix'}{$srcHost}{$dstHost})))
     {
 #        print "updateNMapSinglePath: Removing entry with timestamp " . $self->{'_trMatrix'}{$srcHost}{$dstHost}{'ts'} . "\n";
-        _remove_tr_entry($srcHost, $dstHost, $self->{'_trMatrix'});
+        _removeTrEntryFromMatrix($srcHost, $dstHost, $self->{'_trMatrix'});
     }
 
-    _insert_tr_entry($srcHost, $dstHost, $currTrace, $self->{'_trMatrix'});
+    _insertTrEntryToMatrix($srcHost, $dstHost, $currTrace, $self->{'_trMatrix'});
 }
 
 # Static method
 # removes a traceroute entry from the network map.
-sub _remove_tr_entry
+sub _removeTrEntryFromMatrix
 {
-    my ($srcHost, $dstHost, $tr_matrix) = @_;
+    my ($srcHost, $dstHost, $trMatrix) = @_;
     
-    if ((!exists($tr_matrix->{$srcHost})) ||
-        (!exists($tr_matrix->{$srcHost}{$dstHost})))
+    if ((!exists($trMatrix->{$srcHost})) ||
+        (!exists($trMatrix->{$srcHost}{$dstHost})))
     {
          return undef;
     }
@@ -416,35 +428,43 @@ sub _remove_tr_entry
 #    print "remove_tr_entry: removing this trace\n";
 #    print Dumper $remove_trace;
         
-    delete($tr_matrix->{$srcHost}{$dstHost});
+    delete($trMatrix->{$srcHost}{$dstHost});
 }
 
 # Build tr matrix from a traceroute entry
 # Param
-# $in_tr_src - Source address
-# $in_tr_dst - Destination address
-# $in_tr_entry - The traceroute. An array of addresses
-# $in_out_tr_matrix - Hash of traceroute paths. May be partially filled
+# $inTrSrc - Source address
+# $inTrDst - Destination address
+# $inTrEntry - The traceroute. An array of addresses
+# $trMatrix - Hash of traceroute paths. May be partially filled
 # Returns
 # The timestamp of the traceroute, or undef if skipped
-sub _insert_tr_entry
+sub _insertTrEntryToMatrix
 {
-    my ($in_tr_src, $in_tr_dst, $in_tr_entry, $in_out_tr_matrix) = @_;
+    my ($inTrSrc, $inTrDst, $inTrEntry, $trMatrix) = @_;
 
 #    print "inserting tr...\n";
-#    print Dumper $in_tr_entry;
+#    print Dumper $inTrEntry;
 
     # skip self traces
-    if ($in_tr_src eq $in_tr_entry->{'path'}[0]->getHopId())
+    if ($inTrSrc eq $inTrEntry->{'path'}[0]->getHopId())
     {
         return undef;
     }
 
     # clean stars from the new trace
     # Add to the tr matrix
-    $in_out_tr_matrix->{$in_tr_src}{$in_tr_dst} = _replaceStarsAndLoopsInTrace($in_tr_entry);
+    $trMatrix->{$inTrSrc}{$inTrDst} = _replaceStarsAndLoopsInTrace($inTrEntry);
 
-    return $in_tr_entry->{'ts'};
+    return $inTrEntry->{'ts'};
+}
+
+# writes this back to database
+sub _writeBackToDb
+{
+    my ($self, $inTr) = @_;
+    
+    return $self->{'_trStore'}->writeTrToDb($inTr);
 }
 
 1;
