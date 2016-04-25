@@ -51,16 +51,21 @@ sub new
     my $port = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"port"};
     my $database = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"database"};
     my $user = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"user"};
-    my $pw = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"password"};
+    my $password = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'mysql'}{"password"};
     
-    my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw);
+    # make the db connection here, refreshing it if it dies later
+    my $dsn = "DBI:mysql:$database:$host:$port";
+    my $dbh = DBI->connect($dsn, $user, $password); 
     if (!$dbh)
     {
-        $logger->error("Couldn't initialize DBI connection. Quitting");
-        return undef; 
+        $logger->error("Critical error: cannot connect to DB");
+        return undef;
     }
-        
+    
     my $self = {
+        '_dsn' => $dsn,
+        '_user' => $user,
+        '_password' => $password,
         '_dbh' => $dbh,
     };
     
@@ -91,6 +96,11 @@ sub getLatestTraces
 sub _get_hosts_timerange
 {
     my ($self, $start_ts, $end_ts) = @_;
+    
+    # check whether the db connection is still alive, otherwise reconnect
+    unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
+        $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
+    }
     
     my $dbh = $self->{'_dbh'};
     
