@@ -24,6 +24,7 @@ use threads::shared;
 
 use PuNDIT::Central::Localization::EvReceiver::MySQL;
 use PuNDIT::Central::Localization::EvReceiver::Test;
+use PuNDIT::Central::Localization::EvStore;
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -109,6 +110,7 @@ sub run
     # init the sub-receiver based on the configuration settings
     my $subType = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'type'};
     my $subRcv;
+    my $evStore; # only used for rabbitmq
     if ($subType eq "mysql")
     {
         $subRcv = new PuNDIT::Central::Localization::EvReceiver::MySQL($cfgHash, $fedName);
@@ -116,6 +118,7 @@ sub run
     elsif ($subType eq "rabbitmq")
     {
         $subRcv = 'rabbitmq';
+        $evStore = new PuNDIT::Central::Localization::EvStore($cfgHash, $fedName);
     }
     else # init the test receiver (debug)
     {
@@ -133,6 +136,12 @@ sub run
         
         # Get the events from the sub-receiver after lastTime
         my $evHash = $subRcv->getLatestEvents($lastTime);
+        
+        # if evStore is defined, it means we are using it
+        if (defined($evStore))
+        {
+            $evStore->writeEvToDb($evHash);
+        }
         
         # Add them to the EvQueues
         _addHashToEvQueues($evQueues, $evHash);
