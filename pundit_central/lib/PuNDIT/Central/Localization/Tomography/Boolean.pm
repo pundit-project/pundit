@@ -43,7 +43,11 @@ sub new
 {
 	my ($class, $cfgHash, $fedName) = @_;
     
+    # Flag that indicates whether the conservative version of the algorithm should be run
+    my $conservative = 0;
+    
 	my $self = {
+	    '_conservative' => $conservative,
 	};
     
     bless $self, $class;
@@ -206,7 +210,7 @@ sub _findMaxFailureLinks
 	return (\@failureLinkSet, $maxVal);
 }
 
-# Marks paths as explained
+# Marks paths and links as explained
 # Called after the problem link is identified
 # Params:
 # $problemPaths - The set of failure paths that the problem link belongs to
@@ -217,7 +221,6 @@ sub _findMaxFailureLinks
 sub _markExplainedPaths
 {
 	my ($problemPaths, $pathSet, $pathSetCount) = @_;
-	my $idx = 0;
 	
 	# Loop over the problem paths and mark them in the path set as explained		
 	foreach my $pathInfo (@$problemPaths)
@@ -241,16 +244,65 @@ sub _markExplainedPaths
 # $problemLink - The problematic link
 # $linkSet - The hash of hopIds to explained status flags
 # $linkSetCount - The number of unexplained links in linkSet
+# $trNodePath - The mappings of nodes to paths
 # Returns:
 # nothing
 sub _markExplainedLinks
 {
-	my ($problemLink, $linkSet, $linkSetCount) = @_;
+	my ($self, $problemLink, $linkSet, $linkSetCount) = @_;
 	
 	# Just set to 0
 	$linkSet->{$problemLink} = 0;
-	
-	return ($linkSetCount - 1);
+	$linkSetCount -= 1;
+		
+	return ($linkSetCount);
+}
+
+# marks the paths as explained for a problem link
+# if conservative flag is set, will not remove all links from all explained paths
+sub _markExplainedPathsLinks
+{
+    my ($problemPaths, $problemLink, $pathSet, $pathSetCount, $linkSet, $linkSetCount, $trMatrix, $conservative) = @_;
+    
+    # Loop over the problem paths and mark them in the path set as explained        
+    foreach my $pathInfo (@$problemPaths)
+    {
+        # The current element is a pair (src, dst)
+#       $logger->debug("Marking Problem Path from " . $pathInfo->{'src'} . " to " . $pathInfo->{'dst'} . " as explained");
+        
+        # We want the path set count to remain consistent, so need to check whether we are marking a unexplained path
+        if ($pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} == 1)
+        {
+            $pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} = 0;
+            $pathSetCount--;
+            
+            # skip if this path doesn't exist in Trace (sanity check) or conservative flag is set
+            next if ($conservative == 1 || !defined($trMatrix->{$pathInfo->{'src'}}{$pathInfo->{'dst'}}));
+            
+            my $trPath = $trMatrix->{$pathInfo->{'src'}}{$pathInfo->{'dst'}}->{'path'};
+            
+            foreach my $trHop (@{$trPath})
+            {
+                my $hopId = $trHop->getHopId();
+                
+                if ($linkSet->{$hopId} == 1)
+                {
+                    $linkSet->{$hopId} = 0;
+                    $linkSetCount -= 1;
+                }
+            }
+        }
+    }
+    
+    # if conservative flag is set, the problem link will not be set to 0
+    # handle that case here
+    if ($linkSet->{$problemLink} == 1)
+    {
+        $linkSet->{$problemLink} = 0;
+        $linkSetCount -= 1;
+    }
+
+    return ($pathSetCount, $linkSetCount);
 }
 
 # Runs the bool_tomo algorithm
@@ -281,9 +333,7 @@ sub runTomo
 #	print "linkSet ";
 #	print Dumper($linkSet);
 
-    my $failureScoreTotal = 0;
-
-	# loop while the sets aren't empty
+    # loop while the sets aren't empty
 	while (($pathSetCount != 0) && ($linkSetCount != 0))
 	{
 		my %failurePathSetList = (); # Failure paths for each link
@@ -329,18 +379,13 @@ sub runTomo
 			
 			# add to hypothesis set
 			push (@hypothesisSet, { 'hopId' => $problemLink, 'failureScore' => $failureScore });
-			$failureScoreTotal += $failureScore; 
 			
 			# mark as explained in path and link sets and update the counts
-			($pathSetCount) = _markExplainedPaths($problemPaths, $pathSet, $pathSetCount);
-			($linkSetCount) = _markExplainedLinks($problemLink, $linkSet, $linkSetCount);
+			
+			($pathSetCount, $linkSetCount) = _markExplainedPathsLinks($problemPaths, $problemLink, $pathSet, $pathSetCount, $linkSet, $linkSetCount, $trMatrix, $self->{'_conservative'});
+#			($pathSetCount) = _markExplainedPaths($problemPaths, $pathSet, $pathSetCount);
+#			($linkSetCount) = _markExplainedLinks($problemLink, $linkSet, $linkSetCount);
 		} 
-	}
-	
-	# finished with boolean tomography. Calc prob based on failureScore
-	foreach my $problemHop (@hypothesisSet)
-	{
-	    $problemHop->{'failureScore'} /= $failureScoreTotal;
 	}
 	
 	$logger->debug("Produced a hypothesis set with " . scalar(@hypothesisSet) . " nodes");
