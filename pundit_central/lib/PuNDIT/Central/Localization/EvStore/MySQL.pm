@@ -99,7 +99,7 @@ sub writeEvHash
         {
             foreach my $event (@{$events})
             {
-                $logger->debug("Inserting status to MySQL for " . $srcHost . " to " . $dstHost . " at " . $event->{"startTime"});
+#                $logger->debug("Inserting status to MySQL for " . $srcHost . " to " . $dstHost . " at " . $event->{"startTime"});
     
                 $sth->bind_param(1, $event->{'startTime'});
                 $sth->bind_param(2, $event->{'endTime'});
