@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+# Init file for PuNDIT Central
+#
+# chkconfig: 2345 65 20
+# description: PuNDIT Central
+#
+
+PREFIX=/opt/pundit_central
+BINDIR=${PREFIX}/bin
+CONFDIR=/opt/pundit_central/etc
+RUNDIR=/var/run
+
+CONFFILE=${CONFDIR}/pundit_central.conf
+LOGGERFILE=${CONFDIR}/pundit_central-logger.conf
+PIDFILE=pundit_central.pid
+
+USER=pundit
+GROUP=pundit
+
+FULL_PIDFILE=${RUNDIR}/${PIDFILE}
+
+## Run as root for the time being
+PUNDIT="${BINDIR}/pundit_central_daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --daemonize"
+#PUNDIT="${BINDIR}/pundit_central_daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --user=${USER} --group=${GROUP} --daemonize"
+
+ERROR=0
+ARGV="$@"
+if [ "x$ARGV" = "x" ] ; then 
+    ARGS="help"
+fi
+
+for ARG in $@ $ARGS
+do
+    # check for pidfile
+    if [ -f $FULL_PIDFILE ] ; then
+        PID=`cat $FULL_PIDFILE`
+        if [ "x$PID" != "x" ] && kill -0 $PID 2>/dev/null ; then
+            STATUS="PuNDIT Central (pid $PID) running"
+            RUNNING=1
+        else
+            STATUS="PuNDIT Central (pid $PID?) not running"
+            RUNNING=0
+        fi
+    else
+        STATUS="PuNDIT Central (no pid file) not running"
+        RUNNING=0
+    fi 
+
+    case $ARG in
+    start)
+	echo $PUNDIT
+
+	if $PUNDIT ; then
+	    echo "$0 $ARG: PuNDIT Central started"
+	    touch /var/lock/subsys/pundit_central
+	    ERROR=0
+	else
+	    echo "$0 $ARG: PuNDIT Central could not be started"
+	    ERROR=3
+	fi
+	;;
+    stop)
+	if [ $RUNNING -eq 0 ]; then
+	    echo "$0 $ARG: $STATUS"
+	    continue
+	fi
+	if kill $PID ; then
+	    echo "$0 $ARG: PuNDIT Central stopped"
+	    rm /var/lock/subsys/pundit_central
+	else
+	    echo "$0 $ARG: PuNDIT Central could not be stopped"
+	    ERROR=4
+	fi
+	;;
+    restart)
+    	$0 stop; echo "waiting..."; sleep 10; $0 start;
+	;;
+    status)
+	    echo $STATUS
+	    [ $RUNNING -eq 0 ] && ERROR=3
+	;;
+    *)
+	echo "usage: $0 (start|stop|restart|help)"
+	cat <<EOF
+
+start      - start PuNDIT Central
+stop       - stop PuNDIT Central
+restart    - restart PuNDIT Central if running by sending a SIGHUP or start if 
+             not running
+status     - report if tool is running
+help       - this screen
+
+EOF
+	ERROR=2
+    ;;
+
+    esac
+
+done
+
+exit $ERROR
