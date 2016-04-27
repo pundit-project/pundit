@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-package PuNDIT::Agent::Detection::Reporter::MySQL;
+package PuNDIT::Central::Localization::EvStore::MySQL;
 
 use strict;
 use DBI;
@@ -74,29 +74,17 @@ sub DESTROY
     $self->{'_dbh'}->disconnect;
 }
 
-# some boilerplate for writing to a mysql backend
-# TODO: Adapt this for the actual db schema
-sub writeEv
+# inserts an event into the mysql database
+sub writeEvHash
 {
-    my ($self, $status) = @_;
-    
-    $logger->debug("Inserting status to MySQL for " . $status->{"srcHost"} . " to " . $status->{"dstHost"} . " at " . $status->{"startTime"});
+    my ($self, $evHash) = @_;
     
     # check whether the db connection is still alive, otherwise reconnect
     unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
     
-    # build the sql string
-    my $sql = "INSERT INTO status (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES ";
-    for (my $i = scalar(@{$status->{'entries'}}); $i > 0; $i--)
-    {
-        $sql .= "(?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        if ($i > 1)
-        {
-            $sql .= ", ";
-        }
-    }
+    my $sql = "INSERT INTO status (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
     
     my $sth = $self->{'_dbh'}->prepare($sql);
     if (!$sth)
@@ -105,32 +93,34 @@ sub writeEv
         return undef;
     }
     
-    # bind each parameter in its corresponding place
-    for (my $i = 0; $i < scalar(@{$status->{'entries'}}); $i++)
+    while (my ($srcHost, $dstHash) = each %$evHash)
     {
-        my $currEntry = $status->{'entries'}->[$i];
-
-#        print "Mysql: inserting " . int($currEntry->{'firstTimestamp'}) . " to " . int($currEntry->{'lastTimestamp'}) . "\n";
-        
-        my $paramCount = 9;
-        
-        $sth->bind_param(($paramCount * $i) + 1, _roundOff($currEntry->{'firstTimestamp'}));
-        $sth->bind_param(($paramCount * $i) + 2, _roundOff($currEntry->{'lastTimestamp'}));
-        $sth->bind_param(($paramCount * $i) + 3, $status->{"srcHost"});
-        $sth->bind_param(($paramCount * $i) + 4, $status->{"dstHost"});
-        $sth->bind_param(($paramCount * $i) + 5, _twoDecimalPlace($status->{'baselineDelay'}));
-        $sth->bind_param(($paramCount * $i) + 6, $currEntry->{'detectionCode'});
-        $sth->bind_param(($paramCount * $i) + 7, _twoDecimalPlace($currEntry->{'queueingDelay'}));
-        $sth->bind_param(($paramCount * $i) + 8, _oneDecimalPlace($currEntry->{'lossPerc'}));
-        $sth->bind_param(($paramCount * $i) + 9, 0.0);
+        while (my ($dstHost, $events) = each %$dstHash)
+        {
+            foreach my $event (@{$events})
+            {
+                $logger->debug("Inserting status to MySQL for " . $srcHost . " to " . $dstHost . " at " . $event->{"startTime"});
+    
+                $sth->bind_param(1, $event->{'startTime'});
+                $sth->bind_param(2, $event->{'endTime'});
+                $sth->bind_param(3, $srcHost);
+                $sth->bind_param(4, $dstHost);
+                $sth->bind_param(5, $event->{'baselineDelay'});
+                $sth->bind_param(6, $event->{'detectionCode'});
+                $sth->bind_param(7, $event->{'queueingDelay'});
+                $sth->bind_param(8, $event->{'lossPerc'});
+                $sth->bind_param(9, $event->{'reorderMetric'});
+                
+                my $res = $sth->execute;
+                if (!$res)
+                {
+                    $logger->error("SQL execute failed. [$DBI::errstr]");
+                    return undef;
+                }
+            }
+        }
     }
 
-    my $res = $sth->execute;
-    if (!$res)
-    {
-        $logger->error("SQL execute failed. [$DBI::errstr]");
-        return undef;
-    }
     return 1; # return success
 }
 

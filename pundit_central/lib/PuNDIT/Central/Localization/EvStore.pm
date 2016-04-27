@@ -64,11 +64,11 @@ sub DESTROY
 }
 
 # Writes a received event to the db
-sub writeEvToDb
+sub writeEvHashToDb
 {
-    my ($self, $inEv) = @_;
+    my ($self, $evHash) = @_;
     
-    return ($self->{'_evStoreDb'}->writeEv($inEv));
+    return ($self->{'_evStoreDb'}->writeEvHash($evHash));
 }
 
 1;

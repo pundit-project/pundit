@@ -63,12 +63,12 @@ sub DESTROY
     # clean up state (if needed)
 }
 
-# Writes a received traceroute to the db
-sub writeTrToDb
+# Writes a received traceroute hash to the db
+sub writeTrHashToDb
 {
-    my ($self, $inTr) = @_;
+    my ($self, $trHash) = @_;
     
-    return ($self->{'_trStoreDb'}->writeTr($inTr));
+    return ($self->{'_trStoreDb'}->writeTrHash($trHash));
 }
 
 1;

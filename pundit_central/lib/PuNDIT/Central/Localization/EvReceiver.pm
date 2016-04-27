@@ -117,7 +117,7 @@ sub run
     }
     elsif ($subType eq "rabbitmq")
     {
-        $subRcv = 'rabbitmq';
+#        $subRcv = 'rabbitmq';
         $evStore = new PuNDIT::Central::Localization::EvStore($cfgHash, $fedName);
     }
     else # init the test receiver (debug)
@@ -140,7 +140,7 @@ sub run
         # if evStore is defined, it means we are using it
         if (defined($evStore))
         {
-            $evStore->writeEvToDb($evHash);
+            $evStore->writeEvHashToDb($evHash);
         }
         
         # Add them to the EvQueues

@@ -79,7 +79,7 @@ sub writeData
         }
         elsif ($tomo eq "boolean")
         {
-            $val1 = int($event->{'failureScore'} * 100); # convert to percentage
+            $val1 = int($event->{'failureScore'}); 
         }
         
         if (!exists($nodeIdTrHopList->{$event->{'hopId'}}))

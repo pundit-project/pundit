@@ -75,16 +75,17 @@ sub DESTROY
     $self->{'_dbh'}->disconnect;
 }
 
+# writes a received traceroute hash to the MySQL backend
 # return undef for failures or 1 for success
-sub writeTr
+sub writeTrHash
 {
-    my ($self, $inTr) = @_;
+    my ($self, $trHash) = @_;
     
     # check whether the db connection is still alive, otherwise reconnect
     unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
-        
+    
     my $sql = "INSERT INTO traceroutes ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES (?, ?, ?, ?, ?, ?);";
     
     my $sth = $self->{'_dbh'}->prepare($sql);
@@ -94,24 +95,30 @@ sub writeTr
         return undef;
     }
     
-    my $param_cnt = 6; # variable so we don't hardcode the number of params
-    for (my $i = 0; $i < scalar(@{$inTr->{'path'}}); $i++) # i is the hop count
+    while (my ($srcHost, $dstHash) = each(%$trHash))
     {
-        my $trHops = $inTr->{'path'}[$i].getRawList();
-        
-        # handle the case for load balanced hops
-        foreach my $hop (@{$trHops})
+        while (my ($dstHost, $trList) = each(%$dstHash))
         {
-            $sth->bind_param(1, $inTr->{'ts'}, SQL_INTEGER);
-            $sth->bind_param(2, $inTr->{'src'}, SQL_VARCHAR);
-            $sth->bind_param(3, $inTr->{'dst'}, SQL_VARCHAR);
-            $sth->bind_param(4, i, SQL_INTEGER);
-            $sth->bind_param(5, $hop->{'hopIp'}, SQL_VARCHAR);
-            $sth->bind_param(6, $hop->{'hopName'}, SQL_VARCHAR);
-            $sth->execute;
+            foreach my $inTr (@{$trList})
+            { 
+                for (my $i = 0; $i < scalar(@{$inTr->{'path'}}); $i++) # i is the hop count - 1
+                {
+                    my $trHops = $inTr->{'path'}[$i]->getRawList();
+                    
+                    foreach my $hop (@{$trHops})
+                    {
+                        $sth->bind_param(1, $inTr->{'ts'}, SQL_INTEGER);
+                        $sth->bind_param(2, $inTr->{'src'}, SQL_VARCHAR);
+                        $sth->bind_param(3, $inTr->{'dst'}, SQL_VARCHAR);
+                        $sth->bind_param(4, $i + 1, SQL_INTEGER);
+                        $sth->bind_param(5, $hop->{'hopIp'}, SQL_VARCHAR);
+                        $sth->bind_param(6, $hop->{'hopName'}, SQL_VARCHAR);
+                        $sth->execute;
+                    }
+                }
+            }
         }
     }
-    
     return 1; # success
 }
 

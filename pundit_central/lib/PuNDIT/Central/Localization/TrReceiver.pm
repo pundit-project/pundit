@@ -26,6 +26,7 @@ use threads::shared;
 use Data::Dumper;
 
 use PuNDIT::Central::Localization::TrReceiver::MySQL;
+use PuNDIT::Central::Localization::TrStore;
 #use PuNDIT::Central::Localization::TrReceiver::ParisTr; # not used right now. Agents will report traceroutes to the MySQL database
 use PuNDIT::Utils::TrHop;
 
@@ -144,7 +145,7 @@ sub run
         # if trStore is defined, it means we are using it
         if (defined($trStore))
         {
-            $trStore->writeTrToDb($trHash);
+            $trStore->writeTrHashToDb($trHash);
         }
         
         # Add it to the TrQueues
