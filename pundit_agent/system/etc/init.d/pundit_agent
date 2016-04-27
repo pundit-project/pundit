@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# Init file for PuNDIT Agent
+#
+# chkconfig: 2345 65 20
+# description: PuNDIT Agent
+#
+
+PREFIX=/opt/pundit
+BINDIR=${PREFIX}/bin
+CONFDIR=/opt/pundit/etc
+RUNDIR=/var/run
+
+CONFFILE=${CONFDIR}/pundit_agent.conf
+LOGGERFILE=${CONFDIR}/pundit_agent-logger.conf
+PIDFILE=pundit_agent.pid
+
+USER=perfsonar
+GROUP=perfsonar
+
+FULL_PIDFILE=${RUNDIR}/${PIDFILE}
+
+PUNDIT="${BINDIR}/pundit_daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --user=${USER} --group=${GROUP} --daemonize"
+
+ERROR=0
+ARGV="$@"
+if [ "x$ARGV" = "x" ] ; then 
+    ARGS="help"
+fi
+
+for ARG in $@ $ARGS
+do
+    # check for pidfile
+    if [ -f $FULL_PIDFILE ] ; then
+        PID=`cat $FULL_PIDFILE`
+        if [ "x$PID" != "x" ] && kill -0 $PID 2>/dev/null ; then
+            STATUS="PuNDIT Agent (pid $PID) running"
+            RUNNING=1
+        else
+            STATUS="PuNDIT Agent (pid $PID?) not running"
+            RUNNING=0
+        fi
+    else
+        STATUS="PuNDIT Agent (no pid file) not running"
+        RUNNING=0
+    fi 
+
+    case $ARG in
+    start)
+	echo $PUNDIT
+
+	if $PUNDIT ; then
+	    echo "$0 $ARG: PuNDIT Agent started"
+	    touch /var/lock/subsys/pundit_agent
+	    ERROR=0
+	else
+	    echo "$0 $ARG: PuNDIT Agent could not be started"
+	    ERROR=3
+	fi
+	;;
+    stop)
+	if [ $RUNNING -eq 0 ]; then
+	    echo "$0 $ARG: $STATUS"
+	    continue
+	fi
+	if kill $PID ; then
+	    echo "$0 $ARG: PuNDIT Agent stopped"
+	    rm /var/lock/subsys/pundit_agent
+	else
+	    echo "$0 $ARG: PuNDIT Agent could not be stopped"
+	    ERROR=4
+	fi
+	;;
+    restart)
+    	$0 stop; echo "waiting..."; sleep 10; $0 start;
+	;;
+    status)
+	    echo $STATUS
+	    [ $RUNNING -eq 0 ] && ERROR=3
+	;;
+    *)
+	echo "usage: $0 (start|stop|restart|help)"
+	cat <<EOF
+
+start      - start PuNDIT Agent
+stop       - stop PuNDIT Agent
+restart    - restart PuNDIT Agent if running by sending a SIGHUP or start if 
+             not running
+status     - report if tool is running
+help       - this screen
+
+EOF
+	ERROR=2
+    ;;
+
+    esac
+
+done
+
+exit $ERROR

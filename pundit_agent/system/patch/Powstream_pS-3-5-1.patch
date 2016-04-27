@@ -1,0 +1,11 @@
+--- /usr/lib/perfsonar/lib/perfSONAR_PS/RegularTesting/Tests/Powstream.pm.bak	2016-03-03 17:42:40.712638706 -0500
++++ /usr/lib/perfsonar/lib/perfSONAR_PS/RegularTesting/Tests/Powstream.pm	2016-03-03 17:54:43.653492707 -0500
+@@ -242,7 +242,7 @@
+         $logger->debug("Received file: $file");
+ 
+         unless ($file =~ /(.*).(sum)$/) {
+-            unlink($file);
++#           unlink($file);
+             next;
+         }
+ 

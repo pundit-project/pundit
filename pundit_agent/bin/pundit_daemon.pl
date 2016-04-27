@@ -1,4 +1,4 @@
-#!perl -w
+#!/usr/bin/perl -w
 #
 # Copyright 2016 Georgia Institute of Technology
 #

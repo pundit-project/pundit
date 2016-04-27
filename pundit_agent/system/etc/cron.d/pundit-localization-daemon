@@ -1,0 +1,1 @@
+*/15 * * * * root perl -I /opt/pundit/lib /opt/pundit/bin/localization_traceroute_daemon.pl &> /opt/pundit/localization.log

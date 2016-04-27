@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# pundit-cleanowamp
+# Cleans up old owamp raw data files in the regular testing directory
+
+# Path to owamp directory
+OWAMPROOT="/var/lib/perfsonar/regulartesting/"
+
+# how many hours in the past to keep
+HOURS=10
+
+/usr/bin/find ${OWAMPROOT}owamp_* -name "*.owp" -type f -mtime +${HOURS} -delete
+
