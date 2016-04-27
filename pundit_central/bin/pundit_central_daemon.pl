@@ -67,7 +67,7 @@ if ($DAEMONIZE) {
 # after we've dropped privileges.
 if ( $USER and $GROUP ) {
     if ( setids( USER => $USER, GROUP => $GROUP ) != 0 ) {
-        print "Error: Couldn't drop priviledges\n";
+        print "Error: Couldn't drop privileges\n";
         exit( -1 );
     }
 }
