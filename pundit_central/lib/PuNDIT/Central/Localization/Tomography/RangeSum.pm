@@ -82,6 +82,9 @@ sub _removeGoodPathsLinks
         my $srcHost = $event->{'srcHost'};
         my $dstHost = $event->{'dstHost'};
         
+        # skip unknown events. We don't have a good way of handling them yet.
+        next if ($event->{'unknown'} == 1);
+        
 		if (exists($trMatrix->{$srcHost}{$dstHost}))
 		{
 			# Mark path as bad

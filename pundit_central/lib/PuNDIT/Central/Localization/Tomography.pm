@@ -105,6 +105,18 @@ sub _filterEvents
                 'dstHost' => $event->{'dstHost'}, 
                 'metric' => $event->{$metric},
                 'processed' => 0,
+                'unknown' => 0,
+            };
+            push (@filtered_events, $newEntry);
+	    }
+	    elsif ($event->{'detectionCode'} == -1) # special case when unknown entry encountered
+	    {
+	        my $newEntry = {
+                'srcHost' => $event->{'srcHost'}, 
+                'dstHost' => $event->{'dstHost'}, 
+                'metric' => -1,
+                'processed' => 0,
+                'unknown' => 1, 
             };
             push (@filtered_events, $newEntry);
 	    }

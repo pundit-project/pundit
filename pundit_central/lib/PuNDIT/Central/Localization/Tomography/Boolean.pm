@@ -67,6 +67,12 @@ sub new
 sub _removeGoodPathsLinks
 {
     my ($evTable, $trMatrix, $pathSet, $linkSet) = @_;
+    
+    # Values in pathSet and linkSet:
+    # 0 - Good path/link
+    # 1 - Bad path/link
+    # 2 - Unknown path/link
+    
     my $pathSetCount = 0;
     my $linkSetCount = 0;
     
@@ -76,17 +82,32 @@ sub _removeGoodPathsLinks
     foreach my $event (@$evTable)
     {
         my $srcHost = $event->{'srcHost'};
-        my $dstHost = $event->{'dstHost'};
+        my $dstHost = $event->{'dstHost'}; 
+        my $unknown = $event->{'unknown'};
         
         if (exists($trMatrix->{$srcHost}{$dstHost}))
         {
-            # Mark path as bad
+            # If currently set to good, mark path as bad or unknown
             if ($pathSet->{$srcHost}{$dstHost} == 0)
             {
-                $pathSet->{$srcHost}{$dstHost} = 1;
+                # unknown paths don't add to the pathSetCount and use a value of 2
+                if ($unknown == 0)
+                {
+                    $pathSet->{$srcHost}{$dstHost} = 1; # set to bad
+                    $pathSetCount++;
+                }
+                else # unknown == 1
+                {
+                    $pathSet->{$srcHost}{$dstHost} = 2; # special flag for unknown
+                }
+            }
+            elsif (($pathSet->{$srcHost}{$dstHost} == 2) && ($unknown == 0)) # bad paths override unknown paths
+            {
+                $logger->warn("Warning. Duplicated event from $srcHost to $dstHost. Preferring bad path over unknown.");
+                $pathSet->{$srcHost}{$dstHost} = 1; # set to bad
                 $pathSetCount++;
             }
-            elsif ($pathSet->{$srcHost}{$dstHost} == 1)
+            else # we assume that duplicates are invalid
             {
                 $logger->warn("Warning. Duplicated event from $srcHost to $dstHost. Ignoring.");
                 next;
@@ -97,11 +118,26 @@ sub _removeGoodPathsLinks
             foreach my $trHop (@$pathref)
             {
                 my $hopId = $trHop->getHopId();
-                if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 0)
+                next if (!exists($linkSet->{$hopId})); # skip invalid links
+                
+                if ($linkSet->{$hopId} == 0)
+                {
+                    # unknown links don't add to the linkSetCount and use a value of 2
+                    if ($unknown == 0)
+                    {
+                        $linkSet->{$hopId} = 1;
+                        $linkSetCount++;
+                    }
+                    else # unknown == 1
+                    {
+                        $linkSet->{$hopId} = 2;
+                    }
+                }
+                elsif (($linkSet->{$hopId} == 2) && ($unknown == 0)) # bad links override unknown
                 {
                     $linkSet->{$hopId} = 1;
                     $linkSetCount++;
-                }
+                }                
             }
             
             push (@newEvTable, $event);
@@ -113,23 +149,30 @@ sub _removeGoodPathsLinks
         }
     }
     
-    # loop over path set, marking links as good
+    # loop over pathSet, marking links overlapping with good paths as good
     while (my ($srcGood, $destInfo) = each(%$pathSet))
     {
         while (my ($dstGood, $badFlag) = each(%$destInfo))
         {
-            # Skip bad links
-            next if ($badFlag == 1);
+            # Skip bad or unknown paths
+            # we are only interested in good paths here
+            next if ($badFlag >= 1);
             
             # mark each hop in this path as good
             my $pathref = $trMatrix->{$srcGood}{$dstGood}{'path'};
             foreach my $trHop (@$pathref)
             {
                 my $hopId = $trHop->getHopId();
-                if (exists($linkSet->{$hopId}) && $linkSet->{$hopId} == 1)
+                if (exists($linkSet->{$hopId}) && ($linkSet->{$hopId} >= 1)) # bad or unknown
                 {
+                    # only decrement if resetting a bad link
+                    if ($linkSet->{$hopId} == 1)
+                    {
+                        $linkSetCount--;
+                    }
+                    
+                    # set the flag to good regardless of bad or unknown
                     $linkSet->{$hopId} = 0;
-                    $linkSetCount--;
                 }
             }
         }
@@ -159,13 +202,14 @@ sub _addToFailurePathSetList
 	    $logger->warn("Couldn't find $unexplainedLink in trNodePath. Quitting.");
 	    return;
 	}
+	
 	my $containingPaths = $trNodePath->{$unexplainedLink};
 		
 	# For each path that contains the problem link
 	foreach my $pathInfo (@$containingPaths)
 	{
-		# If is recognised as an unexplained path
-		if ($unexplainedPathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} == 1)
+		# If is recognised as an unexplained or unknown path
+		if ($unexplainedPathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} >= 1)
 		{
 			# Add to the list of failed paths
 			push (@failurePathSet, $pathInfo);
@@ -271,10 +315,13 @@ sub _markExplainedPathsLinks
 #       $logger->debug("Marking Problem Path from " . $pathInfo->{'src'} . " to " . $pathInfo->{'dst'} . " as explained");
         
         # We want the path set count to remain consistent, so need to check whether we are marking a unexplained path
-        if ($pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} == 1)
+        if ($pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} >= 1)
         {
             $pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} = 0;
-            $pathSetCount--;
+            if ($pathSet->{$pathInfo->{'src'}}{$pathInfo->{'dst'}} == 1)
+            {
+                $pathSetCount--;
+            }
             
             # skip if this path doesn't exist in Trace (sanity check) or conservative flag is set
             next if ($conservative == 1 || !defined($trMatrix->{$pathInfo->{'src'}}{$pathInfo->{'dst'}}));
@@ -290,16 +337,23 @@ sub _markExplainedPathsLinks
                     $linkSet->{$hopId} = 0;
                     $linkSetCount -= 1;
                 }
+                elsif ($linkSet->{$hopId} == 2)
+                {
+                    $linkSet->{$hopId} = 0;
+                }
             }
         }
     }
     
     # if conservative flag is set, the problem link will not be set to 0
     # handle that case here
-    if ($linkSet->{$problemLink} == 1)
+    if ($linkSet->{$problemLink} >= 1)
     {
         $linkSet->{$problemLink} = 0;
-        $linkSetCount -= 1;
+        if ($linkSet->{$problemLink} == 1)
+        {
+            $linkSetCount -= 1;
+        }
     }
 
     return ($pathSetCount, $linkSetCount);
