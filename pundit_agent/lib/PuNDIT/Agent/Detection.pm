@@ -739,7 +739,8 @@ sub _detection_suite
     
     # generate the detection code for output
     $windowSummary->{'detectionCode'} = $windowSummary->{'delayProblem'} << 1 | 
-                                        $windowSummary->{'lossProblem'} << 2 | 
+                                        $windowSummary->{'lossProblem'} << 2 |
+                                        $windowSummary->{'routeChange'} << 4 |  
                                         $windowSummary->{'contextSwitch'} << 7 |
                                         $windowSummary->{'unsyncedClocks'} << 8;
     return ($windowSummary, $problemCount);
