@@ -74,7 +74,7 @@ sub new
         '_delayThresh' => $delayThresh,
         
         '_lossThresh' => $lossThresh,
-        '_routeChangeThresh' => 0.6,
+        '_routeChangeThresh' => 0.6, ## TODO: Seprarte config
         
         '_windowSize' => 5, # window size in seconds
         '_windowPackets' => 50, # expected number of packets in a window (fix this later)
@@ -85,6 +85,8 @@ sub new
         
         '_contextSwitchThresh' => 0.0001, # gaps smaller than this for context switch detection (in s)
         '_contextSwitchConsecPkts' => 5, # number of consecutive packets to consider as context switch
+        
+        '_routeChangeThresh' => 50, # route change level shift detection threshold (in ms)
     };
     
     bless $self, $class;
@@ -310,7 +312,7 @@ sub _readFile
             {
                 $sessionMinDelay = $delay;
             }
-        }        
+        }
         
         my %elem = ();
         $elem{ts} = $sndTS; # sender timestamp
@@ -348,7 +350,7 @@ sub _readFile
     # loop one more time to fill the sender timestamps of lost packets
     if (scalar(@lost_array) > 0 || scalar(@unsync_array) > 0)
     {
-        open(IN, "owstats -R $inputFile |") or die;
+        open(IN, "owstats -R $inputFile |") or die; ## TODO: Guard against die
         while(my $line = <IN>)
         {
             # Each line can be split using this way
@@ -511,7 +513,7 @@ sub _detection
                     
                     $problemCount += $windowProblemCount;
                 }
-                elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) >= 0.8) # process if greater than 80% full
+                elsif ((scalar(@$tsSlice)/$self->{'_windowPackets'}) >= 0.8) # process if greater than 80% full ## TODO: Change to time range
                 {
                     my ($windowSummary, $windowProblemCount) = $self->_detection_suite($tsSlice, $windowMinDelay, $sessionMinDelay, $currentBin, $currentBin + $self->{'_windowSize'});
                     # Store summary in result
@@ -695,6 +697,7 @@ sub _detection_suite
         'reorderProblem' => 0,
         'contextSwitch' => 0,
         'unsyncedClocks' => 0,
+        'routeChange' => 0,
         
         'detectionCode' => 0,
         
@@ -714,13 +717,16 @@ sub _detection_suite
     
     my $problemCount = $self->_detectLossLatencyReordering($timeseries, $windowSummary, $sessionMinDelay);
     
+    # Route change detection
+    my ($routeChange) = $self->route_change_detect2($timeseries);
+    if ($routeChange == 1)
+    {
+        $windowSummary->{'routeChange'} = 1;
+    }
+    
     # Call these functions only if there is a problem in this window
     if ($problemCount > 0)
     {
-        # disabled
-#       my ($ret) = $self->route_change_detect($tsSlice);
-#       print $ret . "\n";
-        
         # Context switch detection
         my ($contextSwitch) = $self->_detectContextSwitch($timeseries);
         if ($contextSwitch == 1)
@@ -797,7 +803,7 @@ sub _detectLossLatencyReordering
     my $queueingDelay = 0.0;
     if ((scalar(@$timeseries) - $lossProblemCount) > 0) # only count non-lost packets
     {
-        $delayPerc = ($delayProblemCount * 100.0)/(scalar(@$timeseries) - $lossProblemCount);
+        $delayPerc = ($delayProblemCount * 100.0)/(scalar(@$timeseries) - $lossProblemCount - $unsyncedClockCount); ## TODO: Zero-check here
         if ($delayPerc > $self->{"_delayThresh"})
         {
             $delayProblemFlag = 1;
@@ -932,9 +938,51 @@ sub route_change_detect
 }
 
 # uses a more traditional timeseries approach
+# described in "On the Predictability of Large Transfer TCP Throughput" pg 152
+# naive implementation, to be optimised
 sub route_change_detect2
 {
+    my ($self, $timeseries) = @_;
     
+    # takes an array as input and outputs the median, min, max
+    sub medianMinMax
+    {
+        my ($inArr) = @_;
+        
+        my @vals = sort {$a->{'delay'} <=> $b->{'delay'}} @{$inArr};
+        my $len = scalar(@vals);
+        my $med;
+        if($len % 2 == 1) # odd
+        {
+            $med = $vals[int($len/2)]->{'delay'};
+        }
+        else # even
+        {
+            $med = ($vals[int($len/2)-1]->{'delay'} + $vals[int($len/2)]->{'delay'})/2;
+        }
+        return ($med, $vals[0]->{'delay'}, $vals[-1]->{'delay'});
+    }
+    
+    # loop over the timeseries until n-2
+    for my $i (1.. (scalar(@{$timeseries}) - 3))
+    {
+        my $tsSlice1 = [@$timeseries[0 .. ($i - 1)]];
+        my $tsSlice2 = [@$timeseries[$i .. (scalar(@{$timeseries})-1) ]];
+        
+        my ($med1, $min1, $max1) = medianMinMax($tsSlice1);
+        my ($med2, $min2, $max2) = medianMinMax($tsSlice2);
+        
+        # Conditions:
+        # 1. All of region 2 is less than region 1 or all of region 2 is greater than region 1
+        # 2. Difference in median for both is greater than threshold 
+        if (($min1 > $max2 || $max1 < $min2) && 
+            (abs($med1 - $med2) > $self->{'_routeChangeThresh'}))
+        {
+            $logger->debug("Route change detected. Magnitude: " . abs($med1 - $med2));
+            return 1;
+        }
+    }
+    return 0;
 }
 
 # detects context switches
