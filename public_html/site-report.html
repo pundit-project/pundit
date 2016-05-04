@@ -75,14 +75,17 @@ and open the template in the editor.
                         <h1><b>PuNDIT site report:</b> <i id="siteTitle"></i></h1>
                         <script>document.getElementById("siteTitle").innerHTML = site;</script>
                         <h2>Open problems</h2>
+                        <p><i>This table contains the list of recent problems at the site. Select a problem for more info.</i></p>
                         <div id="report" class="wp-table" data-selection-channel="loc/selection"></div>
                         <script>document.getElementById("report").setAttribute("data-channel", "report/" + site);</script>
                         <div class="wp-show-hide" data-channel="loc/selection">
-                            <h2>Delay history from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
+                            <h2>History for <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0)"></span> from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
+                            <p><i>This graph shows the metric over time relative to the problem selected. Delays are in ms and pLoss in %.</i></p>
                             <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0)))"
                                  data-clear-channel="loc/selection"></div>
                         </div>
-                        <h2>Problem history</h2>
+                        <h2>Problem count over time</h2>
+                        <p><i>This graph shows the number of problems present at each moment in time at the site, divided into each category.</i></p>
                         <div id="problemHistory" class="wp-time-area-graph"></div>
                         <script>document.getElementById("problemHistory").setAttribute("data-channel", "problems/count/" + site);</script>
                     </div>
