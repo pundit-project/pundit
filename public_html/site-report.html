@@ -72,7 +72,8 @@ and open the template in the editor.
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <h1><b>PuNDIT site report:</b> <i>aglt2.org</i></h1>
+                        <h1><b>PuNDIT site report:</b> <i id="siteTitle"></i></h1>
+                        <script>document.getElementById("siteTitle").innerHTML = site;</script>
                         <h2>Open problems</h2>
                         <div id="report" class="wp-table" data-selection-channel="loc/selection"></div>
                         <script>document.getElementById("report").setAttribute("data-channel", "report/" + site);</script>
