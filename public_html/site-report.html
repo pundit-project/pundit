@@ -82,11 +82,11 @@ and open the template in the editor.
                             <h2>History for <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0)"></span> from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
                             <p><i>This graph shows the metric over time relative to the problem selected. Delays are in ms and pLoss in %.</i></p>
                             <div class="wp-time-line-graph" data-channel="=channel(concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0)))"
-                                 data-clear-channel="loc/selection"></div>
+                                 data-clear-channel="=concat(&quot;jdbc://history/info/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0), &quot;/&quot;, elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0))"></div>
                         </div>
                         <h2>Problem count over time</h2>
                         <p><i>This graph shows the number of problems present at each moment in time at the site, divided into each category.</i></p>
-                        <div id="problemHistory" class="wp-time-area-graph"></div>
+                        <div id="problemHistory" class="wp-time-area-graph" data-y-min="0"></div>
                         <script>document.getElementById("problemHistory").setAttribute("data-channel", "problems/count/" + site);</script>
                     </div>
                 </div>
