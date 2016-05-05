@@ -34,7 +34,7 @@ CREATE TABLE `status` (
   `queueingDelay` float DEFAULT NULL,
   `lossRatio` float DEFAULT NULL,
   `reorderMetric` float DEFAULT NULL
-)
+);
 
 # localization results
 
@@ -45,7 +45,7 @@ CREATE TABLE `localization_events` (
   `det_code` tinyint(3) unsigned DEFAULT NULL,
   `val1` int(10) unsigned DEFAULT NULL,
   `val2` int(10) unsigned DEFAULT NULL
-)
+);
 
 # Traceroute table for holding traces collected by each agent
 
