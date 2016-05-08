@@ -45,7 +45,7 @@ our $N //= 4;
 my $scriptPath = dirname(__FILE__);
 
 my $cfg = $scriptPath . '/../etc/pundit_agent.conf';
-my $fedName = 'pundit_testbed'; # TODO: run this once per site
+my $fedName = '<federation-name-goes-here>'; # TODO: run this once per site
 
 my %cfgHash = Config::General::ParseConfig($cfg);
 
