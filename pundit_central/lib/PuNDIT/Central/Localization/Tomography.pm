@@ -56,7 +56,8 @@ sub new
     return undef if (!$bool_tomo);
 	
 	my $problem_types_string = $cfgHash->{'pundit_central'}{$fedName}{'localization'}{'problem_types'};
-	my @problem_types_list = split(/[\s+|,]/, $problem_types_string);
+	chomp($problem_types_string);
+	my @problem_types_list = split(/[\s|,]+/, $problem_types_string);
 	if (!$problem_types_string || !@problem_types_list)
 	{
         $logger->error("No problem types specified to localize. Quitting");
@@ -95,6 +96,8 @@ sub _filterEvents
 	    next if (!defined($event));
 	    
 	    my $problemFlag = PuNDIT::Utils::DetectionCode::getDetectionCodeBitValid($event->{'detectionCode'}, $problemName);
+	    
+	    next if (!defined($problemFlag));
 	    
 #	    $logger->debug("detCode " . $event->{'detectionCode'} . " problem $problemName flag $problemFlag");
 	    
