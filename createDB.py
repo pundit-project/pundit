@@ -6,11 +6,9 @@ cnx = mysql.connector.connect(user='root', password='pythiaRush!')
 
 cursor = cnx.cursor(buffered=True)
 
-changeCursor = cnx.cursor(buffered=True)
-
 dbName = "pythia_new"
 
-createStatusStaging = """CREATE TABLE `status_staging` (
+createStatusStaging = """CREATE TABLE `statusStaging` (
   `startTime` int(11) DEFAULT NULL,
   `endTime` int(11) DEFAULT NULL,
   `srchost` varchar(256) DEFAULT NULL,
@@ -29,7 +27,7 @@ createNode = """CREATE TABLE `node` (
   `site` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`nodeId`),
   KEY `name_idx` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;"""
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;"""
 
 createStatus = """CREATE TABLE `status` (
   `startTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -41,10 +39,10 @@ createStatus = """CREATE TABLE `status` (
   `queueingDelay` float unsigned DEFAULT NULL,
   `lossRatio` float unsigned DEFAULT NULL,
   `reorderMetric` float unsigned DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
-changeCursor.execute("CREATE DATABASE " + dbName);
-changeCursor.execute("USE " + dbName);
-changeCursor.execute(createStatusStaging)
-changeCursor.execute(createNode)
-changeCursor.execute(createStatus)
+cursor.execute("CREATE DATABASE " + dbName);
+cursor.execute("USE " + dbName);
+cursor.execute(createStatusStaging)
+cursor.execute(createNode)
+cursor.execute(createStatus)
