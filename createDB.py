@@ -20,6 +20,15 @@ createStatusStaging = """CREATE TABLE `statusStaging` (
   `reorderMetric` float DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
+createTracerouteStaging = """CREATE TABLE `tracerouteStaging` (
+  `ts` int(32) NOT NULL,
+  `src` varchar(256) DEFAULT NULL,
+  `dst` varchar(256) DEFAULT NULL,
+  `hop_no` int(32) NOT NULL,
+  `hop_ip` varchar(256) DEFAULT NULL,
+  `hop_name` varchar(256) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
 createNode = """CREATE TABLE `node` (
   `nodeId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `ip` varchar(45) NOT NULL,
@@ -38,11 +47,37 @@ createStatus = """CREATE TABLE `status` (
   `detectionCode` bit(8) DEFAULT NULL,
   `queueingDelay` float unsigned DEFAULT NULL,
   `lossRatio` float unsigned DEFAULT NULL,
-  `reorderMetric` float unsigned DEFAULT NULL
+  `reorderMetric` float unsigned DEFAULT NULL,
+  KEY `src_dst_time_idx` (`srcId`, `dstId`, `startTime`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
+createTracehop = """CREATE TABLE `tracehop` (
+  `tracerouteId` int(10) unsigned NOT NULL,
+  `hopNumber` tinyint(3) unsigned NOT NULL,
+  `nodeId` smallint(5) unsigned NOT NULL,
+  KEY `trace_hop_idx` (`tracerouteId`, `hopNumber`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
+createTraceroute = """CREATE TABLE `traceroute` (
+  `tracerouteId` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `srcId` smallint(5) unsigned NOT NULL,
+  `dstId` smallint(5) unsigned NOT NULL,
+  PRIMARY KEY (`tracerouteId`),
+  KEY `src_dst_idx` (`srcId`, `dstId`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
+createTracerouteHistory = """CREATE TABLE `tracerouteHistory` (
+  `tracerouteId` int(10) unsigned NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `traceroute_timestamp_idx` (`tracerouteId`,`timestamp`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
 cursor.execute("CREATE DATABASE " + dbName);
 cursor.execute("USE " + dbName);
+cursor.execute(createTracerouteStaging)
 cursor.execute(createStatusStaging)
 cursor.execute(createNode)
 cursor.execute(createStatus)
+cursor.execute(createTracehop)
+cursor.execute(createTraceroute)
+cursor.execute(createTracerouteHistory)
