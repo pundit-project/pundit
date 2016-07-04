@@ -30,6 +30,8 @@ addMissingHopHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT hop_ip
 
 readTraceRoutesWithIds = """select src.nodeId AS srcId, dst.nodeId AS dstId, tracerouteProcessing.hop_no AS hopNumber, FROM_UNIXTIME(ts) AS timestamp, hop.nodeId AS nodeId from tracerouteProcessing, node AS src, node AS dst, node as hop WHERE tracerouteProcessing.src = src.name AND src.ip = "" AND tracerouteProcessing.dst = dst.name AND dst.ip = "" AND tracerouteProcessing.hop_ip = hop.ip AND tracerouteProcessing.hop_name = hop.name ORDER BY srcId, dstId, timestamp, hopNumber;"""
 
+getTraceroutesBetweenHosts = """SELECT traceRouteId, nodeId FROM tracehop NATURAL JOIN traceroute WHERE srcId = %s AND dstId = %s ORDER BY tracerouteID, hopNumber"""
+
 addTraceroute = """INSERT INTO traceroute (srcId, dstId) VALUES (%s, %s)"""
 
 addTraceHop = """INSERT INTO tracehop (tracerouteId, hopNumber, nodeId) VALUES (%s, %s, %s)"""
@@ -54,9 +56,40 @@ cursor.execute(addMissingHopHosts);
 #  Add route to routehistory
 
 routeCache = {};
+routeCacheSrc = -1;
+routeCacheDst = -1;
 cursor2 = cnx.cursor(buffered=True)
 cursor.execute(readTraceRoutesWithIds);
 row = cursor.fetchone()
+
+def refreshCache(route):
+   global cursor2;
+   global routeCache;
+   global routeCacheSrc;
+   global routeCacheDst;
+   if (route["src"] == routeCacheSrc and route["dst"] == routeCacheDst):
+      return;
+   print "Refreshing Cache";
+   routeCacheSrc = route["src"];
+   routeCacheDst = route["dst"];
+   cursor2.execute(getTraceroutesBetweenHosts, (route["src"],route["dst"]));
+   routeCache = {};
+   row = cursor2.fetchone();
+   currentTraceRoute = -1;
+   hopNodes = None;
+   while row is not None:
+      if currentTraceRoute != row[0]:
+         if currentTraceRoute != -1:
+            routeCache[tuple(hopNodes)] = currentTraceRoute;
+            print "Found route %s" %(hopNodes);
+         currentTraceRoute = row[0];
+         hopNodes = [row[1]];
+      else:
+         hopNodes.append(row[1]);
+      row = cursor2.fetchone();
+   if currentTraceRoute != -1:
+      routeCache[tuple(hopNodes)] = currentTraceRoute;
+      print "Found route %s" %(hopNodes);
 
 def nextRoute():
    global row;
@@ -95,6 +128,7 @@ def insertRouteInstance(timestamp, routeId):
 while row != None:
    route = nextRoute();
    if route != None:
+      refreshCache(route);
       if tuple(route["hopNodes"]) not in routeCache:
          routeId = insertRoute(route);
          routeCache[tuple(route["hopNodes"])] = routeId;
