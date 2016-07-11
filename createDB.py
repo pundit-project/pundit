@@ -29,6 +29,16 @@ createTracerouteStaging = """CREATE TABLE `tracerouteStaging` (
   `hop_name` varchar(256) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
+createLocalizationEventStaging = """CREATE TABLE `localizationEventStaging` (
+  `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `link_ip` int(10) unsigned DEFAULT NULL,
+  `link_name` varchar(256) DEFAULT NULL,
+  `det_code` tinyint(3) unsigned DEFAULT NULL,
+  `val1` int(10) unsigned DEFAULT NULL,
+  `val2` int(10) unsigned DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
+
 createNode = """CREATE TABLE `node` (
   `nodeId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `ip` varchar(45) NOT NULL,
@@ -72,12 +82,22 @@ createTracerouteHistory = """CREATE TABLE `tracerouteHistory` (
   KEY `traceroute_timestamp_idx` (`tracerouteId`,`timestamp`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
+createLocalizationEvent = """CREATE TABLE `localizationEvent` (
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `nodeId` smallint(5) unsigned NOT NULL,
+  `detectionCode` bit(8) NOT NULL,
+  `val1` float unsigned DEFAULT NULL,
+  `val2` float unsigned DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
 cursor.execute("CREATE DATABASE " + dbName);
 cursor.execute("USE " + dbName);
 cursor.execute(createTracerouteStaging)
 cursor.execute(createStatusStaging)
+cursor.execute(createLocalizationEventStaging)
 cursor.execute(createNode)
 cursor.execute(createStatus)
 cursor.execute(createTracehop)
 cursor.execute(createTraceroute)
 cursor.execute(createTracerouteHistory)
+cursor.execute(createLocalizationEvent)
