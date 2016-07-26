@@ -44,6 +44,11 @@ print "Analize status for problems"
 # Create problem processor
 class ProblemProcessor:
   queryStatusProcessing = "SELECT srchost, dsthost, startTime, endTime, detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from statusProcessing WHERE startTime > 1400000000 ORDER BY srchost, dsthost, startTime"
+  findOpenProblem = "SELECT UNIX_TIMESTAMP(startTime), info FROM problem WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
+  updateOpenProblem = "UPDATE problem SET info = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
+  addOpenProblem = "INSERT INTO problem (startTime, srcId, dstId, type, info) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s)"
+  addClosedProblem = "INSERT INTO problem (startTime, endTime, srcId, dstId, type, info) VALUES (FROM_UNIXTIME(%s), FROM_UNIXTIME(%s), %s, %s, %s, %s)"
+  closeProblem = "UPDATE problem SET info = %s, endTime = FROM_UNIXTIME(%s) WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
 
   currentSrcHost = None
   currentDstHost = None
@@ -81,7 +86,7 @@ class ProblemProcessor:
     return 0
 
   def pathChanged(self):
-    return currentSrcHost != srcHost or currentDstHost != dstHost
+    return self.currentSrcHost != self.srcHost or self.currentDstHost != self.dstHost
 
   def updateCurrentPath(self):
     self.currentSrcHost = self.srcHost
@@ -105,8 +110,8 @@ class ProblemProcessor:
         self.currentDelayProblemOldProblem = False
       else:
         self.currentDelayProblemStart = row[0]
-        self.currentDelayProblemEnd = row[1]
-        self.currentDelayProblemInfo = self.infoFromDB(row[2])
+        self.currentDelayProblemEnd = None
+        self.currentDelayProblemInfo = self.infoFromDB(row[1])
         self.currentDelayProblemOldProblem = True
 
   def flushAndInitLossProblem(self, initNext):
@@ -126,8 +131,8 @@ class ProblemProcessor:
         self.currentLossProblemOldProblem = False
       else:
         self.currentLossProblemStart = row[0]
-        self.currentLossProblemEnd = row[1]
-        self.currentLossProblemInfo = self.infoFromDB(row[2])
+        self.currentLossProblemEnd = None
+        self.currentLossProblemInfo = self.infoFromDB(row[1])
         self.currentLossProblemOldProblem = True
 
   def processDelayProblem(self):

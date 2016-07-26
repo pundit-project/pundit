@@ -90,6 +90,15 @@ createLocalizationEvent = """CREATE TABLE `localizationEvent` (
   `val2` float unsigned DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
+createProblem = """CREATE TABLE IF NOT EXISTS `problem` (
+  `startTime` TIMESTAMP NOT NULL,
+  `endTime` TIMESTAMP NULL DEFAULT NULL,
+  `srcId` smallint(5) unsigned NOT NULL,
+  `dstId` smallint(5) unsigned NOT NULL,
+  `type` varchar(32) NOT NULL,
+  `info` varchar(10) NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+
 cursor.execute("CREATE DATABASE " + dbName);
 cursor.execute("USE " + dbName);
 cursor.execute(createTracerouteStaging)
@@ -101,3 +110,4 @@ cursor.execute(createTracehop)
 cursor.execute(createTraceroute)
 cursor.execute(createTracerouteHistory)
 cursor.execute(createLocalizationEvent)
+cursor.execute(createProblem)
