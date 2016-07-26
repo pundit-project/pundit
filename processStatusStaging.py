@@ -93,7 +93,6 @@ class ProblemProcessor:
     self.currentDstHost = self.dstHost
 
   def flushAndInitDelayProblem(self, initNext):
-    print "Initializing"
     if not self.currentDelayProblemStart is None:
       if self.currentDelayProblemOldProblem:
         self.cursor2.execute(self.updateOpenProblem, (self.delayInfo(), self.currentSrcHost, self.currentDstHost, "delay"))
@@ -181,9 +180,7 @@ class ProblemProcessor:
   def processStatus(self, cnx):
     cursor = cnx.cursor(buffered=True)
     self.cursor2 = cnx.cursor(buffered=True)
-    print "before query"
     cursor.execute(self.queryStatusProcessing)
-    print "query done"
     for (self.srcHost, self.dstHost, self.startTime, self.endTime, self.hasDelay, self.hasLoss, self.queueingDelay, self.lossRatio) in cursor:
       if self.pathChanged():
         self.flushAndInitDelayProblem(True)
