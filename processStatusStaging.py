@@ -39,6 +39,159 @@ cursor.execute(addMissingSrcHosts);
 cursor.execute(addMissingDstHosts);
 print "Converting status entries"
 cursor.execute(convertStatusEntries);
+print "Analize status for problems"
+
+# Create problem processor
+class ProblemProcessor:
+  queryStatusProcessing = "SELECT srchost, dsthost, startTime, endTime, detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from statusProcessing WHERE startTime > 1400000000 ORDER BY srchost, dsthost, startTime"
+
+  currentSrcHost = None
+  currentDstHost = None
+  currentDelayProblemStart = None
+  currentDelayProblemEnd = None
+  currentDelayProblemInfo = 0
+  currentDelayProblemOldProblem = False
+  currentLossProblemStart = None
+  currentLossProblemEnd = None
+  currentLossProblemInfo = 0
+  currentLossProblemOldProblem = False
+
+  srcHost = None
+  dstHost = None
+  startTime = None
+  endTime = None
+  hasDelay = None
+  hasLoss = None
+  queueingDelay = None
+  lossRatio = None
+
+  cursor2 = None
+
+  def delayInfo(self):
+    return "%s ms" % self.currentDelayProblemInfo
+
+  def lossInfo(self):
+    return "%s%%" % self.currentLossProblemInfo
+
+  def infoFromDB(self, info):
+    if info.endswith(" ms"):
+      return float(info[:-3])
+    if info.endswith("%"):
+      return float(info[:-1])
+    return 0
+
+  def pathChanged(self):
+    return currentSrcHost != srcHost or currentDstHost != dstHost
+
+  def updateCurrentPath(self):
+    self.currentSrcHost = self.srcHost
+    self.currentDstHost = self.dstHost
+
+  def flushAndInitDelayProblem(self, initNext):
+    print "Initializing"
+    if not self.currentDelayProblemStart is None:
+      if self.currentDelayProblemOldProblem:
+        self.cursor2.execute(self.updateOpenProblem, (self.delayInfo(), self.currentSrcHost, self.currentDstHost, "delay"))
+      else:
+        self.cursor2.execute(self.addOpenProblem, (self.currentDelayProblemStart, self.currentSrcHost, self.currentDstHost, "delay", self.delayInfo()))
+
+    if initNext:
+      self.cursor2.execute(self.findOpenProblem, (self.srcHost, self.dstHost, "delay"))
+      row = self.cursor2.fetchone()
+      if row is None:
+        self.currentDelayProblemStart = None
+        self.currentDelayProblemEnd = None
+        self.currentDelayProblemInfo = 0
+        self.currentDelayProblemOldProblem = False
+      else:
+        self.currentDelayProblemStart = row[0]
+        self.currentDelayProblemEnd = row[1]
+        self.currentDelayProblemInfo = self.infoFromDB(row[2])
+        self.currentDelayProblemOldProblem = True
+
+  def flushAndInitLossProblem(self, initNext):
+    if not self.currentLossProblemStart is None:
+      if self.currentLossProblemOldProblem:
+        self.cursor2.execute(self.updateOpenProblem, (self.lossInfo(), self.currentSrcHost, self.currentDstHost, "pLoss"))
+      else:
+        self.cursor2.execute(self.addOpenProblem, (self.currentLossProblemStart, self.currentSrcHost, self.currentDstHost, "pLoss", self.lossInfo()))
+
+    if initNext:
+      self.cursor2.execute(self.findOpenProblem, (self.srcHost, self.dstHost, "pLoss"))
+      row = self.cursor2.fetchone()
+      if row is None:
+        self.currentLossProblemStart = None
+        self.currentLossProblemEnd = None
+        self.currentLossProblemInfo = 0
+        self.currentLossProblemOldProblem = False
+      else:
+        self.currentLossProblemStart = row[0]
+        self.currentLossProblemEnd = row[1]
+        self.currentLossProblemInfo = self.infoFromDB(row[2])
+        self.currentLossProblemOldProblem = True
+
+  def processDelayProblem(self):
+    if self.currentDelayProblemStart is None:
+      if self.hasDelay != 0:
+        self.currentDelayProblemStart = self.startTime
+        self.currentDelayProblemEnd = self.endTime
+        self.currentDelayProblemInfo = max(self.currentDelayProblemInfo, self.queueingDelay)
+    else:
+      if self.hasDelay != 0:
+        self.currentDelayProblemEnd = self.endTime
+        self.currentDelayProblemInfo = max(self.currentDelayProblemInfo, self.queueingDelay)
+      else:
+        if self.endTime > (currentDelayProblemEnd + 3600):
+          if self.currentDelayProblemOldProblem:
+            self.cursor2.execute(self.closeProblem, (self.delayInfo(), self.currentDelayProblemEnd, self.currentSrcHost, self.currentDstHost, "delay"))
+          else:
+            self.cursor2.execute(self.addClosedProblem, (self.currentDelayProblemStart, self.currentDelayProblemEnd, self.currentSrcHost, self.currentDstHost, "delay", self.delayInfo()))
+          self.currentDelayProblemStart = None
+          self.currentDelayProblemEnd = None
+          self.currentDelayProblemInfo = 0
+          self.currentDelayProblemOldProblem = False
+
+  def processLossProblem(self):
+    if self.currentLossProblemStart is None:
+      if self.hasLoss != 0:
+        self.currentLossProblemStart = self.startTime
+        self.currentLossProblemEnd = self.endTime
+        self.currentLossProblemInfo = max(self.currentLossProblemInfo, self.lossRatio)
+    else:
+      if self.hasLoss != 0:
+        self.currentLossProblemEnd = self.endTime
+        self.currentLossProblemInfo = max(self.currentLossProblemInfo, self.lossRatio)
+      else:
+        if self.endTime > (currentLossProblemEnd + 3600):
+          if self.currentLossProblemOldProblem:
+            self.cursor2.execute(self.closeProblem, (self.lossInfo(), self.currentLossProblemEnd, self.currentSrcHost, self.currentDstHost, "pLoss"))
+          else:
+            self.cursor2.execute(self.addClosedProblem, (self.currentLossProblemStart, self.currentLossProblemEnd, self.currentSrcHost, self.currentDstHost, "pLoss", self.lossInfo()))
+          self.currentLossProblemStart = None
+          self.currentLossProblemEnd = None
+          self.currentLossProblemInfo = 0
+          self.currentLossProblemOldProblem = False
+
+
+  def processStatus(self, cnx):
+    cursor = cnx.cursor(buffered=True)
+    self.cursor2 = cnx.cursor(buffered=True)
+    print "before query"
+    cursor.execute(self.queryStatusProcessing)
+    print "query done"
+    for (self.srcHost, self.dstHost, self.startTime, self.endTime, self.hasDelay, self.hasLoss, self.queueingDelay, self.lossRatio) in cursor:
+      if self.pathChanged():
+        self.flushAndInitDelayProblem(True)
+        self.flushAndInitLossProblem(True)
+        self.updateCurrentPath()
+      self.processDelayProblem()
+      self.processLossProblem()
+    self.flushAndInitDelayProblem(False)
+    self.flushAndInitLossProblem(False)
+
+problemProcessor = ProblemProcessor()
+problemProcessor.processStatus(cnx)
+
 cursor.execute(removeStatusProcessing);
 end = time.time();
 print "Done in %s s" %(str(end-start));
