@@ -28,6 +28,7 @@ and open the template in the editor.
         <!-- The table widget -->
         <script type="text/javascript" src="//www.google.com/jsapi"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-table.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
         
         <!-- Bootstrap is used to make this page look decent. It's not needed by the widgets. -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
@@ -69,13 +70,14 @@ and open the template in the editor.
                 <div class="row">
                     <div class="col-md-12">
                         <h1><b>PuNDIT traceroutes:</b> <i id="path"></i></h1>
-                        <script>document.getElementById("path").innerHTML = src + " - " + dst;</script>
+                        <!--<script>document.getElementById("path").innerHTML = src + " - " + dst;</script>-->
+                        <p>Source: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/src"></span></p>
+                        <p>Destination: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/dst"></span></p>
                     </div>
                     <div class="col-md-3">
                         <h2>Traceroute history</h2>
                         <p><i>Routes in chronological order. Select a route for more info.</i></p>
-                        <div id="report" class="wp-table" data-selection-channel="loc/selection"></div>
-                        <script>document.getElementById("report").setAttribute("data-channel", "history/traceroute/" + src + "/" + dst);</script>
+                        <div id="report" class="wp-table" data-channel="=formula(concat(&quot;history/traceroute/&quot;, 'loc/src', &quot;/&quot;, 'loc/dst'))" data-selection-channel="loc/selection"></div>
                     </div>
                     <div class="col-md-9">
                         <div class="wp-show-hide" data-channel="loc/selection">
