@@ -38,13 +38,19 @@ createLocalizationEventStaging = """CREATE TABLE `localizationEventStaging` (
   `val2` int(10) unsigned DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
-
-createNode = """CREATE TABLE `node` (
-  `nodeId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+createHop = """CREATE TABLE `hop` (
+  `hopId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `ip` varchar(45) NOT NULL,
   `name` varchar(256) NOT NULL,
+  PRIMARY KEY (`hopId`),
+  KEY `name_idx` (`name`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;"""
+
+createHost = """CREATE TABLE `host` (
+  `hostId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(256) NOT NULL,
   `site` varchar(32) DEFAULT NULL,
-  PRIMARY KEY (`nodeId`),
+  PRIMARY KEY (`hostId`),
   KEY `name_idx` (`name`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;"""
 
@@ -104,7 +110,8 @@ cursor.execute("USE " + dbName);
 cursor.execute(createTracerouteStaging)
 cursor.execute(createStatusStaging)
 cursor.execute(createLocalizationEventStaging)
-cursor.execute(createNode)
+cursor.execute(createHop)
+cursor.execute(createHost)
 cursor.execute(createStatus)
 cursor.execute(createTracehop)
 cursor.execute(createTraceroute)

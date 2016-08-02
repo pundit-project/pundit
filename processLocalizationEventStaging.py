@@ -20,9 +20,9 @@ switchStagingAndProcessing = """RENAME TABLE localizationEventStaging TO localiz
    localizationEventProcessing TO localizationEventStaging,
    localizationEventTmp TO localizationEventProcessing"""
 
-addMissingHopHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT link_ip AS ip, link_name AS name, REVERSE(SUBSTRING_INDEX(REVERSE(link_name), '.', 2)) AS site FROM localizationEventProcessing LEFT JOIN node ON (node.name = localizationEventProcessing.link_name AND node.ip = localizationEventProcessing.link_ip) WHERE node.ip IS NULL"""
+addMissingHopHosts = """INSERT INTO hop (ip, name) SELECT DISTINCT link_ip AS ip, link_name AS name FROM localizationEventProcessing LEFT JOIN hop ON (hop.name = localizationEventProcessing.link_name AND hop.ip = localizationEventProcessing.link_ip) WHERE hop.ip IS NULL"""
 
-convertLocalizationEventEntries = """INSERT INTO localizationEvent SELECT ts AS timestamp, node.nodeId AS nodeId, det_code AS detectionCode, val1 AS val1, val2 AS val2 FROM localizationEventProcessing, node WHERE localizationEventProcessing.link_name = node.name AND localizationEventProcessing.link_ip = node.ip"""
+convertLocalizationEventEntries = """INSERT INTO localizationEvent SELECT ts AS timestamp, node.hopId AS nodeId, det_code AS detectionCode, val1 AS val1, val2 AS val2 FROM localizationEventProcessing, hop AS node WHERE localizationEventProcessing.link_name = node.name AND localizationEventProcessing.link_ip = node.ip"""
 
 removeLocalizationEventProcessing = """DROP TABLE localizationEventProcessing;"""
 

@@ -7,4 +7,6 @@ cnx = mysql.connector.connect(user='root', password='pythiaRush!', database='pyt
 cursor = cnx.cursor(buffered=True)
 
 cursor.execute("DROP TABLE IF EXISTS statusProcessing");
+cursor.execute("DROP TABLE IF EXISTS localizationEventProcessing");
+cursor.execute("DROP TABLE IF EXISTS tracerouteProcessing");
 

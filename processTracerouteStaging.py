@@ -22,13 +22,13 @@ switchTracerouteStagingAndProcessing = """RENAME TABLE tracerouteStaging TO trac
    tracerouteProcessing TO tracerouteStaging,
    tracerouteTmp TO tracerouteProcessing"""
 
-addMissingSrcHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT "" AS ip, src AS name, REVERSE(SUBSTRING_INDEX(REVERSE(src), '.', 2)) AS site FROM tracerouteProcessing WHERE src NOT IN (SELECT name FROM node)"""
+addMissingSrcHosts = """INSERT INTO host (name, site) SELECT DISTINCT src AS name, REVERSE(SUBSTRING_INDEX(REVERSE(src), '.', 2)) AS site FROM tracerouteProcessing WHERE src NOT IN (SELECT name FROM host)"""
 
-addMissingDstHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT "" AS ip, dst AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dst), '.', 2)) AS site FROM tracerouteProcessing WHERE dst NOT IN (SELECT name FROM node)"""
+addMissingDstHosts = """INSERT INTO host (name, site) SELECT DISTINCT dst AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dst), '.', 2)) AS site FROM tracerouteProcessing WHERE dst NOT IN (SELECT name FROM host)"""
 
-addMissingHopHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT hop_ip AS ip, hop_name AS name, REVERSE(SUBSTRING_INDEX(REVERSE(hop_name), '.', 2)) AS site FROM tracerouteProcessing LEFT JOIN node ON (node.name = tracerouteProcessing.hop_name AND node.ip = tracerouteProcessing.hop_ip) WHERE node.ip IS NULL"""
+addMissingHopHosts = """INSERT INTO hop (ip, name) SELECT DISTINCT hop_ip AS ip, hop_name AS name FROM tracerouteProcessing LEFT JOIN hop ON (hop.name = tracerouteProcessing.hop_name AND hop.ip = tracerouteProcessing.hop_ip) WHERE hop.ip IS NULL"""
 
-readTraceRoutesWithIds = """select src.nodeId AS srcId, dst.nodeId AS dstId, tracerouteProcessing.hop_no AS hopNumber, FROM_UNIXTIME(ts) AS timestamp, hop.nodeId AS nodeId from tracerouteProcessing, node AS src, node AS dst, node as hop WHERE tracerouteProcessing.src = src.name AND src.ip = "" AND tracerouteProcessing.dst = dst.name AND dst.ip = "" AND tracerouteProcessing.hop_ip = hop.ip AND tracerouteProcessing.hop_name = hop.name ORDER BY srcId, dstId, timestamp, hopNumber;"""
+readTraceRoutesWithIds = """select src.hostId AS srcId, dst.hostId AS dstId, tracerouteProcessing.hop_no AS hopNumber, FROM_UNIXTIME(ts) AS timestamp, hop.hopId AS nodeId from tracerouteProcessing, host AS src, host AS dst, hop WHERE tracerouteProcessing.src = src.name AND tracerouteProcessing.dst = dst.name AND tracerouteProcessing.hop_ip = hop.ip AND tracerouteProcessing.hop_name = hop.name ORDER BY srcId, dstId, timestamp, hopNumber;"""
 
 getTraceroutesBetweenHosts = """SELECT traceRouteId, nodeId FROM tracehop NATURAL JOIN traceroute WHERE srcId = %s AND dstId = %s ORDER BY tracerouteID, hopNumber"""
 

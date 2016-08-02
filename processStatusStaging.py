@@ -23,11 +23,11 @@ switchStatusStagingAndProcessing = """RENAME TABLE statusStaging TO statusTmp,
    statusProcessing TO statusStaging,
    statusTmp TO statusProcessing"""
 
-addMissingSrcHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT "" AS ip, srchost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(srchost), '.', 2)) AS site FROM statusProcessing WHERE srchost NOT IN (SELECT name FROM node)"""
+addMissingSrcHosts = """INSERT INTO host (name, site) SELECT DISTINCT srchost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(srchost), '.', 2)) AS site FROM statusProcessing WHERE srchost NOT IN (SELECT name FROM host)"""
 
-addMissingDstHosts = """INSERT INTO node (ip, name, site) SELECT DISTINCT "" AS ip, dsthost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dsthost), '.', 2)) AS site FROM statusProcessing WHERE dsthost NOT IN (SELECT name FROM node)"""
+addMissingDstHosts = """INSERT INTO host (name, site) SELECT DISTINCT dsthost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dsthost), '.', 2)) AS site FROM statusProcessing WHERE dsthost NOT IN (SELECT name FROM host)"""
 
-convertStatusEntries = """INSERT INTO status SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.nodeId AS srcId, dst.nodeId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, node AS src, node AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name"""
+convertStatusEntries = """INSERT INTO status SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.hostId AS srcId, dst.hostId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, host AS src, host AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name"""
 
 removeStatusProcessing = """DROP TABLE statusProcessing;"""
 
