@@ -51,13 +51,11 @@
             </channel>
             <channel name="history/info/(.*)/(.*)/delay">
                 <query>SELECT timeBlock AS Time, delay AS Delay FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
-                <!--<query>SELECT timeBlock AS Time, delay AS Delay FROM timeSeries WHERE srchost=? AND dsthost=? ORDER BY timeBlock ASC</query>-->
-                <!--<pollQuery>SELECT timeBlock AS Time FROM timeSeries WHERE srchost=? AND dsthost=? ORDER BY timeBlock ASC LIMIT 1</pollQuery>-->
                 <pollQuery>SELECT timeBlock AS Time FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC LIMIT 1</pollQuery>
             </channel>
             <channel name="history/info/(.*)/(.*)/pLoss">
-                <query>SELECT timeBlock AS Time, loss AS PLoss FROM timeSeries WHERE srchost=? AND dsthost=? ORDER BY timeBlock ASC</query>
-                <pollQuery>SELECT timeBlock AS Time FROM timeSeries WHERE srchost=? AND dsthost=? ORDER BY timeBlock ASC LIMIT 1</pollQuery>
+                <query>SELECT timeBlock AS Time, loss AS Loss FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
+                <pollQuery>SELECT timeBlock AS Time FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC LIMIT 1</pollQuery>
             </channel>
         </channelSet>
 
