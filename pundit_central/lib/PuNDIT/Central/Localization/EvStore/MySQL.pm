@@ -74,53 +74,54 @@ sub DESTROY
     $self->{'_dbh'}->disconnect;
 }
 
-# inserts an event into the mysql database
+# inserts events into the mysql database
+
 sub writeEvHash
 {
     my ($self, $evHash) = @_;
-    
+
     # check whether the db connection is still alive, otherwise reconnect
     unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
-    
+
     my $sql = "INSERT INTO status (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
-    
+
     my $sth = $self->{'_dbh'}->prepare($sql);
     if (!$sth)
     {
         $logger->error("SQL Prepare failed. [$DBI::errstr]");
         return undef;
     }
-    
-    while (my ($srcHost, $dstHash) = each %$evHash)
+
+    $logger->debug(Data::Dumper::Dumper($evHash));           ###
+
+    $logger->debug("Contents of event");
+
+    for my $field (keys %$evHash)
     {
-        while (my ($dstHost, $events) = each %$dstHash)
+        $sth->bind_param(3, $evHash->{'srcHost'});
+        $sth->bind_param(4, $evHash->{'dstHost'});
+        $sth->bind_param(5, $evHash->{'baselineDelay'});
+
+        my @measures = split(';', $evHash->{'measures'});
+        foreach my $snapshot (@measures)
         {
-            foreach my $event (@{$events})
+            my @elements = split(',', $snapshot);
+            $sth->bind_param(1, $elements[0]);    # startTime
+            $sth->bind_param(2, $elements[1]);    # endTime
+            $sth->bind_param(6, $elements[2]);    # detectionCode
+            $sth->bind_param(7, $elements[3]);    # queueingDelay
+            $sth->bind_param(8, $elements[4]);    # lossRatio
+            $sth->bind_param(9, $elements[5]);    # reorderMetric
+            my $res = $sth->execute;
+            if (!$res)
             {
-#                $logger->debug("Inserting status to MySQL for " . $srcHost . " to " . $dstHost . " at " . $event->{"startTime"});
-    
-                $sth->bind_param(1, $event->{'startTime'});
-                $sth->bind_param(2, $event->{'endTime'});
-                $sth->bind_param(3, $srcHost);
-                $sth->bind_param(4, $dstHost);
-                $sth->bind_param(5, $event->{'baselineDelay'});
-                $sth->bind_param(6, $event->{'detectionCode'});
-                $sth->bind_param(7, $event->{'queueingDelay'});
-                $sth->bind_param(8, $event->{'lossPerc'});
-                $sth->bind_param(9, $event->{'reorderMetric'});
-                
-                my $res = $sth->execute;
-                if (!$res)
-                {
-                    $logger->error("SQL execute failed. [$DBI::errstr]");
-                    return undef;
-                }
+                $logger->error("SQL execute failed. [$DBI::errstr]");
+                return undef;
             }
         }
     }
-
     return 1; # return success
 }
 

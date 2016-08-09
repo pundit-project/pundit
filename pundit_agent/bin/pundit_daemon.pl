@@ -203,6 +203,11 @@ sub setids {
         $REAL_GROUP_ID = $gid;
     }
 
+    if ( $uid eq 'root' ) { # hack to support user root. TODO: fix later
+        $EFFECTIVE_USER_ID = $REAL_USER_ID = 0;
+        return 0;
+    }
+
     # Now set UID
     if ( $uid =~ /\D/ ) {
 

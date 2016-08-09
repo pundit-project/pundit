@@ -124,6 +124,7 @@ sub processFile
         'srcHost' => $srcHost,
         'dstHost' => $dstHost,
         'startTime' => $startTime,
+        'endTime' => _roundOff($timeseries->[-1]{ts}),
         'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
         'baselineDelay' => $sessionMinDelay,
         'entries' => $summary,
@@ -132,6 +133,7 @@ sub processFile
     $self->{'_reporter'}->writeStatus($statusMsg);
     
     $logger->debug("$srcHost $dstHost Returning $problemFlags problemFlags at $startTime");
+    $logger->debug("entries: $summary");      ###
     
     return ($problemFlags, $statusMsg);
 }
