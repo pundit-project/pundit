@@ -12,4 +12,5 @@ cursor.execute("TRUNCATE TABLE traceroute");
 cursor.execute("TRUNCATE TABLE tracehop");
 cursor.execute("TRUNCATE TABLE hop");
 cursor.execute("TRUNCATE TABLE host");
+cursor.execute("TRUNCATE TABLE problem");
 

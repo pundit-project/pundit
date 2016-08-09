@@ -43,7 +43,7 @@ print "Analize status for problems"
 
 # Create problem processor
 class ProblemProcessor:
-  queryStatusProcessing = "SELECT srchost, dsthost, startTime, endTime, detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from statusProcessing WHERE startTime > 1400000000 ORDER BY srchost, dsthost, startTime"
+  queryStatusProcessing = "SELECT srcId, dstId, UNIX_TIMESTAMP(startTime), UNIX_TIMESTAMP(endTime), detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from status ORDER BY srcId, dstId, startTime"
   findOpenProblem = "SELECT UNIX_TIMESTAMP(startTime), info FROM problem WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
   updateOpenProblem = "UPDATE problem SET info = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
   addOpenProblem = "INSERT INTO problem (startTime, srcId, dstId, type, info) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s)"
@@ -109,7 +109,7 @@ class ProblemProcessor:
         self.currentDelayProblemOldProblem = False
       else:
         self.currentDelayProblemStart = row[0]
-        self.currentDelayProblemEnd = None
+        self.currentDelayProblemEnd = row[0]
         self.currentDelayProblemInfo = self.infoFromDB(row[1])
         self.currentDelayProblemOldProblem = True
 
@@ -130,7 +130,7 @@ class ProblemProcessor:
         self.currentLossProblemOldProblem = False
       else:
         self.currentLossProblemStart = row[0]
-        self.currentLossProblemEnd = None
+        self.currentLossProblemEnd = row[0]
         self.currentLossProblemInfo = self.infoFromDB(row[1])
         self.currentLossProblemOldProblem = True
 
@@ -145,7 +145,7 @@ class ProblemProcessor:
         self.currentDelayProblemEnd = self.endTime
         self.currentDelayProblemInfo = max(self.currentDelayProblemInfo, self.queueingDelay)
       else:
-        if self.endTime > (currentDelayProblemEnd + 3600):
+        if self.endTime > (self.currentDelayProblemEnd + 3600):
           if self.currentDelayProblemOldProblem:
             self.cursor2.execute(self.closeProblem, (self.delayInfo(), self.currentDelayProblemEnd, self.currentSrcHost, self.currentDstHost, "delay"))
           else:
@@ -166,7 +166,7 @@ class ProblemProcessor:
         self.currentLossProblemEnd = self.endTime
         self.currentLossProblemInfo = max(self.currentLossProblemInfo, self.lossRatio)
       else:
-        if self.endTime > (currentLossProblemEnd + 3600):
+        if self.endTime > (self.currentLossProblemEnd + 3600):
           if self.currentLossProblemOldProblem:
             self.cursor2.execute(self.closeProblem, (self.lossInfo(), self.currentLossProblemEnd, self.currentSrcHost, self.currentDstHost, "pLoss"))
           else:
@@ -182,6 +182,7 @@ class ProblemProcessor:
     self.cursor2 = cnx.cursor(buffered=True)
     cursor.execute(self.queryStatusProcessing)
     for (self.srcHost, self.dstHost, self.startTime, self.endTime, self.hasDelay, self.hasLoss, self.queueingDelay, self.lossRatio) in cursor:
+      #print "New line %s %s %s %s %s %s %s %s" %(self.srcHost, self.dstHost, self.startTime, self.endTime, self.hasDelay, self.hasLoss, self.queueingDelay, self.lossRatio);
       if self.pathChanged():
         self.flushAndInitDelayProblem(True)
         self.flushAndInitLossProblem(True)
