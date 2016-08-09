@@ -105,6 +105,8 @@ createProblem = """CREATE TABLE IF NOT EXISTS `problem` (
   `info` varchar(10) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
 
+createTimeSeries = """CREATE VIEW timeSeries AS SELECT FROM_UNIXTIME(FLOOR((UNIX_TIMESTAMP(startTime) / (5 * 60))) * (5 * 60)) AS timeBlock, srcId AS srcId, dstId AS dstId, MAX(queueingDelay) AS delay, MAX(lossRatio) AS loss, MAX(((detectionCode & 2) <> 0)) AS hasDelay, MAX(((detectionCode & 4) <> 0)) AS hasLoss FROM status GROUP BY timeBlock, srcId, dstId ORDER BY srcId, dstId, startTime"""
+
 cursor.execute("CREATE DATABASE " + dbName);
 cursor.execute("USE " + dbName);
 cursor.execute(createTracerouteStaging)
@@ -118,3 +120,4 @@ cursor.execute(createTraceroute)
 cursor.execute(createTracerouteHistory)
 cursor.execute(createLocalizationEvent)
 cursor.execute(createProblem)
+cursor.execute(createTimeSeries)
