@@ -2,14 +2,11 @@
 <mappings version="1">
 
     <mapping channel="test/jdbc" substitution="jdbc://test/now" permission="READ_ONLY"/>
-    <mapping channel="test/maria" substitution="jdbc://maria/test" permission="READ_ONLY"/>
     <mapping channel="echo/(.*)" substitution="jdbc://maria/echo/$1/$1" permission="READ_ONLY"/>
     <mapping channel="history/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="traceroute/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="hosts" substitution="jdbc://$0" permission="READ_ONLY"/>
-<!--    <mapping channel="report/(.*)" substitution="file:///root/pundit-mock/report/$1" permission="READ_ONLY"/>-->
     <mapping channel="report/(.*)" substitution="jdbc://report/$1/$1" permission="READ_ONLY"/>
-<!--    <mapping channel="problems/count/(.*)" substitution="file:///root/pundit-mock/problems/count/$1" permission="READ_ONLY"/>-->
     <mapping channel="problems/count/(.*)" substitution="jdbc://problems/count/$1/$1" permission="READ_ONLY"/>
 
     <mapping channel="sim/(.*)" substitution="sim://$1"  permission="READ_ONLY"/>
