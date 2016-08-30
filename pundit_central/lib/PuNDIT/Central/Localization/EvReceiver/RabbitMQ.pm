@@ -23,20 +23,28 @@ use Data::Dumper;
 use Log::Log4perl qw(get_logger);
 use PuNDIT::Central::Messaging::Topics;
 
+=pod
+
+=head1 PuNDIT::Central::Localization::EvReceiver::RabbitMQ
+
+Interface to get events from the message queue
+
+=cut
+
 my $logger = get_logger(__PACKAGE__);
 
 # Constructor
 sub new
 {
-    my ($class, $cfgHash, $site) = @_;
+    my ($class, $cfgHash, $fedName) = @_;
 
     # Load RabbitMQ parameters
-    my ($user)         = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"user"};
-    my ($password)     = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"password"};
-    my ($channel)      = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"channel"};
-    my ($exchange)     = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"exchange"};
-    my ($queue)        = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"queue"};
-    my ($binding_keys) = $cfgHash->{"pundit_central"}{$site}{"ev_receiver"}{"rabbitmq"}{"binding_keys"};
+    my ($user)         = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"user"};
+    my ($password)     = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"password"};
+    my ($channel)      = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"channel"};
+    my ($exchange)     = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"exchange"};
+    my ($queue)        = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"queue"};
+    my ($binding_keys) = $cfgHash->{"pundit_central"}{$fedName}{"ev_receiver"}{"rabbitmq"}{"binding_keys"};
 
 
     # Set up the RabbitMQ topic exchange
@@ -66,21 +74,33 @@ sub DESTROY
 }
 
 
-# Consumer  - To redo
-sub readEvent
+sub getLatestEvents
 {
-    my ($self) = @_;
+    my ($self, $lastTS) = @_;
 
-    $logger->debug("Consuming...");
+    $logger->debug("Consume...");
 
-    # consume results
-    while ( my $payload = $self->{'_mq'}->recv() ) {
-        last if ( !defined $payload );
-        my $event = Dumper($payload->{body});
-        #my $event = Dumper($payload);
-        $logger->debug($event);
-        print "$event";
-    }
+    my $event = $self->getEventsMQ($lastTS, undef);
+    my @arr = split (/\|/, $event);
+    my %h = (
+      "srcHost"       => $arr[0],
+      "dstHost"       => $arr[1],
+      "baselineDelay" => $arr[2],
+      "measures"      => $arr[3]         ###
+     );
+    my $href = \%h;
+    return $href;
+}
+
+sub getEventsMQ
+{
+    my ($self, $startTS, $endTS) = @_;
+
+     my $payload = $self->{'_mq'}->recv();
+     #my $event = Dumper($payload->{body});
+     my $event = $payload->{body};            ###
+     $logger->debug("$event");
+     return $event;
 }
 
 1;

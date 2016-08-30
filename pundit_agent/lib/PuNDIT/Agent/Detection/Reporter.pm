@@ -22,6 +22,7 @@ use strict;
 use Log::Log4perl qw(get_logger);
 
 use PuNDIT::Agent::Detection::Reporter::MySQL;
+use PuNDIT::Agent::Detection::Reporter::RabbitMQ;
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -39,7 +40,8 @@ sub new
     }
     elsif ($type eq "rabbitmq")
     {
-        #TODO: add rabbitmq init here
+        $logger->debug("Initializing RabbitMQ Detection Reporter");
+        $reporter = new PuNDIT::Agent::Detection::Reporter::RabbitMQ($cfgHash, $fedName);
     }
     
     my $self = {
@@ -106,14 +108,16 @@ sub writeEvent
 
 # Public function for writing statuses (once every minute) 
 # Eventually we want to make it multithreaded, so will use enqueue and dequeue
+
 sub writeStatus
 {
     my ($self, $status) = @_;
-    
+
     # TODO: clear the queue here
-    
+
     eval
     {
+        $logger->debug("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
         $self->{'_reporter'}->writeStatus($status);
     };
     # catch any exception here

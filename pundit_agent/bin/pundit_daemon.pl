@@ -30,7 +30,7 @@ use lib "$RealBin/../lib";
 
 use PuNDIT::Agent::Master;
 
-my $CONFIG_FILE = "$RealBin/../etc/pundit_agent.conf";
+my $CONFIG_FILE = "$RealBin/../etc/pundit_agent.conf"; # TODO: directories need to be updated to 3.5+ directory structure
 my $PID_DIR  = "/var/run";
 my $PID_FILE = "pundit_agent.pid";
 my $LOGGER_CONF;
@@ -58,6 +58,8 @@ $status = GetOptions(
     'logfile=s'   => \$LOGFILE,
 );
 
+## TODO: Add a message to print when $HELP == 1 
+
 # Check for an existing instance before we drop privileges
 if ($DAEMONIZE) {
    $pid_file = lockPIDFile( $PID_DIR, $PID_FILE );
@@ -79,12 +81,12 @@ elsif ( $USER or $GROUP ) {
 
 ($status, $cfgHash) = parseConfig($CONFIG_FILE);
 if ($status != 0) {
-    $logger->error("Problem parsing configuration file: $CONFIG_FILE");
+    print "Problem parsing configuration file: $CONFIG_FILE. Quitting.\n";
     exit(-1);
 }
 
 # Save the script path for libs to use
-$cfgHash->{"exePath"} = $RealBin;
+#$cfgHash->{"exePath"} = $RealBin; ## TODO: remove
 
 unless ( $LOGFILE ) {
     $LOGFILE = $cfgHash->{'pundit_agent'}{'log'}{'filename'};
@@ -201,6 +203,11 @@ sub setids {
 
         $EFFECTIVE_GROUP_ID = "$gid $gid";
         $REAL_GROUP_ID = $gid;
+    }
+
+    if ( $uid eq 'root' ) { # hack to support user root. TODO: fix later
+        $EFFECTIVE_USER_ID = $REAL_USER_ID = 0;
+        return 0;
     }
 
     # Now set UID

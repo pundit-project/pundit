@@ -23,7 +23,7 @@ use Data::Dumper;
 
 =pod
 
-=head1 PuNDIT::Central::Localization::EvReceiver::Test.pm
+=head1 PuNDIT::Central::Localization::EvReceiver::Test
 
 Dummy module to generate events for testing
 

@@ -25,7 +25,7 @@ use DBI;
 
 =pod
 
-=head1 PuNDIT::Central::Localization::EvReceiver::MySQL.pm
+=head1 PuNDIT::Central::Localization::EvReceiver::MySQL
 
 Interface to get events stored in MySQL
 

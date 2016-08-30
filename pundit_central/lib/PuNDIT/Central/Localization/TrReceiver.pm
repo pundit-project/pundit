@@ -344,7 +344,7 @@ sub _replaceStarsAndLoopsInTrace
     # output array
     my $trProcessed = {
         'ts' => $trOriginal->{'ts'},
-        'path' => [],   
+        'path' => [],
         'src' => $trOriginal->{'src'},
         'dst' => $trOriginal->{'dst'},
     };
@@ -380,21 +380,32 @@ sub _replaceStarsAndLoopsInTrace
             $lastStar = 1;
         }
     }
-    # last hop. Check whether it reached the destination
-    if ($trProcessed->{'path'}[-1]->getHopId() ne $trOriginal->{'dst'})
-    {
-        # stars and loops don't reveal the last few hops before the destination, so insert 
-        if ($lastStar || $lastLoop)
+
+    ### GD
+    if ( @{$trProcessed->{'path'}}) {
+
+        # last hop. Check whether it reached the destination
+        if ($trProcessed->{'path'}[-1]->getHopId() ne $trOriginal->{'dst'})
         {
-            my $virtualNode = new PuNDIT::Utils::TrHop($lastNonStarHop . "|*|" . $trOriginal->{'dst'}, "123");
-            push @{$trProcessed->{'path'}}, $virtualNode;
+            # stars and loops don't reveal the last few hops before the destination, so insert 
+            if ($lastStar || $lastLoop)
+            {
+                my $virtualNode = new PuNDIT::Utils::TrHop($lastNonStarHop . "|*|" . $trOriginal->{'dst'}, "123");
+                push @{$trProcessed->{'path'}}, $virtualNode;
+            }
+            my $lastNode = new PuNDIT::Utils::TrHop($trOriginal->{'dst'}, "123");
+            push @{$trProcessed->{'path'}}, $lastNode;
         }
-        my $lastNode = new PuNDIT::Utils::TrHop($trOriginal->{'dst'}, "123");
-        push @{$trProcessed->{'path'}}, $lastNode;
+        
+    } else {
+        print Data::Dumper::Dumper($trOriginal);
+	$logger->debug(sub { Data::Dumper::Dumper($trOriginal) });
+        
+        my $virtualNode = new PuNDIT::Utils::TrHop("*|*|*", "123");
+        push @{$trProcessed->{'path'}}, $virtualNode;
     }
-    
-#    $logger->debug(sub { Data::Dumper::Dumper($trProcessed) });
-    
+    ### GD
+ 
     return $trProcessed;
 }
 

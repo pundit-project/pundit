@@ -23,6 +23,7 @@ use threads;
 use threads::shared;
 
 use PuNDIT::Central::Localization::EvReceiver::MySQL;
+use PuNDIT::Central::Localization::EvReceiver::RabbitMQ;
 use PuNDIT::Central::Localization::EvReceiver::Test;
 use PuNDIT::Central::Localization::EvStore;
 
@@ -40,6 +41,8 @@ Starts a receiver thread.
 
 my $logger = get_logger(__PACKAGE__);
 my $runLoop = 1;
+
+$logger->debug("Entered EvReceiver.pm");     ###
 
 # Top-level init for event receiver
 sub new
@@ -109,6 +112,7 @@ sub run
     
     # init the sub-receiver based on the configuration settings
     my $subType = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'type'};
+    $logger->debug("\$subType=$subType");                                                       ###
     my $subRcv;
     my $evStore; # only used for rabbitmq
     if ($subType eq "mysql")
@@ -117,8 +121,10 @@ sub run
     }
     elsif ($subType eq "rabbitmq")
     {
-#        $subRcv = 'rabbitmq';
-        $evStore = new PuNDIT::Central::Localization::EvStore($cfgHash, $fedName);
+        $subRcv = new PuNDIT::Central::Localization::EvReceiver::RabbitMQ($cfgHash, $fedName);  ###
+        my $subret = Data::Dumper::Dumper($subRcv);                                             ###
+        $logger->debug("\$subret $subret");                                                     ###
+        $evStore = new PuNDIT::Central::Localization::EvStore($cfgHash, $fedName);              ###
     }
     else # init the test receiver (debug)
     {
@@ -132,19 +138,17 @@ sub run
     
     while ($runLoop)
     {
-        $logger->debug("evThread woke");
+        $logger->debug("evThread awoke");
         
         # Get the events from the sub-receiver after lastTime
         my $evHash = $subRcv->getLatestEvents($lastTime);
+        $logger->debug(Data::Dumper::Dumper($evHash));           ###
         
-        # if evStore is defined, it means we are using it
-        if (defined($evStore))
-        {
-            $evStore->writeEvHashToDb($evHash);
-        }
-        
-        # Add them to the EvQueues
-        _addHashToEvQueues($evQueues, $evHash);
+     # if evStore is defined, it means we are using it
+     if (defined($evStore))
+     {
+         $evStore->writeEvHashToDb($evHash);
+     }
         
         my $lastTime += $sleepTime;
         
@@ -202,7 +206,6 @@ sub _selectNextWindow
            ($evQueue->{'queue'}[0]->{'endTime'} < $refStart))
     {
         {
-#            $logger->debug("discarding event at " . $evQueue->{'queue'}[0]{'startTime'});
             lock(@{$evQueue->{'queue'}});
             shift(@{$evQueue->{'queue'}});
         }

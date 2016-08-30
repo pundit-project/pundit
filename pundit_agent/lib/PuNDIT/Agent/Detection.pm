@@ -41,7 +41,7 @@ sub new
     my $peer_monitor_string = $cfgHash->{"pundit_agent"}{$fedName}{"peers"};
     $peer_monitor_string =~ s/,/ /g;
     my @peer_monitors = split(/\s+/, $peer_monitor_string);
-        
+
     # owamp parameters
     my $sampleCount = $cfgHash->{"pundit_agent"}{$fedName}{"owamp_params"}{"sample_count"};
     my $packetInterval = $cfgHash->{"pundit_agent"}{$fedName}{"owamp_params"}{"packet_interval"};
@@ -124,6 +124,7 @@ sub processFile
         'srcHost' => $srcHost,
         'dstHost' => $dstHost,
         'startTime' => $startTime,
+        'endTime' => _roundOff($timeseries->[-1]{ts}),
         'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
         'baselineDelay' => $sessionMinDelay,
         'entries' => $summary,
@@ -132,6 +133,7 @@ sub processFile
     $self->{'_reporter'}->writeStatus($statusMsg);
     
     $logger->debug("$srcHost $dstHost Returning $problemFlags problemFlags at $startTime");
+    $logger->debug("entries: $summary");      ###
     
     return ($problemFlags, $statusMsg);
 }
@@ -222,7 +224,6 @@ sub _parseInt
 sub _readFile
 {
     my ($self, $inputFile) = @_;
-#    my ($self, $inputFile, $fileStartTime, $fileEndTime) = @_;
     
     my @timeseries = ();
     my $sessionMinDelay;
@@ -409,8 +410,7 @@ sub _readFile2
 #    TO_PORT 8777
 #    START_TIME      15735090711158434567
 #    END_TIME        15735090973283830624
-    
-    
+        
     open(IN, "owstats -M $inputFile |") or die;
     while(my $line = <IN>)
     {
