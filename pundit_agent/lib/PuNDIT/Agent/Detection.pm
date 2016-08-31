@@ -943,9 +943,9 @@ sub route_change_detect
 # naive implementation, to be optimised
 sub route_change_detect2
 {
-    my ($self, $timeseries) = @_;
+    my ($self, $in_timeseries) = @_;
     
-    # takes an array as input and outputs the median, min, max
+    # Helper function that takes an array as input and outputs the median, min, max
     sub medianMinMax
     {
         my ($inArr) = @_;
@@ -964,11 +964,14 @@ sub route_change_detect2
         return ($med, $vals[0]->{'delay'}, $vals[-1]->{'delay'});
     }
     
+    # filter the input timeseries to omit lost packets
+    my @timeseries = map { $_->{'lost'} == 0 ? $_ : () } @{$in_timeseries};
+
     # loop over the timeseries until n-2
-    for my $i (1.. (scalar(@{$timeseries}) - 3))
+    for my $i (1.. (scalar(@timeseries) - 3))
     {
-        my $tsSlice1 = [@$timeseries[0 .. ($i - 1)]];
-        my $tsSlice2 = [@$timeseries[$i .. (scalar(@{$timeseries})-1) ]];
+        my $tsSlice1 = [@timeseries[0 .. ($i - 1)]];
+        my $tsSlice2 = [@timeseries[$i .. (scalar(@timeseries)-1) ]];
         
         my ($med1, $min1, $max1) = medianMinMax($tsSlice1);
         my ($med2, $min2, $max2) = medianMinMax($tsSlice2);
