@@ -16,7 +16,7 @@ createTracerouteProcessing = """CREATE TABLE `tracerouteProcessing` (
   `hop_no` int(32) NOT NULL,
   `hop_ip` varchar(256) DEFAULT NULL,
   `hop_name` varchar(256) DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
 
 switchTracerouteStagingAndProcessing = """RENAME TABLE tracerouteStaging TO tracerouteTmp,
    tracerouteProcessing TO tracerouteStaging,

@@ -17,7 +17,7 @@ createStatusProcessing = """CREATE TABLE `statusProcessing` (
   `queueingDelay` float DEFAULT NULL,
   `lossRatio` float DEFAULT NULL,
   `reorderMetric` float DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
 
 switchStatusStagingAndProcessing = """RENAME TABLE statusStaging TO statusTmp,
    statusProcessing TO statusStaging,

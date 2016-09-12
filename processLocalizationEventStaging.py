@@ -14,7 +14,7 @@ createLocalizationEventProcessing = """CREATE TABLE `localizationEventProcessing
   `det_code` tinyint(3) unsigned DEFAULT NULL,
   `val1` int(10) unsigned DEFAULT NULL,
   `val2` int(10) unsigned DEFAULT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1"""
+) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
 
 switchStagingAndProcessing = """RENAME TABLE localizationEventStaging TO localizationEventTmp,
    localizationEventProcessing TO localizationEventStaging,
