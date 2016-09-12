@@ -34,5 +34,6 @@ cursor.execute(addMissingHopHosts);
 print "Converting localization_event entries"
 cursor.execute(convertLocalizationEventEntries);
 cursor.execute(removeLocalizationEventProcessing);
+cnx.commit();
 end = time.time();
 print "Done in %s s" %(str(end-start));

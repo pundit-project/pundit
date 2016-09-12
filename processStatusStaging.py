@@ -196,5 +196,6 @@ problemProcessor = ProblemProcessor()
 problemProcessor.processStatus(cnx)
 
 cursor.execute(removeStatusProcessing);
+cnx.commit();
 end = time.time();
 print "Done in %s s" %(str(end-start));

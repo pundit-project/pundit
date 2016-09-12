@@ -1,0 +1,4 @@
+#!/bin/bash
+./processStatusStaging.py
+./processTracerouteStaging.py
+./processLocalizationEventStaging.py

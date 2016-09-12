@@ -144,5 +144,6 @@ while row != None:
 #print routeCache[(1,2,3,4)]
 #print routeCache[(2,3,4,5,6)]
 
+cnx.commit();
 end = time.time();
 print "Done in %s s" %(str(end-start));

@@ -3,7 +3,7 @@
 import mysql.connector
 import time
 
-cnx = mysql.connector.connect(user='root', password='pythiaRush!')
+cnx = mysql.connector.connect(user='root', password='pythiaRush!', database='pythia_new')
 
 cursor = cnx.cursor(buffered=True)
 
@@ -20,5 +20,6 @@ print "Importing traceroutes entries"
 cursor.execute(importTracerouteEntries);
 print "Importing localization_events entries"
 cursor.execute(importLocalizationEventEntries);
+cnx.commit();
 end = time.time();
 print "Done in %s s" %(str(end-start));
