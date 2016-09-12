@@ -802,9 +802,12 @@ sub _detectLossLatencyReordering
     my $delayPerc = 0.0;
     my $delayAvg = 0.0;
     my $queueingDelay = 0.0;
-    if ((scalar(@$timeseries) - $lossProblemCount) > 0) # only count non-lost packets
+    
+    # Get the number of non-lost synchronised packets
+    my $nonLostSyncCount = scalar(@$timeseries) - $lossProblemCount - $unsyncedClockCount; 
+    if ($nonLostSyncCount > 0)
     {
-        $delayPerc = ($delayProblemCount * 100.0)/(scalar(@$timeseries) - $lossProblemCount - $unsyncedClockCount); ## TODO: Zero-check here
+        $delayPerc = ($delayProblemCount * 100.0)/$nonLostSyncCount;
         if ($delayPerc > $self->{"_delayThresh"})
         {
             $delayProblemFlag = 1;
@@ -966,6 +969,9 @@ sub route_change_detect2
     
     # filter the input timeseries to omit lost packets
     my @timeseries = map { $_->{'lost'} == 0 ? $_ : () } @{$in_timeseries};
+    
+    # skip empty or short timeseries
+    return 0 if (scalar(@timeseries) < 10);
 
     # loop over the timeseries until n-2
     for my $i (1.. (scalar(@timeseries) - 3))
