@@ -14,8 +14,8 @@
 
         <channelSet connectionName="mariadb">
             <channel name="history/traceroute/(.*)/(.*)">
-                <query>SELECT tracerouteHistory.timestamp, tracerouteHistory.tracerouteId FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? LIMIT 50</query>
-                <pollQuery>SELECT tracerouteHistory.timestamp FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? LIMIT 1</pollQuery>
+                <query>SELECT tracerouteHistory.timestamp, tracerouteHistory.tracerouteId FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY timestamp DESC LIMIT 50</query>
+                <pollQuery>SELECT tracerouteHistory.timestamp FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY timestamp DESC LIMIT 1</pollQuery>
             </channel>
             <channel name="traceroute/(.*)">
                 <query>SELECT tracehop.hopNumber, hop.ip, hop.name FROM tracehop, hop WHERE tracehop.tracerouteId = ? AND tracehop.nodeId = hop.hopId</query>
@@ -26,8 +26,8 @@
                 <pollQuery>SELECT COUNT(*) FROM host</pollQuery>
             </channel>
             <channel name="report/(.*)/(.*)">
-                <query>SELECT startTime AS Start, endTime as End, src.name AS Source, dst.name AS Dest, type AS Type, info AS Info FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?)</query>
-                 <pollQuery>SELECT UNIX_TIMESTAMP(MAX(COALESCE(endTime,startTime))) FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?)</pollQuery>
+                <query>SELECT startTime AS Start, endTime as End, src.name AS Source, dst.name AS Dest, type AS Type, info AS Info FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?) AND (endTime > NOW() - INTERVAL 1 DAY OR endTime IS NULL)</query>
+                 <pollQuery>SELECT UNIX_TIMESTAMP(MAX(COALESCE(endTime,startTime))) FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?) AND (endTime > NOW() - INTERVAL 1 DAY OR endTime IS NULL)</pollQuery>
                  <!--<pollQuery>SELECT NOW()</pollQuery>-->
             </channel>
             <channel name="problems/count/(.*)/(.*)">
