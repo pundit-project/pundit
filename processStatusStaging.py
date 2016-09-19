@@ -27,7 +27,11 @@ addMissingSrcHosts = """INSERT INTO host (name, site) SELECT DISTINCT srchost AS
 
 addMissingDstHosts = """INSERT INTO host (name, site) SELECT DISTINCT dsthost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dsthost), '.', 2)) AS site FROM statusProcessing WHERE dsthost NOT IN (SELECT name FROM host)"""
 
-convertStatusEntries = """INSERT INTO status SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.hostId AS srcId, dst.hostId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, host AS src, host AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name"""
+convertStatusEntries = """CREATE TABLE newStatus SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.hostId AS srcId, dst.hostId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, host AS src, host AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name"""
+
+insertStatusEntries = """INSERT INTO status SELECT * FROM newStatus"""
+
+removeNewStatus = """DROP TABLE newStatus;"""
 
 removeStatusProcessing = """DROP TABLE statusProcessing;"""
 
@@ -39,11 +43,12 @@ cursor.execute(addMissingSrcHosts);
 cursor.execute(addMissingDstHosts);
 print "Converting status entries"
 cursor.execute(convertStatusEntries);
+cursor.execute(insertStatusEntries);
 print "Analize status for problems"
 
 # Create problem processor
 class ProblemProcessor:
-  queryStatusProcessing = "SELECT srcId, dstId, UNIX_TIMESTAMP(startTime), UNIX_TIMESTAMP(endTime), detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from status ORDER BY srcId, dstId, startTime"
+  queryStatusProcessing = "SELECT srcId, dstId, UNIX_TIMESTAMP(startTime), UNIX_TIMESTAMP(endTime), detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay, lossRatio from newStatus ORDER BY srcId, dstId, startTime"
   findOpenProblem = "SELECT UNIX_TIMESTAMP(startTime), info FROM problem WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
   updateOpenProblem = "UPDATE problem SET info = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL"
   addOpenProblem = "INSERT INTO problem (startTime, srcId, dstId, type, info) VALUES (FROM_UNIXTIME(%s), %s, %s, %s, %s)"
@@ -195,6 +200,7 @@ class ProblemProcessor:
 problemProcessor = ProblemProcessor()
 problemProcessor.processStatus(cnx)
 
+cursor.execute(removeNewStatus);
 cursor.execute(removeStatusProcessing);
 cnx.commit();
 end = time.time();
