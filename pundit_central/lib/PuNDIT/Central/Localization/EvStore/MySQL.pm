@@ -79,6 +79,9 @@ sub writeEvHash
 {
     my ($self, $evHash) = @_;
     
+    # skip empty hashes
+    return 1 if (!%{$evHash});
+    
     # check whether the db connection is still alive, otherwise reconnect
     unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
@@ -108,7 +111,7 @@ sub writeEvHash
                 $sth->bind_param(5, $event->{'baselineDelay'});
                 $sth->bind_param(6, $event->{'detectionCode'});
                 $sth->bind_param(7, $event->{'queueingDelay'});
-                $sth->bind_param(8, $event->{'lossPerc'});
+                $sth->bind_param(8, $event->{'lossRatio'});
                 $sth->bind_param(9, $event->{'reorderMetric'});
                 
                 my $res = $sth->execute;

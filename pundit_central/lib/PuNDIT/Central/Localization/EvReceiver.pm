@@ -142,13 +142,15 @@ sub run
         
         # Get the events from the sub-receiver after lastTime
         my $evHash = $subRcv->getLatestEvents($lastTime);
-        $logger->debug(Data::Dumper::Dumper($evHash));           ###
         
-     # if evStore is defined, it means we are using it
-     if (defined($evStore))
-     {
-         $evStore->writeEvHashToDb($evHash);
-     }
+        # if evStore is defined, it means we are using it
+        if (defined($evStore))
+        {
+            $evStore->writeEvHashToDb($evHash);
+        }
+        
+        # Add them to the EvQueues for Localisation to use
+        _addHashToEvQueues($evQueues, $evHash);
         
         my $lastTime += $sleepTime;
         
@@ -326,6 +328,9 @@ sub _selectNextWindow
 sub _addHashToEvQueues
 {
     my ($evQueues, $inHash) = @_;
+    
+    # Skip empty hashes
+    return 0 if (%{$inHash});
     
     my $lastTime;
     

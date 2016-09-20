@@ -80,27 +80,86 @@ sub getLatestEvents
 
     $logger->debug("Consume...");
 
-    my $event = $self->getEventsMQ($lastTS, undef);
-    my @arr = split (/\|/, $event);
-    my %h = (
-      "srcHost"       => $arr[0],
-      "dstHost"       => $arr[1],
-      "baselineDelay" => $arr[2],
-      "measures"      => $arr[3]         ###
-     );
-    my $href = \%h;
-    return $href;
+    my $evHash = $self->getEventsMQ($lastTS, undef);
+    return $evHash;
 }
 
+# Retrieves events from the MQ and processes them into a hash of event hashes
 sub getEventsMQ
 {
     my ($self, $startTS, $endTS) = @_;
 
-     my $payload = $self->{'_mq'}->recv();
-     #my $event = Dumper($payload->{body});
-     my $event = $payload->{body};            ###
-     $logger->debug("$event");
-     return $event;
+    # init an empty hash
+    my %evHash = ();
+    my $counter = 0;
+    
+    $logger->debug("Get from MQ");
+
+    # make a nonblocking call
+    while (my $payload = $self->{'_mq'}->recv(500))
+    {
+        last if !defined($payload); # no more messages to retrieve
+        
+        # TODO: Use a binary format instead
+        my ($srcHost, $dstHost, $baselineDelay, $measures) = split(/\|/, $payload->{'body'});
+        
+        # skip malformed messages
+        if (!defined($measures))
+        {
+            $logger->error("Got malformed rabbitMQ message ", $payload->{'body'});
+            next;
+        }
+        
+        # create the subhashes if they don't exist
+        if (!exists($evHash{$srcHost}))
+        {
+            $evHash{$srcHost} = {};
+        }
+        if (!exists($evHash{$srcHost}{$dstHost}))
+        {
+            $evHash{$srcHost}{$dstHost} = ();
+        }
+        
+        # loop over each single timeseries entry
+        foreach my $snapshot (split(';', $measures)) 
+        {
+            my ($startTime, $endTime, $detectionCode, $queueingDelay, $lossRatio, $reorderMetric) = split(',', $snapshot);
+            
+            # skip malformed messages
+            if (!defined($reorderMetric))
+            {
+                $logger->error("Got malformed rabbitMQ message ", $snapshot);
+                next;    
+            }
+            
+            # discard outdated messages
+            # disabled for now, we want to keep old messages in the db
+            # next if $endTime < $startTs
+            if ($endTime < $startTS)
+            { 
+                $logger->warn("Got outdated status message off rabbitMQ queue");
+            }
+            
+            # reconstruct the status message
+            my %event = (
+                'startTime' => $startTime,
+                'endTime' => $endTime,
+                'srcHost' => $srcHost,
+                'dstHost' => $dstHost,
+                'baselineDelay' => $baselineDelay,
+                'detectionCode' => $detectionCode,
+                'queueingDelay' => $queueingDelay,
+                'lossRatio' => $lossRatio,
+                'reorderMetric' => $reorderMetric
+            );
+            
+            push (@{$evHash{$srcHost}{$dstHost}}, \%event);
+            $counter++;
+        }
+    }
+    $logger->debug("Processed $counter entries into evHash");
+    
+    return \%evHash;
 }
 
 1;
