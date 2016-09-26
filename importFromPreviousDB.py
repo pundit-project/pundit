@@ -15,10 +15,13 @@ importLocalizationEventEntries = """INSERT INTO pythia_new.localizationEventStag
 
 start = time.time();
 print "Importing status entries"
+cursor.execute("TRUNCATE TABLE pythia_new.statusStaging");
 cursor.execute(importStatusEntries);
 print "Importing traceroutes entries"
+cursor.execute("TRUNCATE TABLE pythia_new.tracerouteStaging");
 cursor.execute(importTracerouteEntries);
 print "Importing localization_events entries"
+cursor.execute("TRUNCATE TABLE pythia_new.localizationEventStaging");
 cursor.execute(importLocalizationEventEntries);
 cnx.commit();
 end = time.time();
