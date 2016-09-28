@@ -31,6 +31,7 @@ and open the template in the editor.
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
@@ -64,12 +65,16 @@ and open the template in the editor.
                 <div class="row">
                     <div class="col-md-12">
                         <h1><b>PuNDIT web interface</b></h1>
-                        <h2>Site reports</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="site-report.html?site=aglt2.org">aglt2.org</a>
-                            <a class="btn btn-primary" href="site-report.html?site=atlas-swt2.org">atlas-swt2.org</a>
-                            <a class="btn btn-primary" href="site-report.html?site=bnl.gov">bnl.gov</a>
-                            <a class="btn btn-primary" href="site-report.html?site=mwt2.org">mwt2.org</a>
+                        <h2>Site report</h2>
+                        <script language="javascript" type="text/javascript">
+                        function openReport() {
+                            var select = document.getElementById("site-select").firstChild;
+                            window.location.href = "site-report.html?site=" + select.options[select.selectedIndex].text;
+                        }
+                        </script>
+                        <div>
+                            <p>Select site: <span id="site-select" class="wp-combobox" data-channel="=columnOf('sites', &quot;site&quot;)"></span>
+                                <button type="button" class="btn btn-primary" onclick="openReport();">Go</button></p>
                         </div>
                         <h2>Traceroutes</h2>
                         <div class="btn-group" role="group" aria-label="...">
