@@ -4,3 +4,8 @@ cd $SCRIPT_DIR
 ./processStatusStaging.py
 ./processTracerouteStaging.py
 ./processLocalizationEventStaging.py
+if (( `date +%M`/5*5 > `cat lastRunTimeSeries`));
+then
+   echo $((`date +%M`/5*5)) > lastRunTimeSeries
+   ./processTimeSeries.py
+fi
