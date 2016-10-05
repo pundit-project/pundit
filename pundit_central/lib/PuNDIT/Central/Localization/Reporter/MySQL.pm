@@ -41,9 +41,11 @@ sub new
     my $port = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"port"};
     my $database = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"database"};
     my $user = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"user"};
-    my $pw = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"password"};
+    my $password = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"password"};
     
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw); 
+    # make the db connection here, refreshing it if it dies later
+    my $dsn = "DBI:mysql:$database:$host:$port";
+	my $dbh = DBI->connect($dsn, $user, $password); 
 	if (!$dbh)
     {
         $logger->error("Couldn't initialize DBI connection. Quitting");
@@ -70,7 +72,11 @@ sub new
 	}
 	
 	my $self = {
+        '_dsn' => $dsn,
+        '_user' => $user,
+        '_password' => $password,
         '_dbh' => $dbh,
+        '_sql' => $sql,
         '_sth' => $sth,
     };
     
@@ -97,6 +103,13 @@ sub writeData
 {
 	my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
 	
+	# check whether the db connection is still alive, otherwise reconnect
+    unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
+        my $dbh = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
+        $self->{'_sth'} = $dbh->prepare($self->{'_sql'});
+        $self->{'_dbh'} = $dbh;
+    }
+    
 	$logger->debug("writing localization event at $startTime for $hopName to db");
 	
 	my $sth = $self->{'_sth'};
