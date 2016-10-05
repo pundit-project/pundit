@@ -34,76 +34,91 @@ my $logger = get_logger(__PACKAGE__);
 # Creates a new object
 sub new
 {
-	my ($class, $cfgHash, $fedName) = @_;
-        
-	# init the DBI
-	my $host = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"host"};
+    my ( $class, $cfgHash, $fedName ) = @_;
+
+    # init the DBI
+    my $host = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"host"};
     my $port = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"port"};
     my $database = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"database"};
     my $user = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"user"};
-    my $pw = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"password"};
-    
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw); 
-	if (!$dbh)
+    my $password = $cfgHash->{'pundit_central'}{$fedName}{'reporting'}{'mysql'}{"password"};
+
+    # make the db connection here, refreshing it if it dies later
+    my $dsn = "DBI:mysql:$database:$host:$port";
+    my $dbh = DBI->connect($dsn, $user, $password);
+    if (!$dbh)
     {
         $logger->error("Couldn't initialize DBI connection. Quitting");
-        return undef; 
+        return undef;
     }
-	
-	# Create the table if it doesn't exist
-	$dbh->do("CREATE TABLE IF NOT EXISTS localization_events (
+
+    # Create the table if it doesn't exist
+    $dbh->do(
+        "CREATE TABLE IF NOT EXISTS localization_events (
     	ts TIMESTAMP,
     	link_ip INT UNSIGNED,
     	link_name VARCHAR(256),
     	det_code TINYINT UNSIGNED,
     	val1 INT UNSIGNED NULL,
     	val2 INT UNSIGNED NULL
-    	);");
-	
-	my $sql = "INSERT INTO localization_events (ts, link_ip, link_name, det_code, val1, val2) VALUES (FROM_UNIXTIME(?), INET_ATON(?), ?, ?, ?, ?)";
-	
-	my $sth = $dbh->prepare($sql);
-	if (!$sth)
-	{
-	    $logger->error("Failed to prepare DBH. Quitting");
+    	);"
+    );
+
+    my $sql = "INSERT INTO localization_events (ts, link_ip, link_name, det_code, val1, val2) 
+               VALUES (FROM_UNIXTIME(?), INET_ATON(?), ?, ?, ?, ?)";
+
+    my $sth = $dbh->prepare($sql);
+    if (!$sth)
+    {
+        $logger->error("Failed to prepare DBH. Quitting");
         return undef;
-	}
-	
-	my $self = {
-        '_dbh' => $dbh,
-        '_sth' => $sth,
+    }
+
+    my $self = {
+        '_dsn'      => $dsn,
+        '_user'     => $user,
+        '_password' => $password,
+        '_dbh'      => $dbh,
+        '_sql'      => $sql,
+        '_sth'      => $sth,
     };
-    
+
     bless $self, $class;
     return $self;
 }
-
 
 # Cleanup
 sub DESTROY
 {
     my $self = shift;
-    
+
     my $sth = $self->{'_sth'};
     my $dbh = $self->{'_dbh'};
-    
-    $sth->finish if $sth;
+
+    $sth->finish     if $sth;
     $dbh->disconnect if $dbh;
 }
-
 
 # Writes the result array to the database
 sub writeData
 {
-	my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
-	
-	$logger->debug("writing localization event at $startTime for $hopName to db");
-	
-	my $sth = $self->{'_sth'};
-	my $dbh = $self->{'_dbh'};
-	
+    my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
+
+    # check whether the db connection is still alive, otherwise reconnect
+    unless ($self->{'_dbh'} || $self->{'_dbh'}->ping)
+    {
+        my $dbh = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
+        $self->{'_sth'} = $dbh->prepare( $self->{'_sql'} );
+        $self->{'_dbh'} = $dbh;
+    }
+
+    $logger->debug("writing localization event at $startTime for $hopName to db");
+
+    my $sth = $self->{'_sth'};
+    my $dbh = $self->{'_dbh'};
+
     if (!$sth->execute($startTime, $hopIp, $hopName, $detectionCode, $val1, $val2))
-    { 
+    {
         $logger->error("$dbh->errstr");
     }
 }
