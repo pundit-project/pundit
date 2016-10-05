@@ -206,20 +206,18 @@ sub processTimeWindow
 	
 	# Run for each enabled problem 
 	foreach my $problemName (@{$self->{'_problem_types_list'}})
-	{
-		$logger->debug("Preparing to run tomography for $problemName");
-		
+	{	
 		# keep events relevant only for the specific metric
 		my $filteredEvents = $self->_filterEvents($problemName, $evTable);
 		
 		# Optimisation. Skip tomography if 1 or fewer paths
 		if (scalar(@{$filteredEvents}) <= 1 || !$filteredEvents)
 		{
-			$logger->debug("1 or 0 events to process. Not enough info to localise. Skipping.");
+			$logger->debug($problemName . ": Not enough events to localise. Skipping.");
 			next;
 		}
 		
-		$logger->debug(scalar(@{$filteredEvents}) . " events to process. ");
+		$logger->debug($problemName . ": " . scalar(@{$filteredEvents}) . " events to process. ");
 		
 		# make a copy of the path_set and link_set so this run of the algorithm can modify it
 		my $tomoPathSet = dclone($pathSet);
