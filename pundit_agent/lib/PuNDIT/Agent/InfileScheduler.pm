@@ -110,6 +110,24 @@ sub _getOwpFiles
     return \@result;
 }
 
+# Scans the owamp directory to find json files for processing
+# Returns the list of files sorted from oldest to newest
+sub _getJsonFiles
+{
+    my ($self) = @_;
+
+    my @jsonFiles = glob($self->{"_owampPath"} . "/*.json"); # get all json files in the archiver directory
+    
+    # multi-operation sort. Order of precedence is from innermost to outermost
+    my @result =     
+        map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
+        sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
+        map  { /\/(\d+?)_[\d\w\-]+?\.json$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
+        @owpfiles;
+        
+    return \@jsonFiles;
+}
+
 sub _processFiles
 {
     my ($self, $infiles) = @_;
