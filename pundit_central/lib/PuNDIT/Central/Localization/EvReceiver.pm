@@ -330,7 +330,7 @@ sub _addHashToEvQueues
     my ($evQueues, $inHash) = @_;
     
     # Skip empty hashes
-    return 0 if (%{$inHash});
+#    return 0 if (%{$inHash});
     
     my $lastTime;
     
