@@ -1,0 +1,15 @@
+#!/bin/sh
+
+exec cat << EOF
+{
+    "name": "pundit",
+    "description": "Send a owamp/traceroute result to the PuNDIT backend",
+    "version": "1.0",
+
+    "maintainer": {
+        "name": "PuNDIT Development Team",
+        "email": "pundit@gatech.edu",
+        "href": "http://pundit.gatech.edu"
+    }
+}
+EOF

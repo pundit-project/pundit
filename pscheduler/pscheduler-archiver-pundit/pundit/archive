@@ -1,0 +1,90 @@
+#!/usr/bin/python
+#
+# Send a result to PuNDIT.
+#
+# Handles both owamp and traceroute data
+#
+
+import pscheduler
+import time
+
+# Default path if not overridden
+outPath = "/opt/pundit_agent/owampData"
+# start timestamp, used for naming files
+startTs = None
+
+#initialize logging
+log = pscheduler.Log(prefix="archiver-pundit", quiet=True)
+
+# Takes the output of the owamp test and sends it to the PuNDIT agent
+# Currently saves the output of the test to disk
+def processOwamp(json):
+    outFile = "%s/%d_%s.json" % (outPath, startTs, json['result']['id'])
+    log.info(outFile)
+    with open(outFile, "w") as f:
+        f.write(pscheduler.json_dump(json))
+        log.info("Successfully wrote owamp to %s" % (outFile))
+
+# Takes the output of the traceroute and sends it to the PuNDIT agent
+def processTraceroute(json):
+    pass
+
+json = pscheduler.json_load(exit_on_error=True)
+log.info("Archiver received: %s" % json)
+
+errors = []
+
+# Check that the version and tool names are supported, else throw error
+toolName = None
+toolVer = None
+try:
+    toolName = json['result']['tool']['name']
+    toolVer = float(json['result']['tool']['version'])
+    
+    # Check the version and tool name here
+    if not ((toolName == "owping" and toolVer <= 1.0) or \
+            (toolName == "traceroute" and toolVer <= 1.0)):
+        errStr = "Got invalid tool name/version %s %f" % (toolName, toolVer)
+        log.error(errStr)
+        errors.append(errStr)
+except KeyError:
+    errors.append("Couldn't get tool name/version")
+
+# extract the timestamp
+try:
+    dt = pscheduler.iso8601_as_datetime(json['result']['schedule']['start'])
+    startTs = int(time.mktime(dt.timetuple()))
+except KeyError:
+    errStr = "Couldn't get schedule start time"
+    log.error(errStr)
+    errors.append(errStr)
+
+# Throw errors and exit
+if errors:
+    pscheduler.succeed_json({
+        "succeeded": False,
+        "error": '; '.join(errors)
+    })
+
+# extract the info from the input
+if 'path' in json['data']:
+    log.info("overridden path")
+    outPath = json['data']['path']
+
+# call the appropriate tool
+try:
+    if (toolName == "owping" and toolVer == 1.0):
+        processOwamp(json)
+    elif (toolName == "traceroute" and toolVer == 1.0):
+        processTraceroute(json)
+    else:
+        raise Exception("No handler found for tool %s ver %f" % 
+                        (toolName, toolVer)) 
+except (IOError, Exception) as ex:
+    pscheduler.succeed_json({
+        "succeeded": False,
+        "error": "Failed to log result: %s" % str(ex)
+    })
+
+log.debug("Archiver done")
+pscheduler.succeed_json({'succeeded': True})
