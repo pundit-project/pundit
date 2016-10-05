@@ -105,7 +105,7 @@ sub writeData
     my ($self, $startTime, $hopIp, $hopName, $detectionCode, $val1, $val2) = @_;
 
     # check whether the db connection is still alive, otherwise reconnect
-    unless ($self->{'_dbh'} || $self->{'_dbh'}->ping)
+    unless ($self->{'_dbh'} && $self->{'_dbh'}->ping)
     {
         my $dbh = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
         $self->{'_sth'} = $dbh->prepare( $self->{'_sql'} );
