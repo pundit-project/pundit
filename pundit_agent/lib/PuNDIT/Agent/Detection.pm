@@ -19,6 +19,7 @@ package PuNDIT::Agent::Detection;
 
 use strict;
 use Log::Log4perl qw(get_logger);
+use JSON::XS;
 
 use PuNDIT::Agent::Detection::Reporter;
 use PuNDIT::Utils::HostInfo;
@@ -377,6 +378,103 @@ sub _readFile
     return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
 }
 
+# reads an archiver json file
+sub _readJson
+{
+    my ($self, $inputFile) = @_;
+    
+    # The output variables
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    my $lost_count;
+    
+    # reject non-json files
+    if (!(substr($inputFile, -4) eq "json"))
+    {
+        return undef;
+    }
+     
+    # Print individual packet delays, with Unix timestamps, using millisecond granularity
+    open(FILE, "<", $inputFile) or die;
+    
+    my $owampResult = decode_json <FILE>;
+    
+    # error check the result
+    my ($srcHost, $dstHost) = @{$owampResult->{'result'}{'participants'}};
+    
+    foreach my $entry (@{$owampResult->{'result'}{'result'}{'raw-packets'}})
+    {
+        my $unsyncFlag = 0;
+        my $lostFlag = 0;
+        
+        # Send timestamp
+        my $sendTs = owptime2exacttime($entry->{"src-ts"});
+        my $recvTs = -1;
+        my $delay = -1.0;
+        
+        # Mark lost or unsynced packets differently
+        if ($entry->{"dst-ts"} == 0)
+        {
+            $lostFlag = 1;
+        }
+        elsif (($entry->{"dst-clock-sync"} == 0) || 
+               ($entry->{"src-clock-sync"} == 0))
+        {
+            # no point calculating delays if unsynced
+            $unsyncFlag = 1;
+        }
+        else # not lost or unsynced
+        {
+            $recvTs = owptime2exacttime($entry->{"dst-ts"});
+            $delay = ($recvTs - $sendTs) * 1000; # convert to milliseconds
+            
+            # guard against negative values
+            if ($delay < 0.0)
+            {
+                $delay = 0.0;
+            }
+            
+            # fix self-queueing 
+            if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
+            {
+                $delay = $prevDelay;
+            }
+            
+            # update for the next loop
+            $prevDelay = $delay;
+            $prevTs = $sendTs;
+        }
+        
+        # store the entry in the timeseries array
+        my %elem = (
+            'ts' => $sendTs,
+            'rcvts' => $recvTs,
+            'seq' => int($entry->{"seq-num"}),
+            'lost' => $lostFlag,
+            'unsync' => $unsyncFlag,
+            'delay' => $delay,
+        );
+        push(@timeseries, \%elem);
+        
+        # update the minimum delay in this session
+        if (($delay > 0.0) && 
+            (!defined $sessionMinDelay || $delay < $sessionMinDelay))
+        {
+            $sessionMinDelay = $delay;
+        }
+    }
+
+    # sort the timeseries by seq no
+    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
+    
+    return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
+}
+
+
 # reads an input owamp file
 # Not being used yet.
 sub _readFile2
@@ -483,7 +581,7 @@ sub _detection
             # calculate event here
             my $tsSlice = [@$timeseries[$windowStart .. ($i - 1)]]; # this is the subset of the timeseries used for processing
             
-#            print "tsSlice is " . scalar(@$tsSlice) . "\n";
+#            print "tsSlice is " . scalar(@$tsSlice) . "\n";  # debug
             
             # combining bins at edge of measurements
             # store the first window if too few packets
@@ -849,7 +947,7 @@ sub _detectLossLatencyReordering
     $windowSummary->{'lossProblem'} = $lossProblemFlag;
     $windowSummary->{'reorderProblem'} = $reorderProblemFlag;
     $windowSummary->{'unsyncedClocks'} = $unsyncedClockFlag;
-        
+    
     $windowSummary->{'queueingDelay'} = $queueingDelay;
         
     $windowSummary->{'packetCount'} = scalar(@$timeseries);
@@ -868,17 +966,17 @@ sub _detectLossLatencyReordering
 # uses a histogram approach
 sub route_change_detect
 {
-    my ($self, $timeseries) = @_;
+    my ($self, $in_timeseries) = @_;
+    
+    # filter the input timeseries to omit lost packets
+    my @timeseries = map { $_->{'lost'} == 0 ? $_ : () } @{$in_timeseries};
     
     # Calculate bin size using Freedman-Diaconis rule
-    my @sor=sort {$a->{"delay"} <=> $b->{"delay"}} @{$timeseries};
-    while ($sor[0]->{"delay"} eq "") # filter off losses
-    {
-        shift @sor;
-    }
-    my $nq1=$sor[int(@$timeseries/4)]->{"delay"};  # 1st quartile
-    my $nq2=$sor[int((3*@$timeseries)/4)]->{"delay"}; # 3rd quartile
-    my $bin_size = 2 * ($nq2 - $nq1) / int(@$timeseries ** (1/3));
+    my @sor = sort {$a->{"delay"} <=> $b->{"delay"}} @timeseries;
+   
+    my $nq1 = $sor[int(@timeseries/4)]->{"delay"};  # 1st quartile
+    my $nq2 = $sor[int((3*@timeseries)/4)]->{"delay"}; # 3rd quartile
+    my $bin_size = 2 * ($nq2 - $nq1) / int(@timeseries ** (1/3));
 
     # safety in case bin size is 0 for some reason    
     if ($bin_size == 0.0)
@@ -905,6 +1003,7 @@ sub route_change_detect
 #    print Dumper(\@bin_hist);
 #    print \@bin_hist;
     
+    # get the max from the 2 largest bins
     my $max1 = 0;
     my $max1_idx;
     my $max2 = 0;
