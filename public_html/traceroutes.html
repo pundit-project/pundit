@@ -77,12 +77,12 @@ and open the template in the editor.
                         <p>Source: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/src"></span></p>
                         <p>Destination: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/dst"></span></p>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <h2>Traceroute history</h2>
                         <p><i>Routes in chronological order. Select a route for more info.</i></p>
                         <div id="report" class="wp-table" data-channel="=formula(concat(&quot;history/traceroute/&quot;, 'loc/src', &quot;/&quot;, 'loc/dst'))" data-selection-channel="loc/selection"></div>
                     </div>
-                    <div class="col-md-9">
+                    <div class="col-md-6">
                         <div class="wp-show-hide" data-channel="loc/selection">
                             <h2>Traceroute <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;tracerouteId&quot;), 0)"></span></h2>
                             <p><i>List of hop ips and hostnames.</i></p>
