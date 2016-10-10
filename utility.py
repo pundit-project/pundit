@@ -8,6 +8,9 @@ class TraceroutePeriod:
     self.cursor = cnx.cursor(buffered=True)
     self.traceroutesBetweenHosts = [];
     self.initEmptyPeriod()
+    self.updated = 0
+    self.closed = 0
+    self.opened = 0
 
   def initEmptyPeriod(self):
     self.startTime = None;
@@ -17,12 +20,19 @@ class TraceroutePeriod:
 
   def createClosedPeriod(self):
     self.cursor.execute("INSERT INTO traceroutePeriod (tracerouteId, startTime, endTime) VALUES (%s, %s, %s)", (self.tracerouteId, self.startTime, self.endTime))
+    self.updated += 1
+    self.closed += 1
+    self.opened +=1
 
   def createOpenPeriod(self):
     self.cursor.execute("INSERT INTO traceroutePeriod (tracerouteId, startTime) VALUES (%s, %s)", (self.tracerouteId, self.startTime))
+    self.updated += 1
+    self.opened +=1
 
   def closePeriod(self):
     self.cursor.execute("UPDATE traceroutePeriod SET endTime = %s WHERE tracerouteId = %s AND startTime = %s", (self.endTime, self.tracerouteId, self.startTime))
+    self.updated += 1
+    self.closed += 1
 
   def savePeriod(self):
     if (self.startTime is None):
@@ -86,11 +96,14 @@ class PeriodAggregator:
     self.period = TraceroutePeriod(cnx)
 
   def processNewData(self, newDataQuery):
+    startProcessing = time.time()
     self.cursor.execute(newDataQuery)
     for newRow in self.cursor:
       newData = dict(zip(self.cursor.column_names, newRow))
       self.period.processEvent(newData)
     self.period.savePeriod()
+    endProcessing = time.time()
+    print "TraceroutePeriods aggregated in %s s - %s periods udpated - %s closed - %s opened" %(str(endProcessing - startProcessing), str(self.period.updated), str(self.period.closed), str(self.period.opened))
 
 class TracerouteProcessor:
 
@@ -114,8 +127,8 @@ class TracerouteProcessor:
     return tracerouteId
 
 
-  def addTracerouteInstance(self, timestamp, routeId):
-    self.cursor.execute("INSERT INTO tracerouteHistory (tracerouteId, timestamp) VALUES (%s, %s)", (routeId, timestamp));
+  def addTracerouteEntry(self, timestamp, routeId):
+    self.cursor.execute("INSERT INTO newTracerouteEntry (tracerouteId, timestamp) VALUES (%s, %s)", (routeId, timestamp));
     #print "INSERT instance %s at %s" %(timestamp, routeId);
     self.newTracerouteEntries += 1
 
@@ -176,7 +189,7 @@ class TracerouteProcessor:
         else:
           routeId = self.routeCache[tuple(route["hopNodes"])];
           #print "Found route %s as %s" %(route, routeId);
-        self.addTracerouteInstance(route["timestamp"], routeId);
+        self.addTracerouteEntry(route["timestamp"], routeId);
     endProcessing = time.time()
     print "Traceroutes processed in %s s - %s entries processes - %s new routes found" %(str(endProcessing - startProcessing), str(self.newTracerouteEntries), str(self.newTraceroutes))
 
@@ -193,7 +206,7 @@ class PunditDBUtil:
     cursor.execute("TRUNCATE traceroutePeriod")
     aggregator = PeriodAggregator(cnx)
     aggregator.processNewData("SELECT * FROM traceroute, tracerouteHistory WHERE traceroute.tracerouteID = tracerouteHistory.tracerouteId ORDER BY traceroute.srcId ASC, traceroute.dstId ASC, tracerouteHistory.timestamp ASC")
-
+  
   @staticmethod
   def processTracerouteStaging(cnx):
     print "Processing tracerouteStaging table"
@@ -210,6 +223,15 @@ class PunditDBUtil:
     cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT src AS name, REVERSE(SUBSTRING_INDEX(REVERSE(src), '.', 2)) AS site FROM tracerouteProcessing WHERE src NOT IN (SELECT name FROM host)")
     cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT dst AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dst), '.', 2)) AS site FROM tracerouteProcessing WHERE dst NOT IN (SELECT name FROM host)")
     cursor.execute("INSERT INTO hop (ip, name) SELECT DISTINCT hop_ip AS ip, hop_name AS name FROM tracerouteProcessing LEFT JOIN hop ON (hop.name = tracerouteProcessing.hop_name AND hop.ip = tracerouteProcessing.hop_ip) WHERE hop.ip IS NULL")
+    cursor.execute("""CREATE TABLE `newTracerouteEntry` (
+  `tracerouteId` int(10) unsigned NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `traceroute_timestamp_idx` (`tracerouteId`,`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     processor = TracerouteProcessor(cnx)
     processor.processNewData("select src.hostId AS srcId, dst.hostId AS dstId, tracerouteProcessing.hop_no AS hopNumber, FROM_UNIXTIME(ts) AS timestamp, hop.hopId AS nodeId from tracerouteProcessing, host AS src, host AS dst, hop WHERE tracerouteProcessing.src = src.name AND tracerouteProcessing.dst = dst.name AND tracerouteProcessing.hop_ip = hop.ip AND tracerouteProcessing.hop_name = hop.name ORDER BY srcId, dstId, timestamp, hopNumber;")
+    aggregator = PeriodAggregator(cnx)
+    aggregator.processNewData("SELECT * FROM traceroute, newTracerouteEntry WHERE traceroute.tracerouteID = newTracerouteEntry.tracerouteId ORDER BY traceroute.srcId ASC, traceroute.dstId ASC, newTracerouteEntry.timestamp ASC")
+    cursor.execute("INSERT INTO tracerouteHistory SELECT * FROM newTracerouteEntry")
+    cursor.execute("DROP TABLE newTracerouteEntry")
     cursor.execute("DROP TABLE tracerouteProcessing")
