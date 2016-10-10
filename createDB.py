@@ -88,6 +88,13 @@ createTracerouteHistory = """CREATE TABLE `tracerouteHistory` (
   KEY `traceroute_timestamp_idx` (`tracerouteId`,`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
 
+createTracerouteHistory = """CREATE TABLE `traceroutePeriod` (
+  `tracerouteId` int(10) unsigned NOT NULL,
+  `startTime` TIMESTAMP NOT NULL,
+  `endTime` TIMESTAMP NULL DEFAULT NULL,
+  KEY `traceroute_starttime_idx` (`tracerouteId`,`startTime`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1"""
+
 createLocalizationEvent = """CREATE TABLE `localizationEvent` (
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `nodeId` smallint(5) unsigned NOT NULL,
