@@ -22,8 +22,12 @@
                 <pollQuery>SELECT ?</pollQuery>
             </channel>
             <channel name="hosts">
-                <query>SELECT name FROM host ORDER BY name;</query>
+                <query>SELECT name FROM host ORDER BY name</query>
                 <pollQuery>SELECT COUNT(*) FROM host</pollQuery>
+            </channel>
+            <channel name="sites">
+                <query>SELECT DISTINCT site FROM host ORDER BY site</query>
+                <pollQuery>SELECT COUNT(DISTINCT site) FROM host</pollQuery>
             </channel>
             <channel name="report/(.*)/(.*)">
                 <query>SELECT startTime AS Start, endTime as End, src.name AS Source, dst.name AS Dest, type AS Type, info AS Info FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?) AND (endTime > NOW() - INTERVAL 1 DAY OR endTime IS NULL)</query>

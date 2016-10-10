@@ -6,6 +6,7 @@
     <mapping channel="history/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="traceroute/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="hosts" substitution="jdbc://$0" permission="READ_ONLY"/>
+    <mapping channel="sites" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="report/(.*)" substitution="jdbc://report/$1/$1" permission="READ_ONLY"/>
     <mapping channel="problems/count/(.*)" substitution="jdbc://problems/count/$1/$1" permission="READ_ONLY"/>
 
