@@ -18,7 +18,7 @@
 package PuNDIT::Central::Localization::EvStore::MySQL;
 
 use strict;
-use DBI;
+use DBI qw(:sql_types);
 use Log::Log4perl qw(get_logger);
 
 =pod
@@ -107,8 +107,8 @@ sub writeEvHash
     
                 $sth->bind_param(1, $event->{'startTime'});
                 $sth->bind_param(2, $event->{'endTime'});
-                $sth->bind_param(3, $srcHost);
-                $sth->bind_param(4, $dstHost);
+                $sth->bind_param(3, $srcHost, SQL_VARCHAR);
+                $sth->bind_param(4, $dstHost, SQL_VARCHAR);
                 $sth->bind_param(5, $event->{'baselineDelay'});
                 $sth->bind_param(6, $event->{'detectionCode'});
                 $sth->bind_param(7, $event->{'queueingDelay'});
