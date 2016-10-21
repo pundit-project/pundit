@@ -5,7 +5,7 @@
 %define short	pundit
 Name:		pscheduler-archiver-%{short}
 Version:	1.0
-Release:	0.7.rc1%{?dist}
+Release:	0.10.rc1%{?dist}
 
 Summary:	PuNDIT archiver class for pScheduler
 BuildArch:	noarch
@@ -16,7 +16,7 @@ Source0:	%{short}-%{version}.tar.gz
 
 Provides:	%{name} = %{version}-%{release}
 
-Requires:	pscheduler-server
+Requires:	pscheduler-server, python-pika
 
 BuildRequires:	pscheduler-rpm
 
