@@ -82,7 +82,7 @@ sub writeTrHash
     my ($self, $trHash) = @_;
     
     # check whether the db connection is still alive, otherwise reconnect
-    unless ($self->{'_dbh'} || $self->{'_dbh'}->ping) {
+    unless ($self->{'_dbh'} && $self->{'_dbh'}->ping) {
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
     
