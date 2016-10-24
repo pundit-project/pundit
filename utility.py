@@ -58,7 +58,7 @@ class TraceroutePeriod:
       self.traceroutesBetweenHosts.append(row[0])
 
   def initPeriod(self, tracerouteEvent):
-    self.cursor.execute("SELECT tracerouteId, startTime, endTime FROM traceroutePeriod WHERE tracerouteId = %s AND endTime IS NULL", (tracerouteEvent["tracerouteId"],))
+    self.cursor.execute("SELECT traceroutePeriod.tracerouteId, startTime, endTime FROM traceroutePeriod, traceroute AS t1, traceroute AS t2 WHERE t1.tracerouteId = %s AND t1.srcId = t2.srcId AND t1.dstId = t2.dstId AND traceroutePeriod.tracerouteID = t2.tracerouteId AND endTime IS NULL", (tracerouteEvent["tracerouteId"],))
     row = self.cursor.fetchone()
     if row is None:
       self.initEmptyPeriod()
