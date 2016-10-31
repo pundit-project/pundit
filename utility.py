@@ -2,6 +2,7 @@
 
 import mysql.connector
 import time
+from datetime import datetime, timedelta
 
 class TraceroutePeriod:
   def __init__(self, cnx):
@@ -193,6 +194,171 @@ class TracerouteProcessor:
     endProcessing = time.time()
     print "Traceroutes processed in %s s - %s entries processes - %s new routes found" %(str(endProcessing - startProcessing), str(self.newTracerouteEntries), str(self.newTraceroutes))
 
+class Problem:
+  def __init__(self, cnx, pType):
+    self.cursor = cnx.cursor(buffered=True)
+    self.traceroutesBetweenHosts = [];
+    self.initEmptyProblem()
+    self.pType = pType
+    self.updated = 0
+    self.closed = 0
+    self.opened = 0
+
+  def initEmptyProblem(self):
+    self.startTime = None
+    self.endTime = None
+    self.srcId = None
+    self.dstId = None
+    self.info = 0
+    self.toUpdate = False
+
+  def infoString(self):
+    if (self.pType == "delay"):
+      return "%s ms" % self.info
+    if (self.pType == "pLoss"):
+      return "%s%%" % self.info
+    raise Exception('Unkown problem type' + self.pType)
+
+  def createClosedProblem(self):
+    print "Create closed problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    self.cursor.execute("INSERT INTO problem (startTime, endTime, srcId, dstId, type, info) VALUES (%s, %s, %s, %s, %s, %s)", (self.startTime, self.endTime, self.srcId, self.dstId, self.pType, self.infoString()))
+    self.updated += 1
+    self.closed += 1
+    self.opened +=1
+
+  def createOpenProblem(self):
+    print "Open problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    self.cursor.execute("INSERT INTO problem (startTime, srcId, dstId, type, info) VALUES (%s, %s, %s, %s, %s)", (self.startTime, self.srcId, self.dstId, self.pType, self.infoString()))
+    self.updated += 1
+    self.opened +=1
+
+  def closeProblem(self):
+    print "Close problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    self.cursor.execute("UPDATE problem SET info = %s, endTime = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL", (self.infoString(), self.endTime, self.srcId, self.dstId, self.pType))
+    self.updated += 1
+    self.closed += 1
+
+  def updateOpenProblem(self):
+    print "Update problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    self.cursor.execute("UPDATE problem SET info = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL", (self.infoString(), self.srcId, self.dstId, self.pType))
+    self.updated += 1
+
+  def saveOpenProblem(self):
+    if (self.startTime is None):
+      return
+    if (self.toUpdate):
+      self.updateOpenProblem()
+    else:
+      self.createOpenProblem()
+
+  def saveClosedProblem(self):
+    if (self.startTime is None):
+      return
+    if (self.toUpdate):
+      self.closeProblem()
+    else:
+      self.createClosedProblem()
+
+  def infoFromDB(self, info):
+    if info.endswith(" ms"):
+      return float(info[:-3])
+    if info.endswith("%"):
+      return float(info[:-1])
+    return 0
+
+  def detectionCode(self):
+    if (self.pType == "delay"):
+      return 2
+    if (self.pType == "pLoss"):
+      return 4
+    return 0
+
+  def pFlag(self):
+    if (self.pType == "delay"):
+      return "hasDelay"
+    if (self.pType == "pLoss"):
+      return "hasLoss"
+    return ""
+
+  def hostsChanged(self, statusEvent):
+    return self.srcId != statusEvent["srcId"] or self.dstId != statusEvent["dstId"]
+
+  def initProblem(self, statusEvent):
+      self.initEmptyProblem()
+      self.srcId = statusEvent["srcId"]
+      self.dstId = statusEvent["dstId"]
+
+  def loadLastProblem(self, statusEvent):
+    self.cursor.execute("SELECT * FROM problem WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL", (statusEvent["srcId"], statusEvent["dstId"], self.pType))
+    row = self.cursor.fetchone()
+    if row is None:
+      self.initProblem(statusEvent)
+    else:
+      status = dict(zip(self.cursor.column_names, row))
+      self.startTime = status["startTime"]
+      self.endTime = None
+      self.srcId = status["srcId"]
+      self.dstId = status["dstId"]
+      self.info = self.infoFromDB(status["info"])
+      self.toUpdate = True
+      # Retrieve last time for open problem
+      self.cursor.execute("SELECT startTime FROM status WHERE srcId=%s AND dstId=%s AND detectionCode & %s <> 0 ORDER BY startTime DESC LIMIT 1", (self.srcId, self.dstId, self.detectionCode()))
+      row = self.cursor.fetchone()
+      if row is None:
+        self.endTime = self.startTime
+      else:
+        self.endTime = row[0]
+
+  def newProblem(self, statusEvent):
+    self.startTime = statusEvent["startTime"]
+    self.endTime = statusEvent["startTime"]
+    self.srcId = statusEvent["srcId"]
+    self.dstId = statusEvent["dstId"]
+    self.info = statusEvent[self.pType]
+    self.toUpdate = False
+    #print "Current problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+
+  def updateProblem(self, statusEvent):
+    if statusEvent[self.pFlag()] != 0:
+      # Problem is continuing
+      self.endTime = statusEvent["startTime"]
+      self.info = max(self.info, statusEvent[self.pType])
+    else:
+      if (statusEvent["startTime"] > self.endTime + timedelta(hours=1)):
+        self.saveClosedProblem()
+        self.initProblem(statusEvent)
+
+  def processEvent(self, statusEvent):
+    if self.hostsChanged(statusEvent):
+      self.saveOpenProblem()
+      self.loadLastProblem(statusEvent)
+      #print "New host pair %s - %s" %(self.srcId, self.dstId)
+    if self.startTime is None:
+      # No current problem. Check if a new one has started.
+      if statusEvent[self.pFlag()] != 0:
+        self.newProblem(statusEvent)
+    else:
+      # Update current problem
+      self.updateProblem(statusEvent)
+
+class ProblemAggregator:
+
+  def __init__(self, cnx):
+    self.cursor = cnx.cursor(buffered=True)
+    self.delayProblem = Problem(cnx, "delay")
+    self.lossProblem = Problem(cnx, "pLoss")
+
+  def processNewData(self, newDataQuery):
+    startProcessing = time.time()
+    self.cursor.execute(newDataQuery)
+    for newRow in self.cursor:
+      newData = dict(zip(self.cursor.column_names, newRow))
+      self.delayProblem.processEvent(newData)
+      self.lossProblem.processEvent(newData)
+    self.delayProblem.saveOpenProblem()
+    self.lossProblem.saveOpenProblem()
+    endProcessing = time.time()
+    print "Problems aggregated in %s s - %s delayProblems udpated - %s closed - %s opened\n                                       - %s lossProblems udpated - %s closed - %s opened" %(str(endProcessing - startProcessing), str(self.delayProblem.updated), str(self.delayProblem.closed), str(self.delayProblem.opened), str(self.lossProblem.updated), str(self.lossProblem.closed), str(self.lossProblem.opened))
 
 class PunditDBUtil:
   @staticmethod
@@ -235,3 +401,39 @@ class PunditDBUtil:
     cursor.execute("INSERT INTO tracerouteHistory SELECT * FROM newTracerouteEntry")
     cursor.execute("DROP TABLE newTracerouteEntry")
     cursor.execute("DROP TABLE tracerouteProcessing")
+
+  @staticmethod
+  def processStatusStaging(cnx):
+    print "Processing statusStaging table"
+    cursor = cnx.cursor(buffered=True)
+    # Create processsing table
+    cursor.execute("""CREATE TABLE `statusProcessing` (
+  `startTime` int(11) DEFAULT NULL,
+  `endTime` int(11) DEFAULT NULL,
+  `srchost` varchar(256) DEFAULT NULL,
+  `dsthost` varchar(256) DEFAULT NULL,
+  `baselineDelay` float DEFAULT NULL,
+  `detectionCode` int(11) DEFAULT NULL,
+  `queueingDelay` float DEFAULT NULL,
+  `lossRatio` float DEFAULT NULL,
+  `reorderMetric` float DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    # Atomically switch staging with processing
+    cursor.execute("RENAME TABLE statusStaging TO statusTmp, statusProcessing TO statusStaging, statusTmp TO statusProcessing")
+    print "Adding missing hosts"
+    # Add missing src hosts
+    cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT srchost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(srchost), '.', 2)) AS site FROM statusProcessing WHERE srchost NOT IN (SELECT name FROM host)")
+    # Add missing dst hosts
+    cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT dsthost AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dsthost), '.', 2)) AS site FROM statusProcessing WHERE dsthost NOT IN (SELECT name FROM host)")
+    # Create temporary table with normalized new status entries
+    print "Importing new entries"
+    cursor.execute("CREATE TABLE newStatus SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.hostId AS srcId, dst.hostId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, host AS src, host AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name")
+    # Add new status entries
+    cursor.execute("INSERT INTO status SELECT * FROM newStatus")
+    # Process problems for new status entries
+    print "Analizing problems"
+    aggregator = ProblemAggregator(cnx)
+    aggregator.processNewData("SELECT srcId, dstId, startTime, endTime, detectionCode & 2 <> 0 AS hasDelay, detectionCode & 4 <> 0 AS hasLoss, queueingDelay AS delay, lossRatio AS pLoss from newStatus ORDER BY srcId, dstId, startTime")
+    # Cleanup
+    cursor.execute("DROP TABLE newStatus")
+    cursor.execute("DROP TABLE statusProcessing")
