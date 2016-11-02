@@ -43,9 +43,11 @@ sub new
 	my $port = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"port"};
 	my $database = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"database"};
 	my $user = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"user"};
-	my $pw = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"password"};
+	my $password = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'mysql'}{"password"};
 	
-	my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $pw); 
+	# make the db connection here, refreshing it if it dies later
+    my $dsn = "DBI:mysql:$database:$host:$port";
+	my $dbh = DBI->connect($dsn, $user, $password); 
     if (!$dbh)
     {
         $logger->error("Couldn't initialize DBI connection. Quitting");
@@ -53,6 +55,9 @@ sub new
 	}
 	
 	my $self = {
+        '_dsn' => $dsn,
+        '_user' => $user,
+        '_password' => $password,
         '_dbh' => $dbh,
     };
     
@@ -83,6 +88,12 @@ sub getLatestEvents
 sub getEventsDb
 {
 	my ($self, $startTS, $endTS) = @_;
+	
+	# check whether the db connection is still alive, otherwise reconnect
+    unless ($self->{'_dbh'} && $self->{'_dbh'}->ping) 
+    {
+        $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
+    }
 	
 	# Extract from self
 	my $dbh = $self->{'_dbh'};

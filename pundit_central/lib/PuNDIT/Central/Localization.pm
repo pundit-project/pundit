@@ -19,12 +19,12 @@ package PuNDIT::Central::Localization;
 
 use strict;
 use Log::Log4perl qw(get_logger);
-use POSIX qw(floor strftime);
 
 # local libs
 use PuNDIT::Central::Localization::Tomography;
 use PuNDIT::Central::Localization::TrReceiver;
 use PuNDIT::Central::Localization::EvReceiver;
+use PuNDIT::Utils::Misc qw( calc_bucket_id );
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -70,6 +70,7 @@ sub new
         
         # runtime variables
         '_refTime' => $refTime,
+        '_runtimeOffset' => 2, # offset runtime to reduce collisions
     };
     
     bless $self, $class;
@@ -89,12 +90,13 @@ sub run
     my $refTime = $self->{'_refTime'};
     my $windowSize = $self->{'_windowSize'};
     my $processingDelta = $self->{'_processingDelta'};
+    my $runtimeOffset = $self->{'_runtimeOffset'};
     
     # deadline not reached yet. Sleep until reftime + processingDelta has been reached
-    if ((time() - $processingDelta) < $refTime)
+    if (time() < ($refTime + $processingDelta + $runtimeOffset))
     {
         $logger->debug("Not reached deadline yet.");
-        return $refTime + $processingDelta - time();
+        return $refTime + $processingDelta + $runtimeOffset - time();
     }
 
     # Get the current updated traceroute matrix
@@ -112,7 +114,7 @@ sub run
     $self->{'_refTime'} = $refTime;
     
     # sleep until the next run
-    my $sleepTime = $refTime + $processingDelta - time();
+    my $sleepTime = ($refTime + $processingDelta + $runtimeOffset) - time();
     if ($sleepTime < 0)
     {
         $logger->error("Localization Federation missed it's deadline. Central server possibly overloaded");
@@ -122,9 +124,4 @@ sub run
     return $sleepTime;
 }
 
-# Calculates the id for a given bucket given a timestamp
-sub calc_bucket_id
-{
-    my ($curr_ts, $windowsize) = @_;
-    return ($windowsize * floor($curr_ts / $windowsize));
-}
+1;

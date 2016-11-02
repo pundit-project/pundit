@@ -26,6 +26,7 @@ use PuNDIT::Central::Localization::EvReceiver::MySQL;
 use PuNDIT::Central::Localization::EvReceiver::RabbitMQ;
 use PuNDIT::Central::Localization::EvReceiver::Test;
 use PuNDIT::Central::Localization::EvStore;
+use PuNDIT::Utils::Misc qw( calc_bucket_id );
 
 # debug. Remove this for production
 use Data::Dumper;
@@ -107,8 +108,10 @@ sub run
 {
     my ($cfgHash, $fedName, $evQueues) = @_;
         
-    my $sleepTime = 10; # poll every 10 seconds
-    my $lastTime = time - 6*60; # fixed timelag of 5 minutes
+    my $runtimePeriod = 10; # poll every 10 seconds
+    my $processingDelta = 6 * 60; # process X minutes in the past
+    my $refTime = calc_bucket_id(time(), $runtimePeriod) - $processingDelta; # Reference time to process
+    my $runtimeOffset = 3; # offset each period by 3 seconds
     
     # init the sub-receiver based on the configuration settings
     my $subType = $cfgHash->{'pundit_central'}{$fedName}{'ev_receiver'}{'type'};
@@ -122,8 +125,6 @@ sub run
     elsif ($subType eq "rabbitmq")
     {
         $subRcv = new PuNDIT::Central::Localization::EvReceiver::RabbitMQ($cfgHash, $fedName);  ###
-        my $subret = Data::Dumper::Dumper($subRcv);                                             ###
-        $logger->debug("\$subret $subret");                                                     ###
         $evStore = new PuNDIT::Central::Localization::EvStore($cfgHash, $fedName);              ###
     }
     else # init the test receiver (debug)
@@ -138,10 +139,16 @@ sub run
     
     while ($runLoop)
     {
-        $logger->debug("evThread awoke");
+        $logger->debug("evThread woke, querying events later than $refTime");
         
-        # Get the events from the sub-receiver after lastTime
-        my $evHash = $subRcv->getLatestEvents($lastTime);
+        # sleep more so the threshold time isn't exceeded
+        while (time() < ($refTime + $processingDelta + $runtimeOffset))
+        {
+            sleep(1);
+        }
+        
+        # Get the events from the sub-receiver after refTime
+        my $evHash = $subRcv->getLatestEvents($refTime);
         
         # if evStore is defined, it means we are using it
         if (defined($evStore))
@@ -152,16 +159,12 @@ sub run
         # Add them to the EvQueues for Localisation to use
         _addHashToEvQueues($evQueues, $evHash);
         
-        my $lastTime += $sleepTime;
+        $refTime += $runtimePeriod; # advance the reference time after processing
+        # sleep until (reference time + processingDelta + runtimeOffset) time is reached
+        my $sleepTime = ($refTime + $processingDelta + $runtimeOffset) - time();       
         
         $logger->debug("evThread sleeping for $sleepTime");
         sleep($sleepTime);
-        
-        # sleep more so the threshold time isn't exceeded
-        while ((time - (5 * 60)) < $lastTime)
-        {
-            sleep(10);
-        }
     }
 }
 

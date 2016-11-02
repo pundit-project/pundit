@@ -26,9 +26,11 @@ use threads::shared;
 use Data::Dumper;
 
 use PuNDIT::Central::Localization::TrReceiver::MySQL;
+use PuNDIT::Central::Localization::TrReceiver::RabbitMQ;
 use PuNDIT::Central::Localization::TrStore;
 #use PuNDIT::Central::Localization::TrReceiver::ParisTr; # not used right now. Agents will report traceroutes to the MySQL database
 use PuNDIT::Utils::TrHop;
+use PuNDIT::Utils::Misc qw( calc_bucket_id ); 
 
 =pod
 
@@ -107,8 +109,10 @@ sub run
     my ($cfgHash, $fedName, $trQueues) = @_;
     
     # Configuration Parameters
-    my $sleepTime = 60; # interval between checks, in seconds. Configure this
-    my $lastTime = time - 30*60; # check starting from 30 minutes in the past
+    my $runtimePeriod = 60; # interval between checks, in seconds. Configure this
+    my $processingDelta = 30 * 60; # the offset 30 minutes in the past 
+    my $refTime = calc_bucket_id(time(), $runtimePeriod) - $processingDelta; # check starting from 30 minutes in the past
+    my $runtimeOffset = 59; # the offset 
     
     # init the sub-receiver based on the configuration settings
     my $subType = $cfgHash->{'pundit_central'}{$fedName}{'tr_receiver'}{'type'};
@@ -125,7 +129,7 @@ sub run
     }
     elsif ( $subType eq "rabbitmq" )
     {
-#        $trRcv = new PuNDIT::Central::Localization::TrReceiver::RabbitMQ( $cfgHash, $fedName );        
+        $trRcv = new PuNDIT::Central::Localization::TrReceiver::RabbitMQ( $cfgHash, $fedName );        
         $trStore = new PuNDIT::Central::Localization::TrStore( $cfgHash, $fedName );
     }
     # Failsafe if failed to initialise
@@ -137,10 +141,16 @@ sub run
     
     while ($runLoop == 1)
     {
-        $logger->debug("TrRcv thread woke. Querying for traces later than $lastTime");
+        $logger->debug("TrRcv thread woke. Querying for traces later than $refTime");
+        
+        # sleep more so the threshold time isn't exceeded
+        if (time() < ($refTime + $processingDelta + $runtimeOffset))
+        {
+            sleep(1);
+        }
         
         # Get the events from the sub-receiver
-        my $trHash = $trRcv->getLatestTraces($lastTime);
+        my $trHash = $trRcv->getLatestTraces($refTime);
         
         # if trStore is defined, it means we are using it
         if (defined($trStore))
@@ -151,14 +161,12 @@ sub run
         # Add it to the TrQueues
         _addHashToTrQueues($trQueues, $trHash);
         
-        $lastTime += $sleepTime;
-        sleep($sleepTime);
+        $refTime += $runtimePeriod; # advance the reference time
+        # sleep until (reference time + processingDelta + runtimeOffset) time is reached
+        my $sleepTime = ($refTime + $processingDelta + $runtimeOffset) - time();
         
-        # sleep more so the threshold time isn't exceeded
-        while ((time - (15 * 60)) < $lastTime)
-        {
-            sleep(10);
-        }
+        $logger->debug("trThread sleeping for $sleepTime");
+        sleep($sleepTime);
     }
 }
 
