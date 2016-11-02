@@ -7,10 +7,30 @@
 
 import pscheduler
 import time
+import pika # RabbitMQ library
 
-# Default path if not overridden
-outPath = "/opt/pundit_agent/owampData"
-# start timestamp, used for naming files
+# Parameters to interface with agent/rabbitmq
+archiverParams = {
+    # Default path if not overridden
+    'outPath' : "/opt/pundit_agent/owampData",
+
+    # RabbitMQ parameters
+
+    # Credentials for this agent
+    'user' : 'guest', 
+    'password' : 'Test~Pass', 
+
+    # RabbitMQ Broker hosting the exchange
+    'exchangeHost' : 'localhost',
+    'exchangePort' : 5672,
+    
+    # Traceroute-specific configuration
+    # This should be the same for each agent
+    'trExchange' : 'traceroute', 
+    'trRoutingKey' : 'pundit.traceroute',
+}
+
+# start timestamp, used for naming files and labelling messages
 startTs = None
 
 #initialize logging
@@ -18,17 +38,60 @@ log = pscheduler.Log(prefix="archiver-pundit", quiet=True)
 
 # Takes the output of the owamp test and sends it to the PuNDIT agent
 # Currently saves the output of the test to disk
-def processOwamp(json):
-    outFile = "%s/%d_%s.json" % (outPath, startTs, json['result']['id'])
-    log.info(outFile)
+def processOwamp(json, archiverParams):
+    outFile = "%s/%d_%s.json" % (archiverParams['outPath'], startTs, json['result']['id'])
+    log.info("Writing owamp results to %s" % (outFile))
     with open(outFile, "w") as f:
         f.write(pscheduler.json_dump(json))
         log.info("Successfully wrote owamp to %s" % (outFile))
 
 # Takes the output of the traceroute and sends it to the PuNDIT agent
-def processTraceroute(json):
-    pass
-
+# Any exceptions should be passed up to the calling method
+def processTraceroute(json, startTs, archiverParams):
+    # set up the rabbitmq connection
+    credentials = pika.PlainCredentials(archiverParams['user'], archiverParams['password'])
+    params = pika.ConnectionParameters(archiverParams['exchangeHost'], archiverParams['exchangePort'], '/', credentials)
+    connection = pika.BlockingConnection(parameters=params)
+    channel = connection.channel()
+    
+    trStrHeader = '%d|%s|%s|' % (startTs, json['test']['spec']['source'], json['test']['spec']['dest'])
+    for path in json['result']['paths']:
+        trStr = trStrHeader
+        first = True
+        hopNo = 1
+        for hop in path:
+            hopIp = None
+            hopName = None
+            
+            # Insert ; as hop delimiter
+            if first:
+                first = False
+            else:
+                trStr += ";"
+            
+            # check whether hop name exists 
+            if 'ip' in hop:
+                hopIp = hop['ip']
+            else:
+                hopIp = '*'
+                
+            if 'hostname' in hop:
+                hopName = hop['hostname']
+                # truncate the last dot in the hostname
+                if len(hopName) > 1 and hopName[-1] == '.':
+                    hopName = hopName[:-1]
+            else:
+                hopName = hopIp
+            
+            # Append this hop detail to the string
+            trStr += "%d,%s,%s" % (hopNo, hopIp, hopName)
+            hopNo += 1
+        
+        log.info("sending %s" % (trStr))
+        # push this message to the exchange
+        channel.basic_publish(exchange=archiverParams['trExchange'], routing_key=archiverParams['trRoutingKey'], body=trStr)
+    
+# load the input from pscheduler
 json = pscheduler.json_load(exit_on_error=True)
 log.info("Archiver received: %s" % json)
 
@@ -50,7 +113,7 @@ try:
 except KeyError:
     errors.append("Couldn't get tool name/version")
 
-# extract the timestamp
+# Common to all: extract the timestamp
 try:
     dt = pscheduler.iso8601_as_datetime(json['result']['schedule']['start'])
     startTs = int(time.mktime(dt.timetuple()))
@@ -66,25 +129,53 @@ if errors:
         "error": '; '.join(errors)
     })
 
-# extract the info from the input
-if 'path' in json['data']:
-    log.info("overridden path")
-    outPath = json['data']['path']
-
 # call the appropriate tool
 try:
     if (toolName == "owping" and toolVer == 1.0):
-        processOwamp(json)
+        
+        # extract the path from the command line
+        if 'path' in json['data']:
+            log.info("overridden path")
+            archiverParams['outPath'] = json['data']['path']
+
+        processOwamp(json, archiverParams)
     elif (toolName == "traceroute" and toolVer == 1.0):
-        processTraceroute(json)
+        
+        overridden = [] # list of overriddent params
+        # extract parameters 
+        if 'user' in json['data']:
+            overridden.append("user")
+            archiverParams['user'] = json['data']['user']
+        if 'password' in json['data']:
+            overridden.append("password")
+            archiverParams['password'] = json['data']['password']
+        
+        if 'exchangeHost' in json['data']:
+            overridden.append("exchangeHost")
+            archiverParams['exchangeHost'] = json['data']['exchangeHost']
+        if 'exchangePort' in json['data']:
+            overridden.append("exchangePort")
+            archiverParams['exchangePort'] = json['data']['exchangePort']
+            
+        if 'trExchange' in json['data']:
+            overridden.append("trExchange")
+            archiverParams['trExchange'] = json['data']['trExchange']
+        if 'trRoutingKey' in json['data']:
+            overridden.append("trRoutingKey")
+            archiverParams['trRoutingKey'] = json['data']['trRoutingKey']
+        
+        if len(overridden) > 0:
+            log.info("overridden %s" % (",".join(overridden)))
+            
+        processTraceroute(json['result'], startTs, archiverParams)
     else:
         raise Exception("No handler found for tool %s ver %f" % 
                         (toolName, toolVer)) 
-except (IOError, Exception) as ex:
+except Exception as ex:
+    log.error(str(ex))
     pscheduler.succeed_json({
         "succeeded": False,
         "error": "Failed to log result: %s" % str(ex)
     })
 
-log.debug("Archiver done")
 pscheduler.succeed_json({'succeeded': True})

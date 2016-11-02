@@ -13,14 +13,17 @@ except ValueError as ex:
         "error": str(ex)
         })
 
+# Set the data validator
+# Everything is optional so we can't use it right now
 data_validator = {
+    
     "type": "object",
     "properties": {
-        "path": { "$ref": "#/pScheduler/String" },
-    },
+        },
     "additionalProperties": False
 }
 
+# validate against the data
 valid, error = pscheduler.json_validate(json, data_validator)
 
 if not valid:
