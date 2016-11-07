@@ -62,7 +62,7 @@ class TraceroutePeriod:
     self.cursor.execute("SELECT traceroutePeriod.tracerouteId, startTime, endTime FROM traceroutePeriod, traceroute AS t1, traceroute AS t2 WHERE t1.tracerouteId = %s AND t1.srcId = t2.srcId AND t1.dstId = t2.dstId AND traceroutePeriod.tracerouteID = t2.tracerouteId AND endTime IS NULL", (tracerouteEvent["tracerouteId"],))
     row = self.cursor.fetchone()
     if row is None:
-      self.initEmptyPeriod()
+      self.newPeriod(tracerouteEvent)
     else:
       period = dict(zip(self.cursor.column_names, row))
       self.startTime = period["startTime"]
@@ -74,6 +74,7 @@ class TraceroutePeriod:
     self.tracerouteId = tracerouteEvent["tracerouteId"]
     self.startTime = tracerouteEvent["timestamp"]
     self.endTime = None
+    self.toUpdate = False
 
   def updatePeriod(self, tracerouteEvent):
     if tracerouteEvent["tracerouteId"] == self.tracerouteId:
@@ -182,6 +183,7 @@ class TracerouteProcessor:
     self.row = self.dataCursor.fetchone()
     while self.row != None:
       route = self.readNextRoute();
+      print "Next route %s - %s - %s (%s) (%s)" %(route["src"], route["dst"], route["timestamp"], str(route["hopNumbers"]), str(route["hopNodes"]))
       if route != None:
         self.refreshCache(route);
         if tuple(route["hopNodes"]) not in self.routeCache:
@@ -220,26 +222,26 @@ class Problem:
     raise Exception('Unkown problem type' + self.pType)
 
   def createClosedProblem(self):
-    print "Create closed problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    #print "Create closed problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
     self.cursor.execute("INSERT INTO problem (startTime, endTime, srcId, dstId, type, info) VALUES (%s, %s, %s, %s, %s, %s)", (self.startTime, self.endTime, self.srcId, self.dstId, self.pType, self.infoString()))
     self.updated += 1
     self.closed += 1
     self.opened +=1
 
   def createOpenProblem(self):
-    print "Open problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    #print "Open problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
     self.cursor.execute("INSERT INTO problem (startTime, srcId, dstId, type, info) VALUES (%s, %s, %s, %s, %s)", (self.startTime, self.srcId, self.dstId, self.pType, self.infoString()))
     self.updated += 1
     self.opened +=1
 
   def closeProblem(self):
-    print "Close problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    #print "Close problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
     self.cursor.execute("UPDATE problem SET info = %s, endTime = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL", (self.infoString(), self.endTime, self.srcId, self.dstId, self.pType))
     self.updated += 1
     self.closed += 1
 
   def updateOpenProblem(self):
-    print "Update problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
+    #print "Update problem from %s to %s - (%s - %s) - info %s" %(self.srcId, self.dstId, self.startTime, self.endTime, self.info)
     self.cursor.execute("UPDATE problem SET info = %s WHERE srcId = %s AND dstID = %s AND type = %s AND endTime IS NULL", (self.infoString(), self.srcId, self.dstId, self.pType))
     self.updated += 1
 
@@ -366,17 +368,7 @@ class PunditDBUtil:
     return mysql.connector.connect(user='root', password='pythiaRush!', database='pythia_new')
 
   @staticmethod
-  def regenerateTraceroutePeriod(cnx):
-    print "Regenerating traceroutePeriod table"
-    cursor = cnx.cursor(buffered=True)
-    cursor.execute("TRUNCATE traceroutePeriod")
-    aggregator = PeriodAggregator(cnx)
-    aggregator.processNewData("SELECT * FROM traceroute, tracerouteHistory WHERE traceroute.tracerouteID = tracerouteHistory.tracerouteId ORDER BY traceroute.srcId ASC, traceroute.dstId ASC, tracerouteHistory.timestamp ASC")
-  
-  @staticmethod
-  def processTracerouteStaging(cnx):
-    print "Processing tracerouteStaging table"
-    cursor = cnx.cursor(buffered=True)
+  def createTracerouteProcessing(cursor):
     cursor.execute("""CREATE TABLE `tracerouteProcessing` (
   `ts` int(32) NOT NULL,
   `src` varchar(256) DEFAULT NULL,
@@ -385,6 +377,23 @@ class PunditDBUtil:
   `hop_ip` varchar(256) DEFAULT NULL,
   `hop_name` varchar(256) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+
+  @staticmethod
+  def regenerateTraceroutePeriod(cnx):
+    print "Regenerating traceroutePeriod table"
+    cursor = cnx.cursor(buffered=True)
+    # Create processing table to stop parallel processing
+    PunditDBUtil.createTracerouteProcessing(cursor)
+    cursor.execute("TRUNCATE traceroutePeriod")
+    aggregator = PeriodAggregator(cnx)
+    aggregator.processNewData("SELECT * FROM traceroute, tracerouteHistory WHERE traceroute.tracerouteID = tracerouteHistory.tracerouteId ORDER BY traceroute.srcId ASC, traceroute.dstId ASC, tracerouteHistory.timestamp ASC")
+    cursor.execute("DROP TABLE tracerouteProcessing")
+  
+  @staticmethod
+  def processTracerouteStaging(cnx):
+    print "Processing tracerouteStaging table"
+    cursor = cnx.cursor(buffered=True)
+    PunditDBUtil.createTracerouteProcessing(cursor)
     cursor.execute("RENAME TABLE tracerouteStaging TO tracerouteTmp, tracerouteProcessing TO tracerouteStaging, tracerouteTmp TO tracerouteProcessing")
     cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT src AS name, REVERSE(SUBSTRING_INDEX(REVERSE(src), '.', 2)) AS site FROM tracerouteProcessing WHERE src NOT IN (SELECT name FROM host)")
     cursor.execute("INSERT INTO host (name, site) SELECT DISTINCT dst AS name, REVERSE(SUBSTRING_INDEX(REVERSE(dst), '.', 2)) AS site FROM tracerouteProcessing WHERE dst NOT IN (SELECT name FROM host)")
