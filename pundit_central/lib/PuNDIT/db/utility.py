@@ -2,6 +2,7 @@
 
 import mysql.connector
 import time
+import ConfigParser
 from datetime import datetime, timedelta
 
 class TraceroutePeriod:
@@ -365,7 +366,10 @@ class ProblemAggregator:
 class PunditDBUtil:
   @staticmethod
   def createConnection():
-    return mysql.connector.connect(user='root', password='pythiaRush!', database='pythia_new')
+    Config = ConfigParser.ConfigParser()
+    Config.read("../../../etc/pundit_db_scripts.conf")
+    dbConf = dict(Config.items("DB"))
+    return mysql.connector.connect(**dbConf)
 
   @staticmethod
   def createTracerouteProcessing(cursor):
