@@ -365,11 +365,111 @@ class ProblemAggregator:
 
 class PunditDBUtil:
   @staticmethod
-  def createConnection():
+  def readDBConfiguration():
     Config = ConfigParser.ConfigParser()
     Config.read("../../../etc/pundit_db_scripts.conf")
-    dbConf = dict(Config.items("DB"))
-    return mysql.connector.connect(**dbConf)
+    return dict(Config.items("DB"))
+
+  @staticmethod
+  def createConnection():
+    return mysql.connector.connect(**PunditDBUtil.readDBConfiguration())
+
+  @staticmethod
+  def createDB():
+    dbConf = PunditDBUtil.readDBConfiguration()
+    dbName = dbConf.pop("database", None)
+    cnx = mysql.connector.connect(**dbConf)
+    cursor = cnx.cursor(buffered=True)
+    cursor.execute("CREATE DATABASE " + dbName);
+    cursor.execute("USE " + dbName);
+    cursor.execute("""CREATE TABLE `statusStaging` (
+    `startTime` int(11) DEFAULT NULL,
+    `endTime` int(11) DEFAULT NULL,
+    `srchost` varchar(256) DEFAULT NULL,
+    `dsthost` varchar(256) DEFAULT NULL,
+    `baselineDelay` float DEFAULT NULL,
+    `detectionCode` int(11) DEFAULT NULL,
+    `queueingDelay` float DEFAULT NULL,
+    `lossRatio` float DEFAULT NULL,
+    `reorderMetric` float DEFAULT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `tracerouteStaging` (
+    `ts` int(32) NOT NULL,
+    `src` varchar(256) DEFAULT NULL,
+    `dst` varchar(256) DEFAULT NULL,
+    `hop_no` int(32) NOT NULL,
+    `hop_ip` varchar(256) DEFAULT NULL,
+    `hop_name` varchar(256) DEFAULT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `localizationEventStaging` (
+    `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `link_ip` int(10) unsigned DEFAULT NULL,
+    `link_name` varchar(256) DEFAULT NULL,
+    `det_code` tinyint(3) unsigned DEFAULT NULL,
+    `val1` int(10) unsigned DEFAULT NULL,
+    `val2` int(10) unsigned DEFAULT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `hop` (
+    `hopId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+    `ip` varchar(45) NOT NULL,
+    `name` varchar(256) NOT NULL,
+    PRIMARY KEY (`hopId`),
+    KEY `name_idx` (`name`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `host` (
+    `hostId` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
+    `name` varchar(256) NOT NULL,
+    `site` varchar(32) DEFAULT NULL,
+    PRIMARY KEY (`hostId`),
+    KEY `name_idx` (`name`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `status` (
+    `startTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `endTime` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+    `srcId` smallint(5) unsigned NOT NULL,
+    `dstId` smallint(5) unsigned NOT NULL,
+    `baselineDelay` float unsigned DEFAULT NULL,
+    `detectionCode` bit(8) DEFAULT NULL,
+    `queueingDelay` float unsigned DEFAULT NULL,
+    `lossRatio` float unsigned DEFAULT NULL,
+    `reorderMetric` float unsigned DEFAULT NULL,
+    KEY `src_dst_time_idx` (`srcId`, `dstId`, `startTime`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `tracehop` (
+    `tracerouteId` int(10) unsigned NOT NULL,
+    `hopNumber` tinyint(3) unsigned NOT NULL,
+    `nodeId` smallint(5) unsigned NOT NULL,
+    KEY `trace_hop_idx` (`tracerouteId`, `hopNumber`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `traceroute` (
+    `tracerouteId` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `srcId` smallint(5) unsigned NOT NULL,
+    `dstId` smallint(5) unsigned NOT NULL,
+    PRIMARY KEY (`tracerouteId`),
+    KEY `src_dst_idx` (`srcId`, `dstId`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `traceroutePeriod` (
+    `tracerouteId` int(10) unsigned NOT NULL,
+    `startTime` TIMESTAMP NOT NULL,
+    `endTime` TIMESTAMP NULL DEFAULT NULL,
+    KEY `traceroute_starttime_idx` (`tracerouteId`,`startTime`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `localizationEvent` (
+    `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `nodeId` smallint(5) unsigned NOT NULL,
+    `detectionCode` bit(8) NOT NULL,
+    `val1` float unsigned DEFAULT NULL,
+    `val2` float unsigned DEFAULT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS `problem` (
+    `startTime` TIMESTAMP NOT NULL,
+    `endTime` TIMESTAMP NULL DEFAULT NULL,
+    `srcId` smallint(5) unsigned NOT NULL,
+    `dstId` smallint(5) unsigned NOT NULL,
+    `type` varchar(32) NOT NULL,
+    `info` varchar(10) NOT NULL
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+
 
   @staticmethod
   def createTracerouteProcessing(cursor):
