@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
 import mysql.connector
+from utility import PunditDBUtil
 
-cnx = mysql.connector.connect(user='root', password='pythiaRush!', database='pythia_new')
+cnx = PunditDBUtil.createConnection()
 
 cursor = cnx.cursor(buffered=True)
 
