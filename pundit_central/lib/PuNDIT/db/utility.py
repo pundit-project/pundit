@@ -455,14 +455,14 @@ class PunditDBUtil:
     KEY `traceroute_starttime_idx` (`tracerouteId`,`startTime`)
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE `localizationEvent` (
-    `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `nodeId` smallint(5) unsigned NOT NULL,
     `detectionCode` bit(8) NOT NULL,
     `val1` float unsigned DEFAULT NULL,
     `val2` float unsigned DEFAULT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS `problem` (
-    `startTime` TIMESTAMP NOT NULL,
+    `startTime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `endTime` TIMESTAMP NULL DEFAULT NULL,
     `srcId` smallint(5) unsigned NOT NULL,
     `dstId` smallint(5) unsigned NOT NULL,
@@ -470,6 +470,29 @@ class PunditDBUtil:
     `info` varchar(10) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
 
+  @staticmethod
+  def truncateDB(cnx):
+      cursor = cnx.cursor(buffered=True)
+      cursor.execute("TRUNCATE TABLE hop");
+      cursor.execute("TRUNCATE TABLE host");
+      cursor.execute("TRUNCATE TABLE localizationEvent");
+      cursor.execute("TRUNCATE TABLE localizationEventStaging");
+      cursor.execute("TRUNCATE TABLE problem");
+      cursor.execute("TRUNCATE TABLE status");
+      cursor.execute("TRUNCATE TABLE statusStaging");
+      cursor.execute("TRUNCATE TABLE tracehop");
+      cursor.execute("TRUNCATE TABLE traceroute");
+      cursor.execute("TRUNCATE TABLE traceroutePeriod");
+      cursor.execute("TRUNCATE TABLE tracerouteStaging");
+
+  @staticmethod
+  def resetDB():
+      cnx = PunditDBUtil.createConnection()
+      PunditDBUtil.truncateDB(cnx)
+      cursor = cnx.cursor(buffered=True)
+      cursor.execute("DROP DATABASE IF EXISTS " + PunditDBUtil.readDBConfiguration()["database"])
+      cnx.close
+      PunditDBUtil.createDB()
 
   @staticmethod
   def createTracerouteProcessing(cursor):
