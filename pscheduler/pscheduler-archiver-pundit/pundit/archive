@@ -36,14 +36,57 @@ startTs = None
 #initialize logging
 log = pscheduler.Log(prefix="archiver-pundit", quiet=True)
 
+# Checks for required fields in the json dict
+def checkOwamp(json):
+    
+    if 'result' not in json:
+        log.error("No result in owamp json %s" % (json))
+        return False
+    
+    # Check participants for src/dst
+    if 'participants' not in json['result'] or len(json['result']['participants']) != 2:
+        log.error("Wrong or missing participants in owamp json %s" % (json))
+        return False
+    
+    # Check for raw data in owamp result
+    if 'result' not in json['result'] or 'raw-data' not in json['result']['result']:
+        log.error("Wrong or missing raw-data field in owamp json %s" % (json))
+        return False
+    return True
+
 # Takes the output of the owamp test and sends it to the PuNDIT agent
 # Currently saves the output of the test to disk
-def processOwamp(json, archiverParams):
-    outFile = "%s/%d_%s.json" % (archiverParams['outPath'], startTs, json['result']['id'])
+def processOwamp(json, src, dst, archiverParams):
+    # make a copy of the json dict
+    outDict = dict(json)
+    outDict['src'] = src
+    outDict['dst'] = dst
+    outFile = "%s/%d_%s.json" % (archiverParams['outPath'], startTs, json['id'])
     log.info("Writing owamp results to %s" % (outFile))
     with open(outFile, "w") as f:
-        f.write(pscheduler.json_dump(json))
-        log.info("Successfully wrote owamp to %s" % (outFile))
+        f.write(pscheduler.json_dump(outDict))
+        log.info("Successfully wrote owamp raw data to %s" % (outFile))
+
+# Checks for required fields in the json dict
+def checkTraceroute(json):
+    
+    if 'result' not in json:
+        log.error("No result in traceroute json %s" % (json))
+        return False
+    
+    # Check test spec for src/dst
+    if 'test' not in json['result'] or \
+       'spec' not in json['result']['test'] or \
+       'source' not in json['result']['test']['spec'] or \
+       'dest' not in json['result']['test']['spec']:
+        log.error("Wrong or missing test:spec:src/dest in traceroute json %s" % (json))
+        return False 
+    
+    # Check for path in traceroute result
+    if 'result' not in json['result'] or 'paths' not in json['result']['result']:
+        log.error("Missing paths field in traceroute json %s" % (json))
+        return False
+    return True
 
 # Takes the output of the traceroute and sends it to the PuNDIT agent
 # Any exceptions should be passed up to the calling method
@@ -138,10 +181,14 @@ try:
             log.info("overridden path")
             archiverParams['outPath'] = json['data']['path']
 
-        processOwamp(json, archiverParams)
+        if checkOwamp(json):
+            processOwamp(json['result'], json['result']['participants'][0], json['result']['participants'][1], archiverParams)
+        else:
+            raise Exception("Owamp JSON check failed")
     elif (toolName == "traceroute" and toolVer == 1.0):
         
-        overridden = [] # list of overriddent params
+        overridden = [] # list of overridden params
+        
         # extract parameters 
         if 'user' in json['data']:
             overridden.append("user")
@@ -166,8 +213,11 @@ try:
         
         if len(overridden) > 0:
             log.info("overridden %s" % (",".join(overridden)))
-            
-        processTraceroute(json['result'], startTs, archiverParams)
+        
+        if checkTraceroute(json):
+            processTraceroute(json['result'], startTs, archiverParams)
+        else:
+            raise Exception("Traceroute JSON check failed")
     else:
         raise Exception("No handler found for tool %s ver %f" % 
                         (toolName, toolVer)) 

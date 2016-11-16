@@ -101,7 +101,7 @@ sub processFile
     my ($self, $inputFile) = @_;
     
     # read the file
-    my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_readFile($inputFile);
+    my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_readJson($inputFile);
     
     if ($srcHost ne $self->{'_hostId'})
     {
@@ -221,163 +221,6 @@ sub _parseInt
     return ($val);
 }
 
-# reads an input owamp file
-sub _readFile
-{
-    my ($self, $inputFile) = @_;
-    
-    my @timeseries = ();
-    my $sessionMinDelay;
-    
-    # variables used to overwrite delays due to self queueing 
-    my ($prevTS, $prevDelay);
-    
-    my $srcHost;
-    my $dstHost;
-    my $reorder_metric;
-    my $lost_count;
-    my @lost_array;
-    my @unsync_array;
-    
-    if (substr($inputFile, -3) eq "owp")
-    {
-        # Print individual packet delays, with Unix timestamps, using millisecond granularity
-        open(IN, "owstats -v -U -nm $inputFile |") or die;
-    }
-
-    while(my $line = <IN>)
-    {
-        if ($line =~/^--- owping statistics from \[(.+?)\]:\d+ to \[(.+?)\]\:\d+ ---$/)
-        {
-            $srcHost = $1;
-            $dstHost = $2;           
-        }
-        
-        # grab a reordering metric if any. We calculate our own, so no need to preserve all values
-        $reorder_metric = $1 if ($line =~/^\d*-reordering = ([0-9]*\.?[0-9]*)/);
-        
-        # grab the number of lost packets
-        $lost_count = $1 if ($line =~ /^\d*\ssent, (\d*) lost/);
-        
-        # skip lines that are not owamp measurements
-        next if $line !~ /^seq_no/; 
-        
-        chomp $line;
-        
-        # replace equals and tabs with spaces, then split on space
-        $line =~ s/=/ /g; 
-        $line =~ s/\t/ /g;
-        my @obj = split(/\s+/, $line);
-
-        # check for lost packet
-        my $lost_flag = 0;
-        my $unsync_flag = 0;
-        my $delay = undef;
-        my $sndTS = -1;
-        my $rcvTS = -1;
-        if ($line =~ /LOST/) # catch lost packets
-        {
-            # note sequence number of loss
-            push(@lost_array, $obj[1]);
-            
-            $lost_flag = 1;
-        }
-        elsif ($line =~ /unsync/)
-        {
-            # note sequence number of unsync
-            push(@unsync_array, $obj[1]);
-            
-            # Delay
-#            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
-            $unsync_flag = 1;
-        }
-        else # normal packet
-        {
-#            # skip values that are out of range
-#            next if $fileStartTime && $obj[10] < $fileStartTime;
-#            last if $fileEndTime && $obj[10] > $fileEndTime;
-
-            # Delay
-            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
-            
-            $sndTS = $obj[10] * 1.0;
-            $rcvTS = $obj[12] * 1.0;
-            
-            # guard against negative values
-            if ($delay < 0.0)
-            {
-                $delay = 0.0;
-            }
-            
-            # update the minimum delay in this session
-            if (!defined $sessionMinDelay || $delay < $sessionMinDelay)
-            {
-                $sessionMinDelay = $delay;
-            }
-        }
-        
-        my %elem = ();
-        $elem{ts} = $sndTS; # sender timestamp
-        $elem{rcvts} = $rcvTS; # receiver timestamp
-        $elem{seq} = int($obj[1]); # original seq
-        $elem{lost} = $lost_flag;
-        $elem{unsync} = $unsync_flag;
-        
-        # If 2 packets are sent too close to each other, likely induced self queueing 
-        if (!($lost_flag || $unsync_flag))
-        {
-            if (@timeseries > 0 && ($elem{ts} != -1) && ($elem{ts} - $prevTS < 100e-6))
-            {
-                $elem{delay} = $prevDelay;
-            }
-            else
-            {
-                $elem{delay} = $delay;
-            }
-        }
-        
-        if (($elem{ts} != -1) && (defined($delay)))
-        {
-            # keep track of values to overwrite self queueing
-            $prevDelay = $delay;
-            $prevTS = $elem{ts};
-        }
-        push(@timeseries, \%elem);
-    }
-    close IN;
-    
-    # sort the timeseries by seq no
-    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
-    
-    # loop one more time to fill the sender timestamps of lost packets
-    if (scalar(@lost_array) > 0 || scalar(@unsync_array) > 0)
-    {
-        open(IN, "owstats -R $inputFile |") or die; ## TODO: Guard against die
-        while(my $line = <IN>)
-        {
-            # Each line can be split using this way
-            my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
-            
-            $seqNo = int($seqNo);
-            if ((scalar(@lost_array) > 0) && ($seqNo == $lost_array[0]))
-            {
-                $timeseries[$seqNo]->{ts} = owptime2exacttime($sTime);
-                shift @lost_array;
-            }
-            elsif ((scalar(@unsync_array) > 0) && ($seqNo == $unsync_array[0]))
-            {
-                $timeseries[$seqNo]->{'ts'} = owptime2exacttime($sTime);
-                $timeseries[$seqNo]->{'rcvTs'} = owptime2exacttime($rTime);
-                shift @unsync_array;
-            }
-            last if (scalar(@lost_array) == 0 && scalar(@unsync_array) == 0);
-        }
-        close IN;
-    }
-    
-    return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
-}
-
 # reads an archiver json file
 sub _readJson
 {
@@ -404,7 +247,8 @@ sub _readJson
     my $owampResult = decode_json <FILE>;
     
     # error check the result
-    my ($srcHost, $dstHost) = @{$owampResult->{'result'}{'participants'}};
+    my $srcHost = $owampResult->{'src'};
+    my $dstHost = $owampResult->{'dst'};
     
     foreach my $entry (@{$owampResult->{'result'}{'result'}{'raw-packets'}})
     {
