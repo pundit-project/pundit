@@ -402,7 +402,7 @@ class PunditDBUtil:
     `hop_name` varchar(256) DEFAULT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE `localizationEventStaging` (
-    `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `link_ip` int(10) unsigned DEFAULT NULL,
     `link_name` varchar(256) DEFAULT NULL,
     `det_code` tinyint(3) unsigned DEFAULT NULL,
@@ -424,7 +424,7 @@ class PunditDBUtil:
     KEY `name_idx` (`name`)
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE `status` (
-    `startTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `startTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `endTime` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
     `srcId` smallint(5) unsigned NOT NULL,
     `dstId` smallint(5) unsigned NOT NULL,
@@ -450,7 +450,7 @@ class PunditDBUtil:
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE `traceroutePeriod` (
     `tracerouteId` int(10) unsigned NOT NULL,
-    `startTime` TIMESTAMP NOT NULL,
+    `startTime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `endTime` TIMESTAMP NULL DEFAULT NULL,
     KEY `traceroute_starttime_idx` (`tracerouteId`,`startTime`)
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
