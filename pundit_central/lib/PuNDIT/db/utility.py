@@ -448,6 +448,11 @@ class PunditDBUtil:
     PRIMARY KEY (`tracerouteId`),
     KEY `src_dst_idx` (`srcId`, `dstId`)
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `tracerouteHistory` (
+      `tracerouteId` int(10) unsigned NOT NULL,
+      `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY `traceroute_timestamp_idx` (`tracerouteId`,`timestamp`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
     cursor.execute("""CREATE TABLE `traceroutePeriod` (
     `tracerouteId` int(10) unsigned NOT NULL,
     `startTime` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
