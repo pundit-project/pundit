@@ -5,6 +5,9 @@ import time
 import ConfigParser
 from datetime import datetime, timedelta
 
+def log(message):
+  print message
+
 class TraceroutePeriod:
   def __init__(self, cnx):
     self.cursor = cnx.cursor(buffered=True)
@@ -22,17 +25,20 @@ class TraceroutePeriod:
 
   def createClosedPeriod(self):
     self.cursor.execute("INSERT INTO traceroutePeriod (tracerouteId, startTime, endTime) VALUES (%s, %s, %s)", (self.tracerouteId, self.startTime, self.endTime))
+    #print "CreateClosed traceroutePeriod %s (%s - %s)" %(self.tracerouteId, self.startTime, self.endTime);
     self.updated += 1
     self.closed += 1
     self.opened +=1
 
   def createOpenPeriod(self):
     self.cursor.execute("INSERT INTO traceroutePeriod (tracerouteId, startTime) VALUES (%s, %s)", (self.tracerouteId, self.startTime))
+    #print "CreateOpen traceroutePeriod %s (%s -   )" %(self.tracerouteId, self.startTime);
     self.updated += 1
     self.opened +=1
 
   def closePeriod(self):
     self.cursor.execute("UPDATE traceroutePeriod SET endTime = %s WHERE tracerouteId = %s AND startTime = %s", (self.endTime, self.tracerouteId, self.startTime))
+    #print "Close traceroutePeriod %s (%s - %s)" %(self.tracerouteId, self.startTime, self.endTime);
     self.updated += 1
     self.closed += 1
 
@@ -78,6 +84,10 @@ class TraceroutePeriod:
     self.toUpdate = False
 
   def updatePeriod(self, tracerouteEvent):
+    # Check for events out of sequence
+    if tracerouteEvent["timestamp"] < self.startTime:
+      log("Skipping traceroute out of sequence (run regenerateTraceroutePeriod to fix) " + str(tracerouteEvent))
+      return
     if tracerouteEvent["tracerouteId"] == self.tracerouteId:
       return
     else:
@@ -184,7 +194,7 @@ class TracerouteProcessor:
     self.row = self.dataCursor.fetchone()
     while self.row != None:
       route = self.readNextRoute();
-      print "Next route %s - %s - %s (%s) (%s)" %(route["src"], route["dst"], route["timestamp"], str(route["hopNumbers"]), str(route["hopNodes"]))
+      #print "Next route %s - %s - %s (%s) (%s)" %(route["src"], route["dst"], route["timestamp"], str(route["hopNumbers"]), str(route["hopNodes"]))
       if route != None:
         self.refreshCache(route);
         if tuple(route["hopNodes"]) not in self.routeCache:
