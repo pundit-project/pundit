@@ -488,6 +488,7 @@ class PunditDBUtil:
       cursor.execute("TRUNCATE TABLE tracehop");
       cursor.execute("TRUNCATE TABLE traceroute");
       cursor.execute("TRUNCATE TABLE traceroutePeriod");
+      cursor.execute("TRUNCATE TABLE tracerouteHistory");
       cursor.execute("TRUNCATE TABLE tracerouteStaging");
 
   @staticmethod
