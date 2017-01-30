@@ -589,3 +589,29 @@ class PunditDBUtil:
     # Cleanup
     cursor.execute("DROP TABLE newStatus")
     cursor.execute("DROP TABLE statusProcessing")
+
+
+  @staticmethod
+  def processLocalizationEventStaging(cnx):
+      cursor = cnx.cursor(buffered=True)
+
+      start = time.time();
+      # Switching staging with processing
+      cursor.execute("""CREATE TABLE `localizationEventProcessing` (
+        `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        `link_ip` int(10) unsigned DEFAULT NULL,
+        `link_name` varchar(256) DEFAULT NULL,
+        `det_code` tinyint(3) unsigned DEFAULT NULL,
+        `val1` int(10) unsigned DEFAULT NULL,
+        `val2` int(10) unsigned DEFAULT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=latin1""");
+      cursor.execute("""RENAME TABLE localizationEventStaging TO localizationEventTmp,
+         localizationEventProcessing TO localizationEventStaging,
+         localizationEventTmp TO localizationEventProcessing""");
+      print "Adding missing hosts"
+      cursor.execute("""INSERT INTO hop (ip, name) SELECT DISTINCT INET_NTOA(link_ip) AS ip, link_name AS name FROM localizationEventProcessing LEFT JOIN hop ON (hop.name = name AND hop.ip = ip) WHERE hop.ip IS NULL""");
+      print "Converting localization_event entries"
+      cursor.execute("""INSERT INTO localizationEvent SELECT ts AS timestamp, node.hopId AS nodeId, det_code AS detectionCode, val1 AS val1, val2 AS val2 FROM localizationEventProcessing, hop AS node WHERE INET_NTOA(localizationEventProcessing.link_name) = node.name AND localizationEventProcessing.link_ip = node.ip""");
+      cursor.execute("""DROP TABLE localizationEventProcessing;""");
+      end = time.time();
+      print "Done in %s s" % (str(end - start));
