@@ -6,7 +6,7 @@ and open the template in the editor.
 -->
 <html>
     <head>
-        <title>PunDIT - Site report</title>
+        <title>PunDIT - Time series</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
@@ -15,11 +15,20 @@ and open the template in the editor.
         <script>
             // Set location to punditui server
             WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
+
+            function getURLParameter(name) {
+                return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
+            }
+            
+            // Prepare links
+            var src = getURLParameter("src");
+            var dst = getURLParameter("dst");
         </script>
         
         <!-- The table widget -->
         <script type="text/javascript" src="//www.google.com/jsapi"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-table.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
         
         <!-- Bootstrap is used to make this page look decent. It's not needed by the widgets. -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
@@ -31,7 +40,7 @@ and open the template in the editor.
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-text-monitor.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
@@ -64,25 +73,17 @@ and open the template in the editor.
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <h1><b>PuNDIT web interface</b></h1>
-                        <h2>Site report</h2>
-                        <script language="javascript" type="text/javascript">
-                        function openReport() {
-                            var select = document.getElementById("site-select").firstChild;
-                            window.location.href = "site-report.html?site=" + select.options[select.selectedIndex].text;
-                        }
-                        </script>
-                        <div>
-                            <p>Select site: <span id="site-select" class="wp-combobox" data-channel="=columnOf('sites', &quot;site&quot;)"></span>
-                                <button type="button" class="btn btn-primary" onclick="openReport();">Go</button></p>
+                        <h1><b>PuNDIT time series:</b> <i id="path"></i></h1>
+                        <!--<script>document.getElementById("path").innerHTML = src + " - " + dst;</script>-->
+                        <p>Source: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/src"></span></p>
+                        <p>Destination: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/dst"></span></p>
+                        <div class="wp-show-hide" data-channel="loc/src">
+                        <div class="wp-show-hide" data-channel="loc/dst">
+                            <h2>Delay</h2>
+                            <div class="wp-time-line-graph" data-channel="=formula(concat(&quot;history/info/&quot;, toString(&#39;loc/src&#39;), &quot;/&quot;, toString(&#39;loc/dst&#39;), &quot;/delay&quot;))"></div>
+                            <h2>Packet loss</h2>
+                            <div class="wp-time-line-graph" data-channel="=formula(concat(&quot;history/info/&quot;, toString(&#39;loc/src&#39;), &quot;/&quot;, toString(&#39;loc/dst&#39;), &quot;/pLoss&quot;))"></div>
                         </div>
-                        <h2>Time series</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="series.html">See time series</a>
-                        </div>
-                        <h2>Traceroutes</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="traceroutes.html">See traceroutes</a>
                         </div>
                     </div>
                 </div>
