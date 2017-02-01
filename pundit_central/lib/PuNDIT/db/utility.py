@@ -637,9 +637,9 @@ class PunditDBUtil:
          localizationEventProcessing TO localizationEventStaging,
          localizationEventTmp TO localizationEventProcessing""");
       print "Adding missing hosts"
-      cursor.execute("""INSERT INTO hop (ip, name) SELECT DISTINCT INET_NTOA(link_ip) AS ip, link_name AS name FROM localizationEventProcessing LEFT JOIN hop ON (hop.name = name AND hop.ip = ip) WHERE hop.ip IS NULL""");
+      cursor.execute("""INSERT INTO hop (ip, name) SELECT DISTINCT INET_NTOA(link_ip) AS ip, link_name AS name FROM localizationEventProcessing LEFT JOIN hop ON (hop.name = link_name AND hop.ip = ip) WHERE hop.ip IS NULL""");
       print "Converting localization_event entries"
-      cursor.execute("""INSERT INTO localizationEvent SELECT ts AS timestamp, node.hopId AS nodeId, det_code AS detectionCode, val1 AS val1, val2 AS val2 FROM localizationEventProcessing, hop AS node WHERE localizationEventProcessing.link_name = node.name AND CONVERT(INET_NTOA(localizationEventProcessing.link_ip) USING latin1) = node.ip""");
+      cursor.execute("""INSERT INTO localizationEvent SELECT ts AS timestamp, node.hopId AS nodeId, det_code AS detectionCode, val1 AS val1, val2 AS val2 FROM localizationEventProcessing, hop AS node WHERE localizationEventProcessing.link_name = node.name AND localizationEventProcessing.link_ip = INET_ATON(node.ip)""");
       cursor.execute("""DROP TABLE localizationEventProcessing;""");
       end = time.time();
       print "Done in %s s" % (str(end - start));
