@@ -3,6 +3,7 @@
 import mysql.connector
 import time
 import ConfigParser
+import math
 from datetime import datetime, timedelta
 
 def log(message):
@@ -484,6 +485,26 @@ class PunditDBUtil:
     `type` varchar(32) NOT NULL,
     `info` varchar(10) NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `timeSeriesLatest` (
+  `timeBlock` datetime DEFAULT NULL,
+  `srcId` smallint(5) unsigned NOT NULL,
+  `dstId` smallint(5) unsigned NOT NULL,
+  `delay` float unsigned DEFAULT NULL,
+  `loss` float unsigned DEFAULT NULL,
+  `hasDelay` bigint(1) DEFAULT NULL,
+  `hasLoss` bigint(1) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
+    cursor.execute("""CREATE TABLE `timeSeries` (
+  `timeBlock` datetime DEFAULT NULL,
+  `srcId` smallint(5) unsigned NOT NULL,
+  `dstId` smallint(5) unsigned NOT NULL,
+  `delayMin` float unsigned DEFAULT NULL,
+  `delay` float unsigned DEFAULT NULL,
+  `delayMax` float unsigned DEFAULT NULL,
+  `loss` float unsigned DEFAULT NULL,
+  `hasDelay` bigint(1) DEFAULT NULL,
+  `hasLoss` bigint(1) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1""")
 
   @staticmethod
   def truncateDB(cnx):
@@ -500,6 +521,8 @@ class PunditDBUtil:
       cursor.execute("TRUNCATE TABLE traceroutePeriod");
       cursor.execute("TRUNCATE TABLE tracerouteHistory");
       cursor.execute("TRUNCATE TABLE tracerouteStaging");
+      cursor.execute("TRUNCATE TABLE timeSeries");
+      cursor.execute("TRUNCATE TABLE timeSeriesLatest");
 
   @staticmethod
   def resetDB():
@@ -582,6 +605,11 @@ class PunditDBUtil:
     cursor.execute("CREATE TABLE newStatus SELECT FROM_UNIXTIME(startTime) AS startTime, FROM_UNIXTIME(endTime) AS endTime, src.hostId AS srcId, dst.hostId AS dstId, baselineDelay AS baselineDelay, detectionCode AS detectionCode, queueingDelay AS queueingDelay, lossRatio AS lossRatio, reorderMetric AS reorderMetric FROM statusProcessing, host AS src, host AS dst WHERE statusProcessing.srchost = src.name AND statusProcessing.dsthost = dst.name")
     # Add new status entries
     cursor.execute("INSERT INTO status SELECT * FROM newStatus")
+    print "Updating time series"
+    cursor.execute("INSERT INTO timeSeriesLatest SELECT startTime AS timeBlock, srcId AS srcId, dstId AS dstId, queueingDelay AS delay, lossRatio AS loss, ((detectionCode & 2) <> 0) AS hasDelay, ((detectionCode & 4) <> 0) AS hasLoss FROM newStatus ORDER BY srcId, dstId, startTime")
+    cutoff = datetime.fromtimestamp(math.floor((time.time() - 5) / 300) * 300)
+    cursor.execute("INSERT INTO timeSeries SELECT FROM_UNIXTIME(FLOOR((UNIX_TIMESTAMP(timeBlock) / (5 * 60))) * (5 * 60)) AS timeBlock2, srcId AS srcId, dstId AS dstId, MIN(delay) AS delayMin, AVG(delay) as delay, MAX(delay) AS delayMax, MAX(loss) AS loss, MAX(hasDelay) AS hasDelay, MAX(hasLoss) AS hasLoss FROM timeSeriesLatest WHERE timeBlock < %s GROUP BY timeBlock2, srcId, dstId ORDER BY srcId, dstId, timeBlock2",(cutoff,))
+    cursor.execute("DELETE FROM timeSeriesLatest WHERE timeBlock < %s", (cutoff,))
     # Process problems for new status entries
     print "Analizing problems"
     aggregator = ProblemAggregator(cnx)
