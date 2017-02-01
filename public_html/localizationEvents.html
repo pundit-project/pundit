@@ -75,9 +75,26 @@ and open the template in the editor.
                         <h1><b>PuNDIT Localization Events</b> <i id="path"></i></h1>
                         <!--<script>document.getElementById("path").innerHTML = src + " - " + dst;</script>-->
                         <p>Hop: <span class="wp-combobox" data-channel="=columnOf('hops', &quot;name&quot;)" data-selection-channel="loc/hop"></span></p>
-                        <h2>Localization events</h2>
+                    </div>
+                    <div class="col-md-6">
+                       <h2>Localization events</h2>
                         <p><i>Localization events for the selection hop.</i></p>
                         <div id="report" class="wp-table" data-channel="=formula(concat(&quot;localizationEvents/&quot;, 'loc/hop'))"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <pre>Detection code (bitfield):
+10000000 No problems
+01000000 Excessive Delays (Range Tomo)
+00100000 Excessive Losses (Boolean Tomo)
+00010000 Congestion (Range Tomo)
+00001000 Route change (Boolean Tomo)
+00000100 Route instability (Boolean Tomo)
+00000010 Extensive reordering (Boolean Tomo)
+00000001 End-host context switch
+
+val1: for lower bound if Range Tomo
+val2: for upper bound if Range Tomo
+</pre>
                     </div>
                 </div>
             </div>
