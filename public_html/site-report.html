@@ -15,17 +15,6 @@ and open the template in the editor.
         <script>
             // Set location to punditui server
             WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
-
-            function getURLParameter(name) {
-                return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
-            }
-            
-            // Prepare links
-            var site = getURLParameter("site");
-            if (!site) {
-                var index = document.location.href.lastIndexOf("/");
-                window.location = document.location.href.substring(0, index) + "/";
-            }
         </script>
         
         <!-- The table widget -->
@@ -42,6 +31,7 @@ and open the template in the editor.
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
@@ -74,12 +64,11 @@ and open the template in the editor.
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <h1><b>PuNDIT site report:</b> <i id="siteTitle"></i></h1>
-                        <script>document.getElementById("siteTitle").innerHTML = site;</script>
+                        <h1><b>PuNDIT site report:</b></h1>
+                        <p>Site: <span class="wp-combobox" data-channel="=columnOf('sites', &quot;site&quot;)" data-selection-channel="loc/site" data-selection-url-parameter="site"></span></p>
                         <h2>Open problems</h2>
                         <p><i>This table contains the list of recent problems at the site. Select a problem for more info.</i></p>
-                        <div id="report" class="wp-table" data-selection-channel="loc/selection"></div>
-                        <script>document.getElementById("report").setAttribute("data-channel", "report/" + site);</script>
+                        <div id="report" class="wp-table" data-channel="=formula(concat(&quot;report/&quot;, 'loc/site'))" data-selection-channel="loc/selection"></div>
                         <div class="wp-show-hide" data-channel="loc/selection">
                             <h2>History for <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Type&quot;), 0)"></span> from <span class="wp-html-content" style="width: 300px" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Source&quot;), 0)"></span> to <span class="wp-html-content" data-channel="=elementAt(columnOf(&#39;loc/selection&#39;, &quot;Dest&quot;), 0)"></span></h2>
                             <p><i>This graph shows the metric over time relative to the problem selected. Delays are in ms and pLoss in %.</i></p>
@@ -88,8 +77,7 @@ and open the template in the editor.
                         </div>
                         <h2>Problem count over time</h2>
                         <p><i>This graph shows the number of problems present at each moment in time at the site, divided into each category.</i></p>
-                        <div id="problemHistory" class="wp-time-area-graph" data-y-min="0"></div>
-                        <script>document.getElementById("problemHistory").setAttribute("data-channel", "problems/count/" + site);</script>
+                        <div id="problemHistory" class="wp-time-area-graph" data-channel="=formula(concat(&quot;problems/count/&quot;, 'loc/site'))" data-y-min="0"></div>
                     </div>
                 </div>
             </div>

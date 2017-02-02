@@ -27,6 +27,9 @@ and open the template in the editor.
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
         <script src="https://code.highcharts.com/stock/4.2.4/highstock.js"></script>
         <script src="https://code.highcharts.com/stock/4.2.4/modules/exporting.js"></script>
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+        
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-area-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
         <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
@@ -65,28 +68,12 @@ and open the template in the editor.
                 <div class="row">
                     <div class="col-md-12">
                         <h1><b>PuNDIT web interface</b></h1>
-                        <h2>Site report</h2>
-                        <script language="javascript" type="text/javascript">
-                        function openReport() {
-                            var select = document.getElementById("site-select").firstChild;
-                            window.location.href = "site-report.html?site=" + select.options[select.selectedIndex].text;
-                        }
-                        </script>
-                        <div>
-                            <p>Select site: <span id="site-select" class="wp-combobox" data-channel="=columnOf('sites', &quot;site&quot;)"></span>
-                                <button type="button" class="btn btn-primary" onclick="openReport();">Go</button></p>
-                        </div>
-                        <h2>Time series</h2>
+                        <h2>Select the query</h2>
                         <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="series.html">See time series</a>
-                        </div>
-                        <h2>Traceroutes</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="traceroutes.html">See traceroutes</a>
-                        </div>
-                        <h2>Localization events</h2>
-                        <div class="btn-group" role="group" aria-label="...">
-                            <a class="btn btn-primary" href="localizationEvents.html">See localization events</a>
+                            <a class="btn btn-primary" href="site-report.html"><i class="fa fa-clipboard fa-fw"></i>&nbsp; Site Report</a>
+                            <a class="btn btn-primary" href="series.html"><i class="fa fa-line-chart fa-fw"></i>&nbsp; Time Series</a>
+                            <a class="btn btn-primary" href="traceroutes.html"><i class="fa fa-truck fa-fw"></i>&nbsp; Traceroutes</a>
+                            <a class="btn btn-primary" href="localizationEvents.html"><i class="fa fa-search fa-fw"></i>&nbsp; Localization events</a>
                         </div>
                     </div>
                 </div>
