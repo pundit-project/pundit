@@ -14,8 +14,8 @@
 
         <channelSet connectionName="mariadb">
             <channel name="history/traceroute/(.*)/(.*)">
-                <query>SELECT tracerouteHistory.timestamp, tracerouteHistory.tracerouteId FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY timestamp DESC LIMIT 50</query>
-                <pollQuery>SELECT tracerouteHistory.timestamp FROM tracerouteHistory, traceroute, host AS src, host AS dst WHERE tracerouteHistory.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY timestamp DESC LIMIT 1</pollQuery>
+                <query>SELECT traceroutePeriod.startTime, traceroutePeriod.endTime, traceroutePeriod.tracerouteId FROM traceroutePeriod, traceroute, host AS src, host AS dst WHERE traceroutePeriod.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY startTime DESC LIMIT 50</query>
+                <pollQuery>SELECT traceroutePeriod.startTime FROM traceroutePeriod, traceroute, host AS src, host AS dst WHERE traceroutePeriod.tracerouteID = traceroute.tracerouteID AND traceroute.srcID = src.hostId AND src.name = ? AND traceroute.dstID = dst.hostId AND dst.name = ? ORDER BY startTime DESC LIMIT 1</pollQuery>
             </channel>
             <channel name="traceroute/(.*)">
                 <query>SELECT tracehop.hopNumber, hop.ip, hop.name FROM tracehop, hop WHERE tracehop.tracerouteId = ? AND tracehop.nodeId = hop.hopId</query>
@@ -24,6 +24,10 @@
             <channel name="hosts">
                 <query>SELECT name FROM host ORDER BY name</query>
                 <pollQuery>SELECT COUNT(*) FROM host</pollQuery>
+            </channel>
+            <channel name="hops">
+                <query>SELECT name FROM hop ORDER BY name</query>
+                <pollQuery>SELECT COUNT(*) FROM hop</pollQuery>
             </channel>
             <channel name="sites">
                 <query>SELECT DISTINCT site FROM host ORDER BY site</query>
@@ -34,12 +38,17 @@
                  <pollQuery>SELECT UNIX_TIMESTAMP(MAX(COALESCE(endTime,startTime))) FROM problem, host AS src, host AS dst WHERE problem.srcId = src.hostId AND problem.dstId = dst.hostId AND (src.site = ? OR dst.site = ?) AND (endTime > NOW() - INTERVAL 1 DAY OR endTime IS NULL)</pollQuery>
                  <!--<pollQuery>SELECT NOW()</pollQuery>-->
             </channel>
+            <channel name="localizationEvents/(.*)">
+                <query>SELECT timestamp, EXPORT_SET(detectionCode, '1', '0', '', 8) AS detectionCode, val1, val2 FROM localizationEvent, hop WHERE hopId=nodeId AND name = ? ORDER BY timestamp DESC LIMIT 50;</query>
+                 <pollQuery>SELECT timestamp FROM localizationEvent, hop WHERE hopId=nodeId AND name = ? ORDER BY timestamp LIMIT 1;</pollQuery>
+                 <!--<pollQuery>SELECT NOW()</pollQuery>-->
+            </channel>
             <channel name="problems/count/(.*)/(.*)">
                 <query>SELECT timeBlock AS Time, SUM(hasDelay) AS delay, SUM(hasLoss) AS loss FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND (src.site=? OR dst.site=?) GROUP BY timeBlock</query>
                 <pollQuery>SELECT timeBlock FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND (src.site=? OR dst.site=?) LIMIT 1</pollQuery>
             </channel>
             <channel name="history/info/(.*)/(.*)/delay">
-                <query>SELECT timeBlock AS Time, delay AS Delay FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
+                <query>SELECT timeBlock AS Time, delay AS AvgDelay, delayMin AS MinDelay, delayMax AS MaxDelay FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
                 <pollQuery>SELECT timeBlock AS Time FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC LIMIT 1</pollQuery>
             </channel>
             <channel name="history/info/(.*)/(.*)/pLoss">
