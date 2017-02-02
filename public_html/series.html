@@ -75,8 +75,8 @@ and open the template in the editor.
                     <div class="col-md-12">
                         <h1><b>PuNDIT time series:</b> <i id="path"></i></h1>
                         <!--<script>document.getElementById("path").innerHTML = src + " - " + dst;</script>-->
-                        <p>Source: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/src"></span></p>
-                        <p>Destination: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/dst"></span></p>
+                        <p>Source: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/src" data-selection-url-parameter="src"></span></p>
+                        <p>Destination: <span class="wp-combobox" data-channel="=columnOf('hosts', &quot;name&quot;)" data-selection-channel="loc/dst" data-selection-url-parameter="dst"></span></p>
                         <div class="wp-show-hide" data-channel="loc/src">
                         <div class="wp-show-hide" data-channel="loc/dst">
                             <h2>Delay</h2>
