@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>PunDIT - Site report</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/webpods-client.js"></script>
+
+        <script>
+            // Set location to punditui server
+            WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
+        </script>
+        
+        <!-- The table widget -->
+        <script type="text/javascript" src="//www.google.com/jsapi"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-table.js"></script>
+        
+        <!-- Bootstrap is used to make this page look decent. It's not needed by the widgets. -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+        <script src="https://code.highcharts.com/stock/4.2.4/highstock.js"></script>
+        <script src="https://code.highcharts.com/stock/4.2.4/modules/exporting.js"></script>
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+        
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-area-graph.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
+        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
+    </head>
+    <body style="padding-top: 50px">
+        <!-- Navigation bar -->
+        <!-- ============== -->
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a href="http://pundit.gatech.edu" class="navbar-brand"><!--<img class="pull-left" src="favicon.png">-->&nbsp;<b>PuNDIT</b></a>
+                </div>
+                <div class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                        <li><a href="http://pundit.gatech.edu/about.html">About</a></li>
+                        <li><a href="http://pundit.gatech.edu/publications.html">Publications</a></li>
+                        <li><a href="http://pundit.gatech.edu/download.html">Download</a></li>
+                        <li><a href="http://pundit.gatech.edu/links.html">Links</a></li>
+                        <li class="active"><a href="http://punditui.aglt2.org/">Demo Website</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="featurette gray">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h1><b>PuNDIT web interface</b></h1>
+                        <h2>Select the query</h2>
+                        <div class="btn-group" role="group" aria-label="...">
+                            <a class="btn btn-primary" href="site-report.html"><i class="fa fa-clipboard fa-fw"></i>&nbsp; Site Report</a>
+                            <a class="btn btn-primary" href="series.html"><i class="fa fa-line-chart fa-fw"></i>&nbsp; Time Series</a>
+                            <a class="btn btn-primary" href="traceroutes.html"><i class="fa fa-truck fa-fw"></i>&nbsp; Traceroutes</a>
+                            <a class="btn btn-primary" href="localizationEvents.html"><i class="fa fa-search fa-fw"></i>&nbsp; Localization events</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
