@@ -1,0 +1,16 @@
+## Path:	Applications/GlassFish
+## Description:	Start Derby data base
+## Type:	yesno
+## Default:	no
+#
+# If set to "yes" the built in Apache Derby data base will always be
+# started with the GlassFish server.
+#
+GLASSFISH4_START_DERBY="no"
+
+## Path:	Applications/GlassFish
+## Description:	Command line arguments for the Derby data base on start
+## Type:	string
+## Default:	"--dbhome /opt/glassfish4/javadb --dbhost 127.0.0.1"
+#
+GLASSFISH4_DERBY_ARGS="--dbhome /opt/glassfish4/javadb --dbhost 127.0.0.1"
