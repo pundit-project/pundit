@@ -14,6 +14,7 @@ cp -r diirt build/pundit-ui
 
 # Copy web ui
 cp -r web-ui/public_html/ build/pundit-ui/
+mv build/pundit-ui/public_html build/pundit-ui/web-ui
 
 # Create tarball
 cd build
