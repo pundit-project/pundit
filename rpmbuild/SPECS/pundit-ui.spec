@@ -1,5 +1,11 @@
-%define puhome /opt/pundit-ui
+# Note: the following macros should in principle be imported by the
+# requiste packages
+%define gfvar   /var/opt/glassfish4
+%define gfdocroot   /var/opt/glassfish4/docroot
+%define gfautodeploy   /var/opt/glassfish4/autodeploy
+%define gfhome  /opt/glassfish4
 
+%define puhome  /opt/pundit-ui
 
 Name:		pundit-ui
 Summary:	PuNDIT Web User Interface
@@ -31,7 +37,13 @@ project.
 
 %install
 %__install -d -m 755 %{buildroot}%{puhome}
+%__install -d -m 755 %{buildroot}%{gfhome}
+%__install -d -m 755 %{buildroot}%{gfdocroot}
+%__install -d -m 755 %{buildroot}%{gfautodeploy}
 %__cp -pr . %{buildroot}%{puhome}
+%__ln_s -f web-ui/* %{buildroot}%{gfdocroot}
+%__ln_s -f diirt/conf %{buildroot}%{gfhome}/.diirt
+%__ln_s -f diirt/web-pods.jar %{buildroot}%{gfautodeploy}
 #%__chmod -Rf go-rwx %{buildroot}%{domaindir}/config
 #%__mv %{buildroot}%{domaindir}/docroot %{buildroot}%{gfvar}
 #%__mv %{buildroot}%{domaindir}/autodeploy %{buildroot}%{gfvar}
@@ -58,3 +70,6 @@ rm -rf %{buildroot}
 %files
 %defattr(-,%{gfuser},%{gfgroup})
 %{puhome}
+%{gfhome}/.diirt
+%{gfdocroot}/*
+%{gfautodeploy}/web-pods.jar
