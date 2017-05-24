@@ -1,7 +1,7 @@
 %define gfuser glassfish
 %define gfgroup %{gfuser}
 %define gfhome /opt/glassfish4
-%define gfvar /var/glassfish4
+%define gfvar /var/opt/glassfish4
 %define domaindir %{gfhome}/glassfish/domains/domain1
 
 # Stop jar repacking
@@ -26,19 +26,13 @@
 %define have_mysql 1
 %endif
 
-# Note: the original sources have been repacked because the Debian
-# build process does not handle zip archives properly.  The pristine
-# source archives have been downloaded from
-# - http://download.java.net/glassfish/4.0/release/glassfish-4.0.zip
-# - http://download.java.net/glassfish/4.0/release/glassfish-ose-4.0-docs-pdf.zip
-# The first zip has been unpacked in glassfish-4.0/glassfish4 (the
-# directory name glassfish4 is already in the zip), the latter one in
-# glassfish-4.0/manual (the zip does not contain the directory
-# name manual).
+# We are using the zip archives from Maven central as the java.net
+# download locations have been deprecated. The manuals are not available
+# through Maven central and therefore have been excluded
 
 Name:		glassfish4
 Summary:	JavaEE 7 application server
-Url:		http://glassfish.java.net/
+Url:		https://javaee.github.io/glassfish/
 Version:	4.1.1
 Release:	1
 License:	CDDL-1.1 or GPL-2.0-with-classpath-exception
