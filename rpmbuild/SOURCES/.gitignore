@@ -1,2 +1,6 @@
-# Ignore all glassfish zips
-glassfish*.zip
+# Ignore everything in this directory
+*
+# Except these files
+!.gitignore
+!glasffish.init
+!sysconfig.glassfish4
