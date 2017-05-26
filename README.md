@@ -17,3 +17,9 @@ PuNDIT will integrate and enhance several software tools needed by the High Ener
 
     Shawn McKee, University of Michigan (smckeeumich.edu)
     Constantine Dovrolis, Georgia Tech (dovroliscc.gatech.edu)
+
+#### Installation ####
+
+Add PuNDIT yum repository:
+
+     wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
