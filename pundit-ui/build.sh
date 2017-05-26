@@ -22,4 +22,4 @@ tar -zcf pundit-ui.tar.gz pundit-ui
 
 # Copy to rpmbuild/SOURCES
 cd ../..
-cp pundit_ui/build/pundit-ui.tar.gz rpmbuild/SOURCES
+cp pundit-ui/build/pundit-ui.tar.gz rpmbuild/SOURCES
