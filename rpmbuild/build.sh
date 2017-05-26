@@ -6,3 +6,4 @@ cd $DIR
 
 spectool -g -C SOURCES SPECS/glassfish4.spec
 rpmbuild --define "_topdir `pwd`" -ba SPECS/glassfish4.spec
+rpmbuild --define "_topdir `pwd`" -ba SPECS/pundit-ui.spec
