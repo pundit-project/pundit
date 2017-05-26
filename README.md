@@ -23,3 +23,11 @@ PuNDIT will integrate and enhance several software tools needed by the High Ener
 Add PuNDIT yum repository:
 
      wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
+
+#### Build ####
+
+After cloning the repository, run the master build script:
+
+     ./build.sh
+
+Make sure you have the required dependencies installed as they are documented inside the script itself. The result of the build are a series of rpms that are places in rpmbuild/RPMS. There is also a clean.sh script that deletes all intermediate step and a release.sh that can be used within the aglt2 network to deploy the rpms into the PuNDIT yum repository
