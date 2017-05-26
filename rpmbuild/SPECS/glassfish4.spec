@@ -115,6 +115,11 @@ This package adds the link to the JDBC Driver for MySQL
 %__install -d -m 755 %{buildroot}%{gfvar}
 %__cp -pr glassfish4 %{buildroot}/opt
 %__chmod -Rf go-rwx %{buildroot}%{domaindir}/config
+# Since RPMS should not replace files, we change the index.html to 
+# index.htm. The default search path for glassfish will use index.htm
+# as a fallback if index.html is not found. Therefore another rpm
+# can override the default index file simply by adding index.html
+%__mv %{buildroot}%{domaindir}/docroot/index.html %{buildroot}%{domaindir}/docroot/index.htm
 %__mv %{buildroot}%{domaindir}/docroot %{buildroot}%{gfvar}
 %__mv %{buildroot}%{domaindir}/autodeploy %{buildroot}%{gfvar}
 %__ln_s -f %{gfvar}/docroot %{buildroot}%{domaindir}
