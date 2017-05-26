@@ -4,6 +4,8 @@
 %define gfdocroot   /var/opt/glassfish4/docroot
 %define gfautodeploy   /var/opt/glassfish4/autodeploy
 %define gfhome  /opt/glassfish4
+%define gfuser glassfish
+%define gfgroup %{gfuser}
 
 %define puhome  /opt/pundit-ui
 
@@ -41,14 +43,11 @@ project.
 %__install -d -m 755 %{buildroot}%{gfdocroot}
 %__install -d -m 755 %{buildroot}%{gfautodeploy}
 %__cp -pr . %{buildroot}%{puhome}
-%__ln_s -f web-ui/* %{buildroot}%{gfdocroot}
-%__ln_s -f diirt/conf %{buildroot}%{gfhome}/.diirt
-%__ln_s -f diirt/web-pods.jar %{buildroot}%{gfautodeploy}
-#%__chmod -Rf go-rwx %{buildroot}%{domaindir}/config
-#%__mv %{buildroot}%{domaindir}/docroot %{buildroot}%{gfvar}
-#%__mv %{buildroot}%{domaindir}/autodeploy %{buildroot}%{gfvar}
-#%__ln_s -f %{gfvar}/docroot %{buildroot}%{domaindir}
-#%__ln_s -f %{gfvar}/autodeploy %{buildroot}%{domaindir}
+# Unfortunately, glassfish does not seem to follow symlinks
+# therefore we move the web ui directly in docroot
+%__mv -f web-ui/* %{buildroot}%{gfdocroot}
+%__ln_s -f %{puhome}/diirt/conf %{buildroot}%{gfhome}/.diirt
+%__ln_s -f %{puhome}/diirt/web-pods.war %{buildroot}%{gfautodeploy}
 
 
 %clean
@@ -72,4 +71,5 @@ rm -rf %{buildroot}
 %{puhome}
 %{gfhome}/.diirt
 %{gfdocroot}/*
-%{gfautodeploy}/web-pods.jar
+%{gfautodeploy}/web-pods.war
+%exclude %{puhome}/web-ui
