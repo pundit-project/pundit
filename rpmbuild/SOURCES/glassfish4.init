@@ -50,18 +50,27 @@
 #    Created on : Tue Sep 30 09:16:10 EDT 2014
 #     Server Type:  Domain
 
+# For SELinux we need to use 'runuser' not 'su'
+if [ -x "/sbin/runuser" ]; then
+    SU="/sbin/runuser -s /bin/sh"
+else
+    SU="/bin/su -s /bin/sh"
+fi
+
+
 ASADMIN="/opt/glassfish4/glassfish/lib/nadmin"
 DOMAINDIR="/opt/glassfish4/glassfish/domains"
+GLASSFISH_USER="glassfish"
 
 case "$1" in
 start)
-    $ASADMIN start-domain    --domaindir $DOMAINDIR  domain1 &
+    $SU - $GLASSFISH_USER -c "$ASADMIN start-domain --domaindir $DOMAINDIR domain1"
     ;;
 stop)
-    $ASADMIN stop-domain   --domaindir $DOMAINDIR  domain1 &
+    $SU - $GLASSFISH_USER -c "$ASADMIN stop-domain   --domaindir $DOMAINDIR  domain1"
     ;;
 restart)
-    $ASADMIN restart-domain   --domaindir $DOMAINDIR  domain1 &
+    $SU - $GLASSFISH_USER -c "$ASADMIN restart-domain   --domaindir $DOMAINDIR  domain1"
     ;;
 *)
     echo "usage: $0 (start|stop|restart|help)"

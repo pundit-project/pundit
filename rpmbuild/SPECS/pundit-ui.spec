@@ -55,15 +55,23 @@ rm -rf %{buildroot}
 
 
 %pre
+# Stops glassfish while installing
+service glassfish4 stop
 
 
 %post
+# Restart glassfish
+service glassfish4 start
 
 
 %preun
+# Stops glassfish while uninstalling
+service glassfish4 stop
 
 
 %postun
+# Restart glassfish
+service glassfish4 start
 
 
 %files

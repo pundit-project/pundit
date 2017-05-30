@@ -1,5 +1,6 @@
 %define gfuser glassfish
 %define gfgroup %{gfuser}
+%define name glassfish4
 %define gfhome /opt/glassfish4
 %define gfvar /var/opt/glassfish4
 %define domaindir %{gfhome}/glassfish/domains/domain1
@@ -47,6 +48,9 @@ BuildArch:	noarch
 Prereq:		%fillup_prereq
 %endif
 Requires:	java >= 1.8.0
+Requires(post): /sbin/chkconfig, /sbin/service
+Requires(preun): /sbin/chkconfig, /sbin/service
+
 %if %{have_mysql}
 BuildRequires:	mysql-connector-java
 %endif
@@ -155,16 +159,29 @@ rm -rf %{buildroot}
 
 
 %post
-%if %{with_fillup}
-%{fillup_only}
-%endif
+# Start and add service
+/sbin/service %{name} start &>/dev/null
+/sbin/chkconfig --add %{name}
+
+# Open ports used by glassfish
+iptables -I INPUT 1 -p tcp --dport 8080 -j ACCEPT
+/sbin/service iptables save
 
 
 %preun
+# Close ports used by glassfish
+iptables -D INPUT -p tcp --dport 8080 -j ACCEPT
+/sbin/service iptables save
+
+# Stop and remove service
+/sbin/service %{name} stop &>/dev/null
+/sbin/chkconfig --del %{name}
 
 
 %postun
-
+# Remove all leftover files (logs, caches, ...)
+rm -rf %{gfhome}
+rm -rf %{gfvar}
 
 %files
 %defattr(-,%{gfuser},%{gfgroup})
