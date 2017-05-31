@@ -4,3 +4,4 @@
 !.gitignore
 !glasffish.init
 !sysconfig.glassfish4
+!Net-RabbitMQ-0.2.8.tar.gz

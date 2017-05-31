@@ -3,6 +3,7 @@
 # Build requirements:
 # - spectool
 # - rpmbuild
+# - yum install librabbitmq
 
 # Make sure we are in the correct directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

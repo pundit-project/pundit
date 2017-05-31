@@ -1,20 +1,19 @@
-%define perl_vendorarch %(eval "`%{__perl} -V:installvendorarch`"; echo $install
-vendorarch)
+%define perl_vendorarch %(eval "`%{__perl} -V:installvendorarch`"; echo $installvendorarch)
 %define _unpackaged_files_terminate_build 0
 
 %define real_name Net-RabbitMQ
 
-Name:           perl-Net-RabbitMQ
-Version:        0.2.8
-Release:        1%{?dist}
-Summary:        Perl module for message queuing with RabbitMQ
+Name:		perl-Net-RabbitMQ
+Version:	0.2.8
+Release:	1%{?dist}
+Summary:	Perl module for message queuing with RabbitMQ
 
-Group:          Applications/CPAN
-License:        Artistic/GPL
-URL:            http://search.cpan.org/dist/Net-RabbitMQ/
-Source0:        /root/rpmbuild/SOURCES/%{real_name}-%{version}.tar.gz
+Group:		Applications/CPAN
+License:	Artistic/GPL
+URL:		http://search.cpan.org/dist/Net-RabbitMQ/
+Source0:	/root/rpmbuild/SOURCES/%{real_name}-%{version}.tar.gz
 
-BuildRequires:  librabbitmq >= 0.5.2
+BuildRequires:	librabbitmq >= 0.5.2
 BuildRequires:  perl(DynaLoader)
 BuildRequires:  perl(Scalar::Util)
 BuildRequires:  perl >= 5.10
