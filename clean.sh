@@ -5,6 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
 # Clean build directories
+rm -rf pundit-agent/build
 rm -rf pundit-central/build
 rm -rf pundit-ui/build
 
