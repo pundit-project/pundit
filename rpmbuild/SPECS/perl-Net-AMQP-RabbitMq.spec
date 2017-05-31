@@ -1,17 +1,18 @@
 %define perl_vendorarch %(eval "`%{__perl} -V:installvendorarch`"; echo $installvendorarch)
 %define _unpackaged_files_terminate_build 0
 
-%define real_name Net-RabbitMQ
+%define real_name Net-AMQP-RabbitMQ
 
-Name:		perl-Net-RabbitMQ
-Version:	0.2.8
+Name:		perl-Net-AMQP-RabbitMQ
+Version:	2.30000
 Release:	1%{?dist}
 Summary:	Perl module for message queuing with RabbitMQ
 
 Group:		Applications/CPAN
 License:	Artistic/GPL
 URL:		http://search.cpan.org/dist/Net-RabbitMQ/
-Source0:	/root/rpmbuild/SOURCES/%{real_name}-%{version}.tar.gz
+#Source0:	/root/rpmbuild/SOURCES/%{real_name}-%{version}.tar.gz
+Source0:	http://search.cpan.org/CPAN/authors/id/M/MA/MARKELLIS/%{real_name}-%{version}.tar.gz
 
 BuildRequires:	librabbitmq >= 0.5.2
 BuildRequires:  perl(DynaLoader)
@@ -38,11 +39,11 @@ make install DESTDIR=%{buildroot}
 %files
 %defattr(-, root, root, 0755)
 %dir
-%{perl_vendorarch}/Net/RabbitMQ.pm
-%{perl_vendorarch}/auto/Net/RabbitMQ/RabbitMQ.so
+%{perl_vendorarch}/Net/AMQP/RabbitMQ.pm
+%{perl_vendorarch}/auto/Net/AMQP/RabbitMQ/RabbitMQ.so
 
 %doc
-%{_mandir}/man3/Net::RabbitMQ.3pm*
+%{_mandir}/man3/Net::AMQP::RabbitMQ.3pm*
 
 %changelog
 * Fri Dec 04 2015 Jorge Batista <batistaj@umich.edu> - 0.2.8

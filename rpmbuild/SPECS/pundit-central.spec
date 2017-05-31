@@ -12,6 +12,8 @@ License:	Apache License 2.0
 Group:		Productivity/Networking/Other
 Source:		%{name}.tar.gz
 BuildArch:	noarch
+Requires:       perl-Net-RabbitMQ >= 0.2.8
+Requires:	python >= 2.6
 Provides:	pundit-central = %{version}
 BuildRoot:	%{_tmppath}/%{name}-%{version}-build
 
