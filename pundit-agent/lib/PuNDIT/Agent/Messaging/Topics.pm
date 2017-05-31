@@ -17,7 +17,7 @@
 
 package PuNDIT::Agent::Messaging::Topics;
 
-# Module to set up a message queuing system using Net::RabbitMQ.
+# Module to set up a message queuing system using Net::AMQP::RabbitMQ.
 # The messaging scheme used here is based on a topic exchange.
 
 use strict;
@@ -25,7 +25,7 @@ use strict;
 use Log::Log4perl qw(get_logger);
 my $logger = get_logger(__PACKAGE__);
 
-use Net::RabbitMQ;
+use Net::AMQP::RabbitMQ;
 
 use vars qw(@ISA @EXPORT $VERSION);
 use Exporter;
@@ -42,7 +42,7 @@ sub set_topic {
     my ( $consumer, $user, $password, $channel, $exchange ) = @_;
 
     # establish connection and channel
-    my $msgq = Net::RabbitMQ->new();
+    my $msgq = Net::AMQP::RabbitMQ->new();
     $msgq->connect($consumer, { user => $user, password => $password });
     $msgq->channel_open($channel);
 
@@ -58,7 +58,7 @@ sub set_bindings {
     my ( $user, $password, $channel, $exchange, $queue, $binding_keys ) = @_;
 
     # establish connection
-    my $msgq = Net::RabbitMQ->new();
+    my $msgq = Net::AMQP::RabbitMQ->new();
     $msgq->connect("localhost", { user => $user, password => $password });
 
     # declare channel
