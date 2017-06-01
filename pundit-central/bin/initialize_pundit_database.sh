@@ -33,3 +33,7 @@ echo "* Saving username and password in configuration file"
 
 cat ../etc/pundit_db_scripts.conf.template | sed "s/<replace-mysql-database-here>/$DATABASE/g" | sed "s/<replace-mysql-user-here>/$USER/g" | sed "s/<replace-mysql-user-password-here>/$PASSWORD/g" > ../etc/pundit_db_scripts.conf
 chmod 600 ../etc/pundit_db_scripts.conf
+
+echo "* Creating database"
+cd lib/PuNDIT/db
+./createDB.py
