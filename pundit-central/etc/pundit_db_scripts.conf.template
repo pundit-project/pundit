@@ -1,0 +1,6 @@
+[DB]
+host=localhost
+port=3306
+database=<replace-mysql-database-here>
+user=<replace-mysql-user-here>
+password=<replace-mysql-user-password-here>
