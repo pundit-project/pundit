@@ -35,5 +35,5 @@ cat ../etc/pundit_db_scripts.conf.template | sed "s/<replace-mysql-database-here
 chmod 600 ../etc/pundit_db_scripts.conf
 
 echo "* Creating database"
-cd lib/PuNDIT/db
+cd ../lib/PuNDIT/db
 ./createDB.py
