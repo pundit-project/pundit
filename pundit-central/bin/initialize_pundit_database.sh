@@ -39,6 +39,7 @@ then
   service glassfish4 stop
   cat ../../pundit-ui/diirt/conf/datasources/jdbc/jdbc.xml.template | sed "s/<replace-mysql-database-here>/$DATABASE/g" | sed "s/<replace-mysql-user-here>/$USER/g" | sed "s/<replace-mysql-user-password-here>/$PASSWORD/g" > ../../pundit-ui/diirt/conf/datasources/jdbc/jdbc.xml
   chmod 600 ../../pundit-ui/diirt/conf/datasources/jdbc/jdbc.xml
+  chown glassfish:glassfish ../../pundit-ui/diirt/conf/datasources/jdbc/jdbc.xml
   service glassfish4 start
 else
   echo "NOTE: pundit-ui was not found. You'll need to edit its configuration manually"
