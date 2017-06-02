@@ -5,7 +5,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
 USER=pundit
-PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/&]/+/g'`
+RAND_STRING=`date | md5sum`
+PASSWORD=`echo ${RAND_STRING:0:14}`
 DATABASE=pundit
 
 echo "* Creating mysql user $USER with password $PASSWORD"
