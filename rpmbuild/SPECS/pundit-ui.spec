@@ -74,6 +74,9 @@ service glassfish4 stop
 # Restart glassfish
 service glassfish4 start
 
+# Remove all leftover files
+rm -rf %{puhome}
+
 
 %files
 %defattr(-,%{gfuser},%{gfgroup})
