@@ -20,6 +20,7 @@ Source:		%{name}.tar.gz
 BuildArch:	noarch
 #Prereq:		%pwdutils_prereq
 Requires:	glassfish >= 4.1.1
+Requires:	glassfish4-mysql >= 4.1.1
 #Provides:	pundit-ui = %{version}
 BuildRoot:	%{_tmppath}/%{name}-%{version}-build
 
