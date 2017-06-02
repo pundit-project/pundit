@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <jdbc version="1">
     <connections>
-        <connection name="mariadb" jdbcUrl="jdbc:mariadb://pundit.aglt2.org/pythia_new?user=punditui&amp;password=kdnr93y7j6b3#9fgT"/>
+        <connection name="mariadb" jdbcUrl="jdbc:mysql://localhost/<replace-mysql-database-here>?user=<replace-mysql-user-here>&amp;password=<replace-mysql-user-password-here>"/>
     </connections>
     
      <channels pollInterval="30">
