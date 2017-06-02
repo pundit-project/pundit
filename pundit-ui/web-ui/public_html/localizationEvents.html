@@ -10,11 +10,11 @@ and open the template in the editor.
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/webpods-client.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/webpods-client.js"></script>
 
         <script>
-            // Set location to punditui server
-            WebPodsClient.setLocation("//punditui.aglt2.org/web-pods/socket");
+            // Set location of the socket
+            WebPodsClient.setLocation("web-pods/socket");
 
             function getURLParameter(name) {
                 return decodeURIComponent((new RegExp('[?|&]' + name + '=' + '([^&;]+?)(&|#|;|$)').exec(location.search)||[,""])[1].replace(/\+/g, '%20'))||null;
@@ -27,8 +27,8 @@ and open the template in the editor.
         
         <!-- The table widget -->
         <script type="text/javascript" src="//www.google.com/jsapi"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-table.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-combobox.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-table.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-combobox.js"></script>
         
         <!-- Bootstrap is used to make this page look decent. It's not needed by the widgets. -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
@@ -36,10 +36,10 @@ and open the template in the editor.
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
         <script src="https://code.highcharts.com/stock/4.2.4/highstock.js"></script>
         <script src="https://code.highcharts.com/stock/4.2.4/modules/exporting.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-area-graph.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-time-line-graph.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-show-hide.js"></script>
-        <script type="text/javascript" language="javascript" src="//punditui.aglt2.org/web-pods/js/widgets/wp-html-content.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-time-area-graph.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-time-line-graph.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-show-hide.js"></script>
+        <script type="text/javascript" language="javascript" src="web-pods/js/widgets/wp-html-content.js"></script>
     </head>
     <body style="padding-top: 50px">
         <!-- Navigation bar -->
