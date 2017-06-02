@@ -2,6 +2,8 @@
 # requiste packages
 
 %define pchome  /opt/pundit-central
+%define pcuser	root
+%define pcgroup	root
 
 Name:		pundit-central
 Summary:	PuNDIT Central Server
@@ -54,5 +56,5 @@ rm -rf %{buildroot}
 
 
 %files
-%defattr(-,%{gfuser},%{gfgroup})
+%defattr(-,%{pcuser},%{pcgroup})
 %{pchome}
