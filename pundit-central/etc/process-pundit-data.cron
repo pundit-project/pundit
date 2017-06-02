@@ -1,0 +1,2 @@
+* * * * * root /opt/pundit-central/bin/process-pundit-data.sh > /tmp/process-pundit-data-0.log
+* * * * * root sleep 30; /opt/pundit-central/bin/process-pundit-data.sh > /tmp/process-pundit-data-1.log

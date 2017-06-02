@@ -36,8 +36,9 @@ PuNDIT Central Server provides the components that receives the data from the ag
 
 %install
 %__install -d -m 755 %{buildroot}%{pchome}
+%__install -d -m 755 %{buildroot}/etc/cron.d
 %__cp -pr . %{buildroot}%{pchome}
-
+%__mv -f %{buildroot}%{pchome}/etc/process-pundit-data.cron %{buildroot}/etc/cron.d
 
 %clean
 rm -rf %{buildroot}
@@ -58,3 +59,4 @@ rm -rf %{buildroot}
 %files
 %defattr(-,%{pcuser},%{pcgroup})
 %{pchome}
+/etc/cron.d
