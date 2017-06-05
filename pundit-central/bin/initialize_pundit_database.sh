@@ -9,6 +9,10 @@ RAND_STRING=`date | md5sum`
 PASSWORD=`echo ${RAND_STRING:0:14}`
 DATABASE=pundit
 
+echo "* Making sure mysql is running and chkconfig is on"
+chkconfig mysqld on
+service mysqld start
+
 echo "* Creating mysql user $USER with password $PASSWORD"
 
 echo "* Please enter mysql root password..."
