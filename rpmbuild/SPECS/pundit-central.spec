@@ -19,6 +19,7 @@ Requires:	python >= 2.6
 Requires:	mysql >= 5.1
 Requires:	mysql-server >= 5.1
 Requires:	mysql-connector-python >= 1.1.6
+Requires:	rabbitmq-server >= 3.6
 Provides:	pundit-central = %{version}
 BuildRoot:	%{_tmppath}/%{name}-%{version}-build
 
