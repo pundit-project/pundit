@@ -29,7 +29,12 @@ PuNDIT Agent gathers data from perfSONAR, does the first pass in processing and 
 
 %install
 %__install -d -m 755 %{buildroot}%{pahome}
+%__install -d -m 755 %{buildroot}/etc/init.d
+%__install -d -m 755 %{buildroot}/etc/cron.d
+%__install -d -m 755 %{buildroot}/etc/cron.hourly
 %__cp -pr . %{buildroot}%{pahome}
+%__mv -f %{buildroot}%{pahome}/system/etc/cron.d/pundit-localization-daemon %{buildroot}/etc/cron.d
+
 
 
 %clean
@@ -51,3 +56,4 @@ rm -rf %{buildroot}
 %files
 %defattr(-,%{pauser},%{pagroup})
 %{pahome}
+/etc/cron.d
