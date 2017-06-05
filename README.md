@@ -20,9 +20,17 @@ PuNDIT will integrate and enhance several software tools needed by the High Ener
 
 #### Installation ####
 
-Add PuNDIT yum repository:
+Add PuNDIT yum repository.
 
      wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
+
+Install server component. Note that this will also install glassfish and mysql. 
+
+     yum install pundit-central pundit-ui
+
+Run the database initialization script. Note that mysql must be running (e.g. service mysql start) and that you will need the mysql root password. By default, the password is blank.
+
+     /opt/pundit-central/bin/initialize_pundit_database.sh
 
 #### Build ####
 
