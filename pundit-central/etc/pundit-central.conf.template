@@ -20,10 +20,10 @@
 <pundit_central>
 
   # comma delimited list of VOs/groups using PuNDIT that this agent belongs to
-  measurement_federations   <add>,<comma>,<delimited>,<list>,<of>,<federation>,<names>,<here>
+  measurement_federations   federation1
 
   # One configuration per measurement federation, must match previous list
-  <add-first-federation-name-here>
+  <federation1>
 
     <localization>
       # Problem types available for calculation: delayProblem, lossProblem, reorderingProblem
@@ -49,26 +49,17 @@
     # event receiver. This will grab status messages from a backend
     <ev_receiver>
     
-      # types: mysql, rabbitmq
-      type mysql
-      
-      # mySQL parameters
-      <mysql>
-        host        localhost
-        port        3306
-        database    pythia
-        user        <add-mysql-user-here>
-        password    <add-mysql-user-password-here>
-      </mysql>
+      type rabbitmq
       
       # RabbitMQ parameters
       <rabbitmq>
-        queue_host  <add-queue-host-here>
-        user        <add-rabbitmq-user-here>
-        password    <add-rabbitmq-user-password-here>
-        channel     3
-        routing_key <add-routing-key-here>
-        exchange    <add-exchange-name-here>
+        queue_host   <replace-queue-host-here>
+        user         <replace-rabbitmq-user-here>
+        password     <replace-rabbitmq-user-password-here>
+        channel      3
+        binding_keys pundit.status
+        exchange     status
+        queue        status
       </rabbitmq>
       
     </ev_reciever>
@@ -76,83 +67,49 @@
     # Traceroute receiver. This will grab traceroutes from a backend
     <tr_receiver>
     
-      # types: mysql, rabbitmq, paristr
-      type mysql
+      type rabbitmq
       
       # Traceroute frequency, time in seconds
       tr_frequency  900
       
-      # mySQL parameters
-      <mysql>
-        host        localhost
-        port        3306
-        database    pythia
-        user        <add-mysql-user-here>
-        password    <add-mysql-user-password-here>
-      </mysql>
-
       # RabbitMQ parameters
       <rabbitmq>
-        queue_host  <add-queue-host-here>
-        user        <add-rabbitmq-user-here>
-        password    <add-rabbitmq-user-password-here>
-        channel     4
-        routing_key <add-routing-key-here>
-        exchange    <add-exchange-name-here>
+        queue_host   <replace-queue-host-here>
+        user         <replace-rabbitmq-user-here>
+        password     <replace-rabbitmq-user-password-here>
+        channel      4
+        binding_keys pundit.traceroute
+        exchange     traceroute
+        queue        traceroute
       </rabbitmq>
-      
-      # Paris Traceroute. This will SSH into each remote host and call paris traceroute
-      # TODO: remove
-      <paristr>
-        # Path to identity file used for SSH
-        id_file   "/home/pundit/.ssh/id_rsa"
-        
-        # list of hosts to ssh into. Comma delimited list
-        hosts     <enter>, <list>, <of>, <comma>, <delimited>, <hosts>, <here>
-      </paristr>
     </tr_receiver>
     
     # Reporting results
     <reporting>
     
-      # Reporting type: mysql
       type  mysql
       
       # mySQL parameters
       <mysql>
         host        localhost
         port        3306
-        database    pythia
-        user        <add-mysql-user-here>
-        password    <add-mysql-user-password-here>
+        database    <replace-mysql-database-here>
+        user        <replace-mysql-user-here>
+        password    <replace-mysql-user-password-here>
       </mysql>
-      
-      # RabbitMQ parameters
-      <rabbitmq>
-        exchange_host   <add-exchange-host-here>
-        user            <add-rabbitmq-user-here>
-        password        <add-rabbitmq-user-password-here>
-        channel         3
-        routing_key     <add-routing-key-here>
-        exchange        <add-exchange-name-here>
-      </rabbitmq>
       
     </reporting>
     
-  </add-first-federation-name-here>
+  </federation1>
   
   # Repeat here the federation structure above for each
   # additional federation to be supported.
-  <add-second-federation-name-here>
-       <elements-of-second-federation-go-here>
-       </elements-of-second-federation-go-here>
-  </add-second-federation-name-here>
   
-  # These are independent of federation
+  # Global configuration
   <log>
   
     # Path and filename of log file
-    filename /var/log/pundit_central.log
+    filename /var/log/pundit-central.log
     
   </log>
   
