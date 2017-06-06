@@ -6,14 +6,14 @@
 # description: PuNDIT Agent
 #
 
-PREFIX=/opt/pundit_agent
+PREFIX=/opt/pundit-agent
 BINDIR=${PREFIX}/bin
-CONFDIR=/opt/pundit_agent/etc
+CONFDIR=/opt/pundit-agent/etc
 RUNDIR=/var/run
 
-CONFFILE=${CONFDIR}/pundit_agent.conf
-LOGGERFILE=${CONFDIR}/pundit_agent-logger.conf
-PIDFILE=pundit_agent.pid
+CONFFILE=${CONFDIR}/pundit-agent.conf
+LOGGERFILE=${CONFDIR}/pundit-agent-logger.conf
+PIDFILE=pundit-agent.pid
 
 USER=perfsonar
 GROUP=perfsonar
@@ -51,7 +51,7 @@ do
 
 	if $PUNDIT ; then
 	    echo "$0 $ARG: PuNDIT Agent started"
-	    touch /var/lock/subsys/pundit_agent
+	    touch /var/lock/subsys/pundit-agent
 	    ERROR=0
 	else
 	    echo "$0 $ARG: PuNDIT Agent could not be started"
@@ -65,7 +65,7 @@ do
 	fi
 	if kill $PID ; then
 	    echo "$0 $ARG: PuNDIT Agent stopped"
-	    rm /var/lock/subsys/pundit_agent
+	    rm /var/lock/subsys/pundit-agent
 	else
 	    echo "$0 $ARG: PuNDIT Agent could not be stopped"
 	    ERROR=4

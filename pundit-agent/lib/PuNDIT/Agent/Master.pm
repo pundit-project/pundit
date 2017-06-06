@@ -24,6 +24,10 @@ use Log::Log4perl qw(get_logger);
 use PuNDIT::Agent::Detection;
 use PuNDIT::Agent::InfileScheduler;
 use PuNDIT::Utils::CleanOwamp;
+use Net::AMQP::RabbitMQ;
+# TODO - Might not need this(temp)
+use Data::Dumper;
+
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -31,6 +35,26 @@ my $logger = get_logger(__PACKAGE__);
 sub new
 {
     my ( $class, $cfgHash ) = @_;
+
+    # Incoming data flow through RabbitMQ from pscheduler
+      
+    my $channel = 1;
+    my $exchange = "status";  # This exchange must exist already
+    my $routing_key = "perfsonar.status";
+
+    my $mqIn = Net::AMQP::RabbitMQ->new();
+    $mqIn->connect("localhost", { user => "guest", password => "guest" });
+    $mqIn->channel_open($channel);
+    $mqIn->exchange_declare($channel, "status");
+    # Declare queue, letting the server auto-generate one and collect the name
+    my $queuename = $mqIn->queue_declare($channel, "");
+	#
+	# # Bind the new queue to the exchange using the routing key
+    $mqIn->queue_bind($channel, $queuename, $exchange, $routing_key);
+	#
+	# # Request that messages be sent and receive them until interrupted
+    $mqIn->consume($channel, $queuename);
+
 
     my $cleanupThreshold = $cfgHash->{"pundit_agent"}{"owamp_data"}{"cleanup_threshold"};
     my $owampPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"path"};  
@@ -75,6 +99,8 @@ sub new
         
         '_cleanupThresh' => $cleanupThreshold,
         '_owampPath' => $owampPath, 
+
+        '_mqIn' => $mqIn,
     };
 
     bless $self, $class;
@@ -92,17 +118,24 @@ sub run
 {
     my ($self) = @_;
     
-    # Clean old owamp files
-    PuNDIT::Utils::CleanOwamp::cleanOldFiles($self->{'_cleanupThresh'}, $self->{'_owampPath'});
-    
-    my $runLoop = 1;
-    
-    while($runLoop)
-    {
-        $logger->debug("Master woke. Running schedule.");
-        $self->{'_inFileSched'}->runSchedule();
-        sleep(10);
+    $logger->info("Master woke. Running schedule. Ready for  RabbitMQ(in)");        
+
+    while (my $dataIn = $self->{'_mqIn'}->recv(0) ) {
+        $logger->info("Master woke. Running schedule. Received from RabbitMQ(in)");        
     }
+
+
+    # Clean old owamp files
+    # PuNDIT::Utils::CleanOwamp::cleanOldFiles($self->{'_cleanupThresh'}, $self->{'_owampPath'});
+
+    # my $runLoop = 1;
+    
+    # while($runLoop)
+    # {
+    #     $logger->debug("Master woke. Running schedule.");
+    #     $self->{'_inFileSched'}->runSchedule();
+    #     sleep(10);
+    # }
 }
 
 1;

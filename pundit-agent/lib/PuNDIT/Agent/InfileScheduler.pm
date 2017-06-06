@@ -46,11 +46,11 @@ sub new
     my $saveProblemsPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"save_problems_path"};
     
     # sanity check the owamp path
-    if (!($owampPath && -e $owampPath))
-    {
-        $logger->error("owamp_data:path doesn't exist or is invalid. Quitting!");
-        return undef;
-    }
+#    if (!($owampPath && -e $owampPath))
+#    {
+#        $logger->error("owamp_data:path doesn't exist or is invalid. Quitting!");
+#        return undef;
+#    }
     
     my $hostId = PuNDIT::Utils::HostInfo::getHostId();
 
@@ -80,15 +80,15 @@ sub runSchedule
 {
     my ($self) = @_;
     
-    my $owpFiles = $self->_getOwpFiles();
+#    my $owpFiles = $self->_getOwpFiles();
     
     # no files. just quit
-    return if (!@$owpFiles);
+ #   return if (!@$owpFiles);
     
-    my $processCount = $self->_processFiles($owpFiles);
+#    my $processCount = $self->_processFiles($owpFiles);
     
-    $logger->debug("processed " . $processCount . " files");
-    $self->{'_checkMkReporter'}->reportProcessedCount($processCount);
+#    $logger->debug("processed " . $processCount . " files");
+#    $self->{'_checkMkReporter'}->reportProcessedCount($processCount);
 }
 
 
@@ -123,7 +123,7 @@ sub _getJsonFiles
         map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
         sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
         map  { /\/(\d+?)_[\d\w\-]+?\.json$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
-        @owpfiles;
+        #@owpfiles;
         
     return \@jsonFiles;
 }
