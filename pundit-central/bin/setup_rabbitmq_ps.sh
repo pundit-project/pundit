@@ -25,7 +25,7 @@ then
   echo "* Account created."
 else
   echo "* Trying to delete user first."
-  rabbitmqctl delete_user $CENTRAL_USER $CENTRAL_PASSWORD
+  rabbitmqctl delete_user $CENTRAL_USER
   rabbitmqctl add_user $CENTRAL_USER $CENTRAL_PASSWORD
   if [ $? -eq 0 ]
   then
@@ -44,7 +44,7 @@ then
   echo "* Account created."
 else
   echo "* Trying to delete user first."
-  rabbitmqctl delete_user $AGENT_USER $AGENT_PASSWORD
+  rabbitmqctl delete_user $AGENT_USER
   rabbitmqctl add_user $AGENT_USER $AGENT_PASSWORD
   if [ $? -eq 0 ]
   then
