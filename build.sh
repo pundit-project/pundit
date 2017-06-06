@@ -1,9 +1,15 @@
 #!/bin/bash
 
 # Build requirements:
+# - epel-release
 # - spectool
 # - rpmbuild
 # - yum install librabbitmq
+
+#TODO yum install epel-release spectool librabbitmq
+
+#TODO CHECK the version of the rl/centos to see if it is 6.x
+#if not force exit
 
 # Make sure we are in the correct directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

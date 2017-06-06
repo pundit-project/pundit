@@ -34,6 +34,8 @@ PuNDIT Agent gathers data from perfSONAR, does the first pass in processing and 
 %__install -d -m 755 %{buildroot}/etc/cron.hourly
 %__cp -pr . %{buildroot}%{pahome}
 %__mv -f %{buildroot}%{pahome}/system/etc/cron.d/pundit-localization-daemon %{buildroot}/etc/cron.d
+%__mv -f %{buildroot}%{pahome}/system/etc/cron.hourly/pundit-cleanowamp %{buildroot}/etc/cron.hourly
+%__mv -f %{buildroot}%{pahome}/system/etc/init.d/pundit-agent %{buildroot}/etc/init.d
 
 
 
@@ -45,10 +47,21 @@ rm -rf %{buildroot}
 
 
 %post
-
+case "$1" in
+  1) # This is an initial install.
+	chmod 0755 /etc/init.d/pundit-agent 
+	chkconfig --add pundit-agent
+	
+  ;;
+  2)
+	chkconfig --del pundit-agent
+    	chkconfig --add pundit-agent
+  ;;
+esac
 
 %preun
-
+	service pundit_agent stop
+	chkconfig --del pundit-agent
 
 %postun
 
@@ -56,4 +69,6 @@ rm -rf %{buildroot}
 %files
 %defattr(-,%{pauser},%{pagroup})
 %{pahome}
-/etc/cron.d
+/etc/cron.d/pundit-localization-daemon
+/etc/cron.hourly/pundit-cleanowamp
+/etc/init.d/pundit-agent
