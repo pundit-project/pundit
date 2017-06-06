@@ -20,10 +20,40 @@ AGENT_PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
 
 echo "* Creating rabbitmq user $CENTRAL_USER with password $CENTRAL_PASSWORD"
 rabbitmqctl add_user $CENTRAL_USER $CENTRAL_PASSWORD
+if [ $? -eq 0 ]
+then
+  echo "* Account created."
+else
+  echo "* Trying to delete user first."
+  rabbitmqctl delete_user $CENTRAL_USER $CENTRAL_PASSWORD
+  rabbitmqctl add_user $CENTRAL_USER $CENTRAL_PASSWORD
+  if [ $? -eq 0 ]
+  then
+    echo "* Account created."
+  else
+    echo "Couldn't create the account"
+    exit 1
+  fi
+fi
 rabbitmqctl set_permissions -p / $CENTRAL_USER "." "." ".*"
 rabbitmqctl set_user_tags $CENTRAL_USER administrator
 echo "* Creating rabbitmq user $AGENT_USER with password $AGENT_PASSWORD"
 rabbitmqctl add_user $AGENT_USER $AGENT_PASSWORD
+if [ $? -eq 0 ]
+then
+  echo "* Account created."
+else
+  echo "* Trying to delete user first."
+  rabbitmqctl delete_user $AGENT_USER $AGENT_PASSWORD
+  rabbitmqctl add_user $AGENT_USER $AGENT_PASSWORD
+  if [ $? -eq 0 ]
+  then
+    echo "* Account created."
+  else
+    echo "Couldn't create the account"
+    exit 1
+  fi
+fi
 rabbitmqctl set_permissions -p / $AGENT_USER "." "." ".*"
 service rabbitmq-server restart
 
