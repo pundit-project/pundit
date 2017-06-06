@@ -14,11 +14,9 @@ service rabbitmq-server start
 # Create a new user credential
 CENTRAL_HOST=`hostname`
 CENTRAL_USER=pundit-central
-RAND_STRING=`date | md5sum`
-CENTRAL_PASSWORD=`echo ${RAND_STRING:0:14}`
+CENTRAL_PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
 AGENT_USER=pundit-agent
-RAND_STRING=`date | md5sum`
-AGENT_PASSWORD=`echo ${RAND_STRING:0:14}`
+AGENT_PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
 
 echo "* Creating rabbitmq user $CENTRAL_USER with password $CENTRAL_PASSWORD"
 rabbitmqctl add_user $CENTRAL_USER $CENTRAL_PASSWORD

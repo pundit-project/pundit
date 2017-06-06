@@ -5,8 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
 USER=pundit
-RAND_STRING=`date | md5sum`
-PASSWORD=`echo ${RAND_STRING:0:14}`
+PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
 DATABASE=pundit
 
 echo "* Making sure mysql is running and chkconfig is on"
