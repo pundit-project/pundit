@@ -53,7 +53,7 @@
       
       # RabbitMQ parameters
       <rabbitmq>
-        queue_host   <replace-queue-host-here>
+        queue_host   <replace-rabbitmq-host-here>
         user         <replace-rabbitmq-user-here>
         password     <replace-rabbitmq-user-password-here>
         channel      3
@@ -74,7 +74,7 @@
       
       # RabbitMQ parameters
       <rabbitmq>
-        queue_host   <replace-queue-host-here>
+        queue_host   <replace-rabbitmq-host-here>
         user         <replace-rabbitmq-user-here>
         password     <replace-rabbitmq-user-password-here>
         channel      4
