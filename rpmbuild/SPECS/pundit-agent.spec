@@ -50,10 +50,12 @@ rm -rf %{buildroot}
 case "$1" in
   1) # This is an initial install.
 	chmod 0755 /etc/init.d/pundit-agent 
+	chmod +x /opt/pundit-agent/bin/pundit_daemon.pl
 	chkconfig --add pundit-agent
 	
   ;;
   2)
+	chmod +x /opt/pundit-agent/bin/pundit_daemon.pl
 	chkconfig --del pundit-agent
     	chkconfig --add pundit-agent
   ;;

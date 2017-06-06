@@ -51,11 +51,11 @@ sub new
     my ($delayVal, $delayType) = _parseTimeOrPercentage($cfgHash->{"pundit_agent"}{$fedName}{"detection"}{"delay_max"});
     my ($delayThresh) = _parsePercentage($cfgHash->{"pundit_agent"}{$fedName}{"detection"}{"delay_threshold"});
     my ($lossThresh) = _parsePercentage($cfgHash->{"pundit_agent"}{$fedName}{"detection"}{"loss_threshold"});
-    if (!(defined($delayVal)&&defined($delayThresh)&&defined($lossThresh)))
-    {
-        $logger->critical("Detection Parameters not defined. Can't continue");
-        return undef;
-    }
+ #   if (!(defined($delayVal)&&defined($delayThresh)&&defined($lossThresh)))
+  #  {
+   #     $logger->critical("Detection Parameters not defined. Can't continue");
+    #    return undef;
+#    }
 
     # initalize reporting here as well
     my $reporter = new PuNDIT::Agent::Detection::Reporter($cfgHash, $fedName); 
@@ -438,15 +438,17 @@ sub _readJson
                 $delay = 0.0;
             }
             
-            # fix self-queueing 
-            if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
-            {
-                $delay = $prevDelay;
-            }
+            # fix self-queueing
+            # TODO global requires explicit error
+            #if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
+            #{
+            #    $delay = $prevDelay;
+            #}
             
             # update for the next loop
             $prevDelay = $delay;
-            $prevTs = $sendTs;
+	    #TODO global requires explicit error
+            #$prevTs = $sendTs;
         }
         
         # store the entry in the timeseries array

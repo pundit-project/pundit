@@ -38,23 +38,21 @@ sub new
 
     # Incoming data flow through RabbitMQ from pscheduler
       
+    my $consumer = "localhost";
+    my $user = "guest";
+    my $password = "guest";
     my $channel = 1;
-    my $exchange = "status";  # This exchange must exist already
     my $routing_key = "perfsonar.status";
+    # TODO possible error here, exchange must exist already
+    # could cause a problem when archiver is not on the agent node.
+    my $exchange = "status";
 
+    # setting up RabbitMQ for the incoming data
     my $mqIn = Net::AMQP::RabbitMQ->new();
-    $mqIn->connect("localhost", { user => "guest", password => "guest" });
+    $mqIn->connect($consumer, { user => $user, password => $password});
     $mqIn->channel_open($channel);
-    $mqIn->exchange_declare($channel, "status");
-    # Declare queue, letting the server auto-generate one and collect the name
     my $queuename = $mqIn->queue_declare($channel, "");
-	#
-	# # Bind the new queue to the exchange using the routing key
     $mqIn->queue_bind($channel, $queuename, $exchange, $routing_key);
-	#
-	# # Request that messages be sent and receive them until interrupted
-    $mqIn->consume($channel, $queuename);
-
 
     my $cleanupThreshold = $cfgHash->{"pundit_agent"}{"owamp_data"}{"cleanup_threshold"};
     my $owampPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"path"};  
@@ -118,10 +116,9 @@ sub run
 {
     my ($self) = @_;
     
-    $logger->info("Master woke. Running schedule. Ready for  RabbitMQ(in)");        
 
     while (my $dataIn = $self->{'_mqIn'}->recv(0) ) {
-        $logger->info("Master woke. Running schedule. Received from RabbitMQ(in)");        
+        $logger->debug("Master woke. Running schedule. Received from RabbitMQ(in)");        
     }
 
 
