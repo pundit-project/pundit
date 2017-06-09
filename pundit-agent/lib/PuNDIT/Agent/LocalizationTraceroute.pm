@@ -36,11 +36,11 @@ sub new
     my ($class, $cfgHash, $site, $start_time, $host_id) = @_;
     
     # DB Params
-    my ($host) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"host"};
-    my ($port) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"port"};
-    my ($database) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"database"};
-    my ($user) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"user"};
-    my ($password) = $cfgHash->{"pundit_agent"}{$site}{"reporting"}{"mysql"}{"password"};
+    my ($host) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"host"};
+    my ($port) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"port"};
+    my ($database) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"database"};
+    my ($user) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"user"};
+    my ($password) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"password"};
     
     # make the db connection here, for the lifetime of this object
     my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $password) or die "Critical error: cannot connect to DB";

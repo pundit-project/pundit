@@ -16,7 +16,7 @@
 #
 
 # handles input file detection and queueing
-package PuNDIT::Agent::InfileScheduler;
+package PuNDIT::Agent::Scheduler;
 
 use strict;
 use Log::Log4perl qw(get_logger);
@@ -58,7 +58,6 @@ sub new
 
     my $self = {        
         _hostId => $hostId,
-
         _detHash => $detHash,
 
         # TODO - To be removed    
@@ -81,22 +80,6 @@ sub new
 # Public Method. Runs a single iteration of the schedule 
 # Call this only in a loop with a sleep() operation 
 sub runSchedule
-{
-    my ($self) = @_;
-    
-    $self->_processDataFromRabbit()
-
-    # TODO - To be removed
-    #    my $owpFiles = $self->_getOwpFiles();
-    # no files. just quit
-    #   return if (!@$owpFiles);    
-    #    my $processCount = $self->_processFiles($owpFiles);    
-    #    $logger->debug("processed " . $processCount . " files");
-    #    $self->{'_checkMkReporter'}->reportProcessedCount($processCount);
-}
-
-# processes the data from rabbitmq here.
-sub _processDataFromRabbit
 {
     my ($self) = @_;
     

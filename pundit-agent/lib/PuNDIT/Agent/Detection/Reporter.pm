@@ -30,7 +30,7 @@ sub new
 {
     my ($class, $cfgHash, $fedName) = @_;
     
-    my ($type) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"type"};
+    my ($type) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"type"};
     
     my $reporter;
     if ($type eq "mysql") 

@@ -1,1 +1,1 @@
-*/15 * * * * root perl -I /opt/pundit_agent/lib /opt/pundit_agent/bin/localization_traceroute_daemon.pl &> /opt/pundit_agent/localization.log
+*/15 * * * * root perl -I /opt/pundit-agent/lib /opt/pundit-agent/bin/localization_traceroute_daemon.pl &> /opt/pundit-agent/localization.log

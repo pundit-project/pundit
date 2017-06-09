@@ -64,12 +64,12 @@ sub new
     my ($class, $cfgHash, $fedName) = @_;
 
     # Load RabbitMQ parameters
-    my ($consumer)    = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"consumer"};
-    my ($user)        = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"user"};
-    my ($password)    = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"password"};
-    my ($channel)     = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
-    my ($exchange)    = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
-    my ($routing_key) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
+    my ($consumer)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"consumer"};
+    my ($user)        = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"user"};
+    my ($password)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"password"};
+    my ($channel)     = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
+    my ($exchange)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
+    my ($routing_key) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
 
     $logger->debug("Constructor Reporter::RabbitMQ, channel=$channel");
 
