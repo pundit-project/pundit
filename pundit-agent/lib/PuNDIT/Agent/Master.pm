@@ -28,7 +28,7 @@ use Net::AMQP::RabbitMQ;
 #use File::Find;
 #use File::Copy;
 #use File::Basename;
-#use Data::Dumper; # used for dumping stats
+use Data::Dumper; # used for dumping stats
 
 #use PuNDIT::Agent::InfileScheduler::CheckMkReporter;
 use PuNDIT::Agent::LocalizationTraceroute;
@@ -190,13 +190,27 @@ sub _processMsg
 
         # $return - the number of problems detected, 0
         # $stats - status summary generated from this file
-        my ($stats, $return) = $detObj->_detection($timeseries, $dstHost,  $sessionMinDelay); 
-		$logger->info("return: ", $return);
-        # # One or more problems were detected
-        # if ($return > 0) {
-        #     #$logger->debug("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
-        #     $logger->info("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
-                 
+        my ($summary, $problemFlags) = $detObj->_detection($timeseries, $dstHost,  $sessionMinDelay); 
+		$logger->info("problemFlags: ", $problemFlags);
+
+		my $startTime = _roundOff($timeseries->[0]{ts});
+	    my $statusMsg = {
+	        'srcHost' => $srcHost,
+	        'dstHost' => $dstHost,
+	        'startTime' => $startTime,
+	        'endTime' => _roundOff($timeseries->[-1]{ts}),
+	        'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
+	        'baselineDelay' => $sessionMinDelay,
+        	'entries' => $summary,
+		};
+   
+     # One or more problems were detected
+        if ($problemFlags > 0) {
+        	$logger->info("$fedName analysis: $problemFlags problems for " . $statusMsg->{'srcHost'} . " to "  . $statusMsg->{'dstHost'});
+			foreach (@{$summary}) {
+				$logger->info(Dumper($_));
+			}
+        }         
             # run trace if runTrace option is enabled
             # if ($self->{'runTrace'})
             # {
@@ -239,6 +253,22 @@ sub _processMsg
     }
     
     return 0; # return ok 
+}
+
+# fake rounding function, so we don't need to include posix
+sub _roundOff
+{
+    my ($val) = @_;
+       
+    # different rounding whether positive or negative
+    if ($val >= 0)
+    {
+    	return int($val + 0.5);
+    }
+    else
+    {
+    	return int($val - 0.5);
+	}
 }
 
 # entry point for external functions
