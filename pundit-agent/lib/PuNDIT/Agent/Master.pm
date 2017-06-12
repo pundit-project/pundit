@@ -99,8 +99,21 @@ sub new
     # debug flags 
     #my $saveProblems = $cfgHash->{"pundit-agent"}{"owamp_data"}{"save_problems"};
     #my $saveProblemsPath = $cfgHash->{"pundit-agent"}{"owamp_data"}{"save_problems_path"};
+	
+
+
+	# Get the hostname of this agent.
+	# if the hostname is different from that in the conf file
+	# (i.e agent and perfsonar are not on the same host)
+	# then use the hostname in the conf file.
     my $hostId = PuNDIT::Utils::HostInfo::getHostId();
-        
+
+    if ($hostId ne $cfgHash->{'pundit-agent'}{'src_host'}){
+		$hostId = $cfgHash->{'pundit-agent'}{'src_host'};
+	}
+	$logger->info($hostId);		
+
+
     my $self = {
         '_fedList' => \@fedList,
         '_detHash' => \%detHash,
@@ -110,7 +123,10 @@ sub new
         #  Moved from Scheduler  #
         ##########################    
         _hostId => $hostId,
-        
+       
+		# TODO 
+		#Check if src_hostname is ddiferentew.
+		
         # flag to indicate whether or not owps with problems will be saved
         #_saveProblems => $saveProblems, 
         #_saveProblemsPath => $saveProblemsPath, # path where owps with detected problems will be saved
@@ -129,14 +145,16 @@ sub new
 sub DESTROY
 {
 
-    # Do nothing?
+   my ($self) = @_;
+
+	$self->{'_mqIn'}->disconnect;
 }
 
 sub run
 {
     my ($self) = @_;    
 
-    while (my $dataIn = $self->{'_mqIn'}->recv(0) ) {
+    while (my $dataIn = $self->{'_mqIn'}->recv(0)) {
         $logger->debug("A message received from RabbitMQ(in).");
         $self->_processMsg($dataIn);
     }
@@ -166,15 +184,14 @@ sub _processMsg
 		$logger->info("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
 
         # continue if either srcHost or dstHost is not a member of federation
-        my $isInFed = $detObj->isInFederation($srcHost, $dstHost);
-        if ($isInFed == -1) {
+		if ($detObj->isNotInFederation($srcHost, $dstHost)) {
              next;
         }
 
-        # # $return - the number of problems detected, 0
-        # # $stats - status summary generated from this file
-        # my ($return, $stats) = $detObj->_detection($srcHost, $dstHost, $timeseries, $sessionMinDelay); 
-
+        # $return - the number of problems detected, 0
+        # $stats - status summary generated from this file
+        my ($stats, $return) = $detObj->_detection($timeseries, $dstHost,  $sessionMinDelay); 
+		$logger->info("return: ", $return);
         # # One or more problems were detected
         # if ($return > 0) {
         #     #$logger->debug("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});

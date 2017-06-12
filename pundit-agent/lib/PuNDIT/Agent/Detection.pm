@@ -38,7 +38,10 @@ sub new
 
     # federation info
     my $hostId = PuNDIT::Utils::HostInfo::getHostId();
-    
+	if ($hostId ne $cfgHash->{'pundit-agent'}{'src_host'}) {
+		$hostId = $cfgHash->{'pundit-agent'}{'src_host'};
+	}
+
     my $peer_monitor_string = $cfgHash->{"pundit-agent"}{$fedName}{"peers"};
     $peer_monitor_string =~ s/,/ /g;
     my @peer_monitors = split(/\s+/, $peer_monitor_string);
@@ -208,25 +211,25 @@ sub detection()
 }
 
 
-sub isInFederation()
+sub isNotInFederation()
 {
     my ($self, $srcHost, $dstHost) = @_;
     
-    ################################################################
     if ($srcHost ne $self->{'_hostId'})
     {
         $logger->info("Skipping $srcHost. Not from this host " . $self->{'_hostId'});
-        return (-1, undef);
+        return (1);
     }
-    
-    # filter out destinations not in the current federation
-    # TODO: Figure out how to get the data out of the owp files
-    if (!grep( /^$dstHost$/, @{$self->{'_peers'}} ) )
-    {
+ 
+	#TODO NEEDS TESTING
+	my($dstHost_test) = "abc.asdfjiaosdf.com";
+	# filter out destinations not in the current federation
+	if (grep {$dstHost_test eq $_ } @{$self->{'_peers'}}) {
         $logger->info("Skipping $dstHost. Not in peerlist");
-        return (-1, undef);
-    }
-    ################################################################
+        return (1);
+	}
+
+	return 0;
 }
 
 # NEW entry point for external functions
