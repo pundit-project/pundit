@@ -28,13 +28,9 @@ Install server component. Note that this will also install glassfish and mysql.
 
      yum install pundit-central pundit-ui
 
-Make sure mysql is running. You will need the mysql root password. By default, the password is blank.
+Run the pundit-central initialization script. **It will prompt you for the mysql root password.**  By default, the password is blank. The script will create database and RabbitMQ users and update the configuration files. It will also start mysql and rabbitmq-server if they are not already running, and it will make sure mysql chkconfig is on.
 
-     service mysqld start
-
-Run the database initialization script. **It will prompt you for the mysql root password.**  By default, the password is blank.
-
-     /opt/pundit-central/bin/initialize_pundit_database.sh
+     /opt/pundit-central/bin/initialize-pundit-central.sh
 
 #### Build ####
 
