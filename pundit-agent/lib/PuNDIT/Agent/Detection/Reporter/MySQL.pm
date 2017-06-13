@@ -62,11 +62,11 @@ sub new
 {
     my ($class, $cfgHash, $fedName) = @_;
         
-    my ($host) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"mysql"}{"host"};
-    my ($port) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"mysql"}{"port"};
-    my ($database) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"mysql"}{"database"};
-    my ($user) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"mysql"}{"user"};
-    my ($password) = $cfgHash->{"pundit_agent"}{$fedName}{"reporting"}{"mysql"}{"password"};
+    my ($host) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"mysql"}{"host"};
+    my ($port) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"mysql"}{"port"};
+    my ($database) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"mysql"}{"database"};
+    my ($user) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"mysql"}{"user"};
+    my ($password) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"mysql"}{"password"};
     
     # make the db connection here, refreshing it if it dies later
     my $dsn = "DBI:mysql:$database:$host:$port";

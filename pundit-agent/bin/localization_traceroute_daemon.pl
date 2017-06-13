@@ -44,7 +44,7 @@ our $N //= 4;
 
 my $scriptPath = dirname(__FILE__);
 
-my $cfg = $scriptPath . '/../etc/pundit_agent.conf';
+my $cfg = $scriptPath . '/../etc/pundit-agent.conf';
 my $fedName = '<federation-name-goes-here>'; # TODO: run this once per site
 
 my %cfgHash = Config::General::ParseConfig($cfg);
@@ -71,7 +71,7 @@ my $work_queue = new Thread::Queue;
 my @child_threads = map threads->create( \&child, $start_time, $host_id, $work_queue ), 1 .. $N;
 
 # grab the values from the config file, replace commas with spaces and split on spaces
-my $peer_monitor_string = $cfgHash{"pundit_agent"}{$fedName}{"peers"};
+my $peer_monitor_string = $cfgHash{"pundit-agent"}{$fedName}{"peers"};
 $peer_monitor_string =~ s/,/ /g;
 my @peer_monitors = split(/\s+/, $peer_monitor_string);
 

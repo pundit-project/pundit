@@ -26,8 +26,8 @@ sub new
     my ($class, $cfgHash) = @_;
     
     my $processedCountEnabled = 1;
-    my $processedCountInterval = $cfgHash->{"pundit_agent"}{"check_mk"}{"processed_count_interval"};
-    my $processedCountPath = $cfgHash->{"pundit_agent"}{"check_mk"}{"processed_count_path"};
+    my $processedCountInterval = $cfgHash->{"pundit-agent"}{"check_mk"}{"processed_count_interval"};
+    my $processedCountPath = $cfgHash->{"pundit-agent"}{"check_mk"}{"processed_count_path"};
     if (!(defined($processedCountInterval)&&defined($processedCountPath)))
     {
         $logger->warn("processed_count variables not defined. Disabling this feature");

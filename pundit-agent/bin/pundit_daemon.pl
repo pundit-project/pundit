@@ -30,9 +30,9 @@ use lib "$RealBin/../lib";
 
 use PuNDIT::Agent::Master;
 
-my $CONFIG_FILE = "$RealBin/../etc/pundit_agent.conf"; # TODO: directories need to be updated to 3.5+ directory structure
+my $CONFIG_FILE = "$RealBin/../etc/pundit-agent.conf"; # TODO: directories need to be updated to 3.5+ directory structure
 my $PID_DIR  = "/var/run";
-my $PID_FILE = "pundit_agent.pid";
+my $PID_FILE = "pundit-agent.pid";
 my $LOGGER_CONF;
 my $DEBUGFLAG;
 my $DAEMONIZE;
@@ -89,7 +89,7 @@ if ($status != 0) {
 #$cfgHash->{"exePath"} = $RealBin; ## TODO: remove
 
 unless ( $LOGFILE ) {
-    $LOGFILE = $cfgHash->{'pundit_agent'}{'log'}{'filename'};
+    $LOGFILE = $cfgHash->{'pundit-agent'}{'log'}{'filename'};
 }
 
 unless ( $LOGGER_CONF ) {
