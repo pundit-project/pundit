@@ -6,14 +6,14 @@
 # description: PuNDIT Central
 #
 
-PREFIX=/opt/pundit_central
+PREFIX=/opt/pundit-central
 BINDIR=${PREFIX}/bin
-CONFDIR=/opt/pundit_central/etc
+CONFDIR=/opt/pundit-central/etc
 RUNDIR=/var/run
 
-CONFFILE=${CONFDIR}/pundit_central.conf
-LOGGERFILE=${CONFDIR}/pundit_central-logger.conf
-PIDFILE=pundit_central.pid
+CONFFILE=${CONFDIR}/pundit-central.conf
+LOGGERFILE=${CONFDIR}/pundit-central-logger.conf
+PIDFILE=pundit-central.pid
 
 USER=pundit
 GROUP=pundit
@@ -53,7 +53,7 @@ do
 
 	if $PUNDIT ; then
 	    echo "$0 $ARG: PuNDIT Central started"
-	    touch /var/lock/subsys/pundit_central
+	    touch /var/lock/subsys/pundit-central
 	    ERROR=0
 	else
 	    echo "$0 $ARG: PuNDIT Central could not be started"
@@ -67,7 +67,7 @@ do
 	fi
 	if kill $PID ; then
 	    echo "$0 $ARG: PuNDIT Central stopped"
-	    rm /var/lock/subsys/pundit_central
+	    rm /var/lock/subsys/pundit-central
 	else
 	    echo "$0 $ARG: PuNDIT Central could not be stopped"
 	    ERROR=4
