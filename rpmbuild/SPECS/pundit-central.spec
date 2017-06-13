@@ -15,6 +15,8 @@ Group:		Productivity/Networking/Other
 Source:		%{name}.tar.gz
 BuildArch:	noarch
 Requires:       perl-Net-AMQP-RabbitMQ >= 2.30000
+Requires:	perl(Config::General)
+Requires:	perl(Math::Int64)
 Requires:	python >= 2.6
 Requires:	mysql >= 5.1
 Requires:	mysql-server >= 5.1

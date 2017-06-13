@@ -122,7 +122,7 @@ sub getLatestTraces
             'src' => $srcHost,
             'dst' => $dstHost,
         );
-        push ($trHash{$srcHost}{$dstHost}, \%newEntry);
+        push (@{$trHash{$srcHost}{$dstHost}}, \%newEntry);
         $lastHopNo = 0;
         
         # loop over each hop in traceroute entry, accumulating them into a list of TrHops
