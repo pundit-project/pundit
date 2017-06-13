@@ -21,7 +21,7 @@ GROUP=pundit
 FULL_PIDFILE=${RUNDIR}/${PIDFILE}
 
 ## Run as root for the time being
-PUNDIT="${BINDIR}/pundit_central_daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --daemonize"
+PUNDIT="${BINDIR}/pundit-central-daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --daemonize"
 #PUNDIT="${BINDIR}/pundit_central_daemon.pl --config=${CONFFILE} --pidfile=${PIDFILE} --piddir=${RUNDIR} --logger=${LOGGERFILE} --user=${USER} --group=${GROUP} --daemonize"
 
 ERROR=0

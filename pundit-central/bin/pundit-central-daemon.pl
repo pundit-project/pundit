@@ -32,7 +32,7 @@ use PuNDIT::Central::Master;
 
 my $CONFIG_FILE = "$RealBin/../etc/pundit-central.conf";
 my $PID_DIR  = "/var/run";
-my $PID_FILE = "pundit_central.pid";
+my $PID_FILE = "pundit-central.pid";
 my $LOGGER_CONF;
 my $DEBUGFLAG;
 my $DAEMONIZE;
