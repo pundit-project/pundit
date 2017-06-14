@@ -22,6 +22,7 @@ use Log::Log4perl qw(get_logger);
 # local libs
 use JSON qw (decode_json); 
 use PuNDIT::Agent::Detection;
+use PuNDIT::Agent::Reporter;
 use Net::AMQP::RabbitMQ;
 
 #Moved from Scheduler
@@ -74,9 +75,10 @@ sub new
     }
 
     my %detHash = ();
+	my %reportHash = ();
     foreach my $fed (@fedList)
     {
-        $logger->info("Creating Detection Object: $fed");
+        $logger->info("Creating Detection Object for $fed");
         my $detectionModule = new PuNDIT::Agent::Detection($cfgHash, $fed);
         
         if (!$detectionModule)
@@ -86,9 +88,23 @@ sub new
         }
         
         $detHash{$fed} = $detectionModule;
+
+
+		# CREATE A RABBIT MQ CILENT FOR OUTGOING DATA FOR EACH FED
+		$logger->info("Creating Reporter Object for $fed");
+        my $reportModule = new PuNDIT::Agent::Reporter($cfgHash, $fed);
+        
+        if (!$reportModule)
+        {
+            $logger->error("Couldn't init reporter object for federation $fed. Quitting.");    
+            return undef;
+        }
+		$reportHash{$fed} = $reportModule;
+
     }
 
-    ##########################
+
+
     #  Moved from Scheduler  #
     ##########################    
 
@@ -117,6 +133,8 @@ sub new
     my $self = {
         '_fedList' => \@fedList,
         '_detHash' => \%detHash,
+
+		'_reportHash' => \%reportHash,
         '_mqIn' => $mqIn,
 
         ##########################
@@ -156,6 +174,12 @@ sub run
 
     while (my $dataIn = $self->{'_mqIn'}->recv(0)) {
         $logger->debug("A message received from RabbitMQ(in).");
+
+    while (my ($fedName, $rptObj) = each (%{$self->{'_reportHash'}}))
+    {
+		$rptObj->report();
+	}
+
         $self->_processMsg($dataIn);
     }
 }
@@ -169,18 +193,26 @@ sub _processMsg
 	#'body' contains the result of the test in a json(string) format
  	my $raw_json = decode_json($dataIn->{'body'});
 
-	#TODO WHEN IS TRACEROUTE test result USED?
-	#Will skip if this test is not latencybg i.e traceroute and others will not be processed here.
-	if ($raw_json->{'measurement'}{'test'}{'type'} ne "latencybg") {
-		$logger->info("Not latencybg data, skipping");
-		return 0;
-	}
+	# forward paris-traceroute results
+#	if ($raw_json->{'measurement'}{'schedule'}{'tool'}{'name'} == "paris-traceroute") {
+#       $logger->info('forwarding paris-traceroute result');
+       
+		# TODO  Parse traceroute data with a new module
+#		my $parse_result = _parseParisTrJson($raw_json);
+
+        # TODO loop through reporterHash and see if the sourcehost name is in the peerlist of the federation
+        # also check if the dest hostname is in the peerlist
+#        my $send_success = $self->{'_reporterHash'}->send("content");
+        # TODO do something if send is unsuccessful
+        
+#		return 0;
+#	}
 		   
     while (my ($fedName, $detObj) = each (%{$self->{'_detHash'}}))
     {
 
         # the following two lines could kill performance.
-        my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJSON($raw_json); 
+        my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
 		$logger->info("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
 
         # continue if either srcHost or dstHost is not a member of federation
@@ -274,7 +306,7 @@ sub _roundOff
 # entry point for external functions
 # returns undef if not valid
 # reads an archiver json file
-sub _parseJSON
+sub _parseJson
 {
 	# $owampResult is $raw_json
 	# kept the name to make it easier to compare with the old codebase
@@ -374,5 +406,20 @@ sub owptime2exacttime {
     my $significand = ( $bigtime / $scale ) - JAN_1970;
     return ( $significand . "." . $mantissa );
 }
+
+sub _parseParisTrJson {
+
+
+}
+
+
+# TODO - 
+sub _pschedulertime2exacttime {
+	return ("NULLTIME");
+}
+
+
+
+
 
 1;
