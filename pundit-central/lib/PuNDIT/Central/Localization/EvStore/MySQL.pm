@@ -88,7 +88,7 @@ sub writeEvHash
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
     
-    my $sql = "INSERT INTO status (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+    my $sql = "INSERT INTO statusStaging (startTime, endTime, srcHost, dstHost, baselineDelay, detectionCode, queueingDelay, lossRatio, reorderMetric) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
     
     my $sth = $self->{'_dbh'}->prepare($sql);
     if (!$sth)
