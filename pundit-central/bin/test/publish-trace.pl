@@ -26,7 +26,9 @@ my $channel = $cfgHash{pundit_central}{federation1}{tr_receiver}{rabbitmq}{chann
 my $queue_host = $cfgHash{pundit_central}{federation1}{tr_receiver}{rabbitmq}{queue_host};
 my $exchange = $cfgHash{pundit_central}{federation1}{tr_receiver}{rabbitmq}{exchange};
 
-my $message = "1485185401|ps3.ochep.ou.edu|psmsu05.aglt2.org|1,129.15.40.1,rtr-40-1.rccc.ou.edu;2,198.124.80.153,esnet-lhc1-uok.es.net;3,198.124.80.57,esnet-lhc1-b-aglt2.es.net;4,198.124.80.58,aglt2-lhc1-b-esnet.es.net;5,192.41.236.35,psmsu05.aglt2.org";
+my $time = time();
+
+my $message = "$time|ps3.ochep.ou.edu|psmsu05.aglt2.org|1,129.15.40.1,rtr-40-1.rccc.ou.edu;2,198.124.80.153,esnet-lhc1-uok.es.net;3,198.124.80.57,esnet-lhc1-b-aglt2.es.net;4,198.124.80.58,aglt2-lhc1-b-esnet.es.net;5,192.41.236.35,psmsu05.aglt2.org";
 
 # Open connection and retrieves a handle to the queue
 my $mq = set_topic( $queue_host, $user, $password, $channel, $exchange );
