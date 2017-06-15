@@ -1,6 +1,4 @@
-#!perl -w
-#
-# Copyright 2016 Georgia Institute of Technology
+#Copyright 2016 Georgia Institute of Technology
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,58 +22,3 @@ use strict;
 
 use Log::Log4perl qw(get_logger);
 my $logger = get_logger(__PACKAGE__);
-
-use Net::AMQP::RabbitMQ;
-
-use vars qw(@ISA @EXPORT $VERSION);
-use Exporter;
-$VERSION = "1.0";
-@ISA = qw/Exporter/;
-
-@EXPORT = qw (
-               &set_topic
-               &set_bindings
-             );
-
-# This function is called by producers to establish a connection, channel, and exchange
-sub set_topic {
-    my ( $consumer, $user, $password, $channel, $exchange ) = @_;
-
-    # establish connection and channel
-    my $msgq = Net::AMQP::RabbitMQ->new();
-    $msgq->connect($consumer, { user => $user, password => $password });
-    $msgq->channel_open($channel);
-
-    # declare exchange
-    $msgq->exchange_declare($channel,$exchange,{exchange_type => 'topic'});
-
-    return $msgq;
-}
-
-# This is called by consumers to bind a channel to a queue via an exchange
-# using the given binding key(s) for message pattern matching.
-sub set_bindings {
-    my ( $user, $password, $channel, $exchange, $queue, $binding_keys ) = @_;
-
-    # establish connection
-    my $msgq = Net::AMQP::RabbitMQ->new();
-    $msgq->connect("localhost", { user => $user, password => $password });
-
-    # declare channel
-    $msgq->channel_open($channel);
-    $msgq->queue_declare($channel, $queue);
-    $msgq->consume($channel, $queue);
-
-    # declare exchange
-    $msgq->exchange_declare($channel,$exchange,{exchange_type => 'topic'});
-
-    # bindings
-    my @binding_keys = split(',', $binding_keys);
-    foreach my $binding_key (@binding_keys) {
-        $msgq->queue_bind($channel,$queue,$exchange,$binding_key);
-    }
-
-    return $msgq;
-}
-
-1;
