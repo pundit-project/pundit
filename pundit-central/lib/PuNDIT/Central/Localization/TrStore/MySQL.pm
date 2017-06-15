@@ -86,7 +86,7 @@ sub writeTrHash
         $self->{'_dbh'} = DBI->connect($self->{'_dsn'}, $self->{'_user'}, $self->{'_password'});
     }
     
-    my $sql = "INSERT INTO traceroutes ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES (?, ?, ?, ?, ?, ?);";
+    my $sql = "INSERT INTO tracerouteStaging ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES (?, ?, ?, ?, ?, ?);";
     
     my $sth = $self->{'_dbh'}->prepare($sql);
     if (!$sth)
