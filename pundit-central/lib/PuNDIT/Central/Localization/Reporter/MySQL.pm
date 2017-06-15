@@ -52,19 +52,8 @@ sub new
         return undef;
     }
 
-    # Create the table if it doesn't exist
-    $dbh->do(
-        "CREATE TABLE IF NOT EXISTS localization_events (
-    	ts TIMESTAMP,
-    	link_ip INT UNSIGNED,
-    	link_name VARCHAR(256),
-    	det_code TINYINT UNSIGNED,
-    	val1 INT UNSIGNED NULL,
-    	val2 INT UNSIGNED NULL
-    	);"
-    );
 
-    my $sql = "INSERT INTO localization_events (ts, link_ip, link_name, det_code, val1, val2) 
+    my $sql = "INSERT INTO localizationEventStaging (ts, link_ip, link_name, det_code, val1, val2) 
                VALUES (FROM_UNIXTIME(?), INET_ATON(?), ?, ?, ?, ?)";
 
     my $sth = $dbh->prepare($sql);
