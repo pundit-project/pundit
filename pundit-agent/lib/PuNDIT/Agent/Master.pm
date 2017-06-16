@@ -50,12 +50,12 @@ sub new
 
 	# Incoming data flow through RabbitMQ from pscheduler
 	my $channel = 1;
-	my $exchange = "status";  # This exchange must exist already
-	my $routing_key = "perfsonar.status";
+	my $exchange = "perfdata";
+	my $routing_key = "perfsonar.perfdata";
 	my $mqIn = Net::AMQP::RabbitMQ->new();
 	$mqIn->connect("localhost", { user => "guest", password => "guest" });
 	$mqIn->channel_open($channel);
-	$mqIn->exchange_declare($channel, "status");
+	$mqIn->exchange_declare($channel, "perfdata");
 	# Declare queue, letting the server auto-generate one and collect the name
 	my $queuename = $mqIn->queue_declare($channel, "");
 	# Bind the new queue to the exchange using the routing key
@@ -184,33 +184,25 @@ sub _processMsg
 	#$dataIn contains data sent from pscheduler archiver via rabbitmq in string
 	#'body' contains the result of the test in a json(string) format
 	my $raw_json = decode_json($dataIn->{'body'});
-
+	my $toolname = 	$logger->info($raw_json->{'measurement'}{'tool'}{'name'}); 
+	$logger->info($toolname);
 	# forward paris-traceroute results
-#	if ($raw_json->{'measurement'}{'schedule'}{'tool'}{'name'} == "paris-traceroute") {
-#		$logger->info('forwarding paris-traceroute result');
-	   
-		# TODO	Parse traceroute data with a new module
-#		my $parse_result = _parseParisTrJson($raw_json);
-
-		# TODO loop through reporterHash and see if the sourcehost name is in the peerlist of the federation
-		# also check if the dest hostname is in the peerlist
-#		 my $send_success = $self->{'_reporterHash'}->send("content");
-		# TODO do something if send is unsuccessful
-		
-#		return 0;
-#	}
+	if ($toolname eq "paris-traceroute") {
+	#	_processParisTr($raw_json);
+		return 0;
+	}
 		   
 	$self->_processLatency($raw_json);
 
 	return 0; # return ok 
 }
 
+
 sub _processLatency {
 
 	my ($self, $raw_json) = @_;
 
-	while (my ($fedName, $detObj) = each (%{$self->{'_detHash'}}))
-	{
+	while (my ($fedName, $detObj) = each (%{$self->{'_detHash'}})) {
 
 		# the following two lines could kill performance.
 		my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
@@ -412,9 +404,42 @@ sub owptime2exacttime {
 	return ( $significand . "." . $mantissa );
 }
 
+
+sub _processParisTr {
+
+	my ($self, $raw_json) = @_;
+	$logger->info('forwarding paris-traceroute result');
+	   
+	# TODO	Parse traceroute data with a new module
+	my $parse_result = _parseParisTrJson($raw_json);
+
+	# TODO loop through reporterHash and see if the sourcehost name is in the peerlist of the federation
+	# also check if the dest hostname is in the peerlist
+	#while (my ($fedName, $reportObj) = each (%{$self->{'_reportHash'}})) {
+
+		# TODO continue if either srcHost or dstHost is not a member of federation
+		#if ($reportObj->isNotInFederation($srcHost, $dstHost)) {
+		#	next;
+		#}
+		#${$self->{'_reportHash'}}{$fedName}->relayParisTr();
+		# TODO do something if send is unsuccessful
+#	}
+
+}
+
 sub _parseParisTrJson {
-
-
+	my ($self, $raw_json) = @_;
+	# output variables
+	my $dest_hn = $raw_json->{'measurement'}{'test'}{'spec'}{'dest'}; 
+	#my $dest_ip = ;
+	#my $reached_flag = 0;
+	#my @path = ();
+	
+	$logger->info("_parseParisTrJson: $dest_hn");
+	
+	#$reached_flag = 1 if ($path[-1]{'hop_ip'} eq $dest_ip);
+	#return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
+	return ("test");
 }
 
 

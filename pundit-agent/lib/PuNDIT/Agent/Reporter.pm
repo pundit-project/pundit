@@ -38,12 +38,10 @@ sub new {
 	my $channel = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
 	my $routing_key = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
 	my $exchange = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
-	
+		
 	$mqOut->connect($hostname, { user => $r_user, password => $r_pass});
 	$mqOut->channel_open($channel);
-	$mqOut->exchange_declare($channel, $exchange);
-
-
+	$mqOut->exchange_declare($channel, $exchange, {exchange_type => 'topic'});
 
 	# Declare queue, letting the server auto-generate one and collect the name
 	my $queuename = $mqOut->queue_declare($channel, "");
@@ -52,7 +50,7 @@ sub new {
 	$mqOut->queue_bind($channel, $queuename, $exchange, $routing_key);
 	$logger->info($hostname);
 	$logger->info($channel);
-	$logger->info($queuename);
+#	$logger->info($queuename);
 	$logger->info($exchange);
 	$logger->info($routing_key);
 
@@ -115,14 +113,19 @@ sub writeStatus
 {
 	my ($self, $status) = @_;
 
-	$logger->info("To publish: $status");
-
+	
 	# publish results
 	my $set = _compress($status->{'entries'});
 	my $body = "$status->{'srcHost'}|$status->{'dstHost'}|$status->{'baselineDelay'}|$set";
 
 	#my $body = "Reporter module is working";	
-	$self->{'_mqOut'}->publish($self->{'_channel'}, $self->{'_routing_key'}, $body, {exchange => $self->{'_exchange'}});
+	eval {
+		$logger->info("To publish: $status");
+		$self->{'_mqOut'}->publish($self->{'_channel'}, $self->{'_routing_key'}, $body, {exchange => $self->{'_exchange'}});
+	};
+	if ($@) {
+		$logger->warn("Failed to write status to server. Discarding status from " . $status->{'srcHost'} . " to " . $status->{'dstHost'} . " at " . $status->{'startTime'});
+	}
 }
 
 # This function compresses the array of hashes for remote delivery
