@@ -62,7 +62,7 @@ echo $CENTRAL_PASSWORD
 
 # pundit-agent.conf
 echo "* Configuring pundit-agent daemon"
-cat ../etc/pundit-agent.conf.template-dev | sed "s/<add-src-host-here>/$PERF_HOST/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOST/g" | sed "s/<replace-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<replace-rabbitmq-password-here>/$CENTRAL_PASSWORD/g"  > ../etc/pundit-agent.conf
+cat ../etc/pundit-agent.conf.template-dev | sed "s/<add-src-host-here>/$PERF_HOST/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOST/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g"  > ../etc/pundit-agent.conf
 
 
 service pundit-agent start
