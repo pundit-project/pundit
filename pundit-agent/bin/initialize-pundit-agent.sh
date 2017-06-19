@@ -49,7 +49,7 @@ iptables -I INPUT 1 -p tcp --dport 5672 -j ACCEPT
 
 
 # TODO pundit-central configuration
-PERF_HOST=""
+PERF_HOST="$HOSTNAME"
 #CENTRAL_HOST=punditdev3.aglt2.org
 #CENTRAL_USER=pundit-agent
 #CENTRAL_PASSWORD=agentpass
