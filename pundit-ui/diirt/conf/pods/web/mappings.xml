@@ -3,6 +3,7 @@
 
     <mapping channel="test/jdbc" substitution="jdbc://test/now" permission="READ_ONLY"/>
     <mapping channel="echo/(.*)" substitution="jdbc://maria/echo/$1/$1" permission="READ_ONLY"/>
+    <mapping channel="history/info/(.*)/(.*)/delay" substitution="jdbc://history/info/$1/$2/$1/$2/delay" permission="READ_ONLY"/>
     <mapping channel="history/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="traceroute/(.*)" substitution="jdbc://$0" permission="READ_ONLY"/>
     <mapping channel="hosts" substitution="jdbc://$0" permission="READ_ONLY"/>
