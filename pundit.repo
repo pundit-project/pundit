@@ -1,3 +1,3 @@
 [pundit]
 name = Yum repository for PuNDIT
-baseurl = http://pundit.aglt2.org/yum-repo/
+baseurl = http://<hostname>.aglt2.org/yum-repo/
