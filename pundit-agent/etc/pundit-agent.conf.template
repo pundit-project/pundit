@@ -4,6 +4,10 @@
   # comma delimited list of VOs/groups using PuNDIT that this agent belongs to
   measurement_federations   <add>,<comma>,<delimited>,<list>,<of>,<federation>,<names>,<here>
 
+  # specify the perfsonar hostname for this agent
+  # leave it blank if this agent is installed on its perfsonar host. 
+  src_host <add-src-host-here>
+
   # One configuration per measurement federation, must match elements of measurement_federations
   <add-first-federation-name-here>
   

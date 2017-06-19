@@ -1,29 +1,27 @@
 <pundit-agent>
-  # THIS IS FOR TEST&DEVELOPMENT.
   # Note: Search on word 'here' to locate fields for user-provided values
 
   # comma delimited list of VOs/groups using PuNDIT that this agent belongs to
-  measurement_federations   federation-dev
+  measurement_federations  federation-dev 
 
   # specify the perfsonar hostname for this agent
   # leave it blank if this agent is installed on its perfsonar host. 
-  src_host psum05.aglt2.org
-
+  src_host <add-src-host-here>
 
   # One configuration per measurement federation, must match elements of measurement_federations
   <federation-dev>
   
     # list of peer hostnames in this site, comma delimited list
-	peers psonar-owamp.brazos.tamu.edu, psum09.cc.gt.atl.ga.us, psum05.aglt2.org, uct2-net3.mwt2.org, iut2-net3.iu.edu, ps-development.bnl.gov, perfsonar.unl.edu, netmon1.atlas-swt2.org, psmsu05.aglt2.org, ps3.ochep.ou.edu, nettest.lbl.gov, mwt2-ps03.campuscluster.illinois.edu, perfsonar03-iep-grid.saske.sk perfsonar.soichi.us
+  peers psonar-owamp.brazos.tamu.edu, psum09.cc.gt.atl.ga.us, psum05.aglt2.org, uct2-net3.mwt2.org, iut2-net3.iu.edu, ps-development.bnl.gov, perfsonar.unl.edu, netmon1.atlas-swt2.org, psmsu05.aglt2.org, ps3.ochep.ou.edu, nettest.lbl.gov, mwt2-ps03.campuscluster.illinois.edu, perfsonar03-iep-grid.saske.sk perfsonar.soichi.us
 
     # owamp parameters for this federation. This should match what is configured in mesh config/regular testing
     <owamp_params>
       
       # number of samples in a owamp file
-      sample_count	600
+      sample_count  600
       
       # interval between packets (in seconds)
-      packet_interval	0.1
+      packet_interval 0.1
       
     </owamp_params>
     
@@ -44,14 +42,13 @@
     
       # RabbitMQ parameters
       <rabbitmq>
-        consumer   	localhost 
-        user        pundit-agent 
-        password    pundit-pass 
+        consumer    <add-consumer-host-name-here>
+        user        <add-rabbitmq-user-here>
+        password    <add-rabbitmq-user-password-here>
         channel     3 
         routing_key pundit.status
         exchange    status
-      </rabbitmq>
-      
+      </rabbitmq>      
     </reporting>
     
   </federation-dev>
