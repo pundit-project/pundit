@@ -391,6 +391,11 @@ class PunditDBUtil:
     dbName = dbConf.pop("database", None)
     cnx = mysql.connector.connect(**dbConf)
     cursor = cnx.cursor(buffered=True)
+    cursor.execute("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '" + dbName + "'");
+    row = cursor.fetchone()
+    if row is not None:
+      print "Database " + dbName + " already exists";
+      return
     cursor.execute("CREATE DATABASE " + dbName);
     cursor.execute("USE " + dbName);
     cursor.execute("""CREATE TABLE `statusStaging` (
