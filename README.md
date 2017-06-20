@@ -24,6 +24,7 @@ Add PuNDIT yum repository.
 
      wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
 
+##### pundit-central #####
 Install server component. Note that this will also install glassfish and mysql. 
 
      yum install pundit-central pundit-ui
@@ -31,6 +32,15 @@ Install server component. Note that this will also install glassfish and mysql.
 Run the pundit-central initialization script. **It will prompt you for the mysql root password.**  By default, the password is blank. The script will create database and RabbitMQ users and update the configuration files. It will also start mysql and rabbitmq-server if they are not already running, and it will make sure mysql chkconfig is on.
 
      /opt/pundit-central/bin/initialize-pundit-central.sh
+
+##### pundit-agent #####
+Install pundit-agent on the perfsonar nodes.
+
+	yum install pundit-agent
+
+Run the pundit-central initialization script.
+
+	/opt/pundit-agent/bin/initialize-pundit-agent.sh
 
 #### Build ####
 

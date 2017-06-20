@@ -47,6 +47,7 @@ rm -rf %{buildroot}
 
 
 %post
+chmod +x /opt/pundit-agent/bin/initialize-pundit-agent.sh
 case "$1" in
   1) # This is an initial install.
 	chmod 0755 /etc/init.d/pundit-agent 
