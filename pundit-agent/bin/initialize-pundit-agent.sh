@@ -41,11 +41,16 @@ else
 	setuparchiver
 fi
 
-
-# RabbitMQ
-echo "* Open port 5672 for use"
-iptables -I INPUT 1 -p tcp --dport 5672 -j ACCEPT
-/sbin/service iptables save
+# Check RabbitMQ iptable rule
+iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" > /dev/null
+if [ $? -eq 0 ]
+then
+  echo "* Found iptables rule for RabbitMQ"
+else
+  echo "* Adding iptables rule for RabbitMQ"
+  iptables -I INPUT 1 -p tcp --dport 5672 -j ACCEPT
+  /sbin/service iptables save
+fi
 
 
 # TODO pundit-central configuration
