@@ -66,7 +66,7 @@ sub set_bindings {
 
     # declare channel
     $msgq->channel_open($channel);
-    $msgq->queue_declare($channel, $queue);
+    $msgq->queue_declare($channel, $queue, { auto_delete => 0 });
     $msgq->consume($channel, $queue);
 
     # declare exchange
