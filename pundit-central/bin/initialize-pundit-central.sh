@@ -39,7 +39,7 @@ fi
 # Create RabbitMQ users
 
 # Check RabbitMQ iptable rule
-iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" > /dev/null
+iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" &> /dev/null
 if [ $? -eq 0 ]
 then
   echo "* Found iptables rule for RabbitMQ"
