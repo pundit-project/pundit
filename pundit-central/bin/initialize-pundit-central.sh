@@ -104,7 +104,7 @@ echo "* Write agent credentials into a configuration file"
 echo "agent-user=$AGENT_USER" > ../etc/pundit-agent.credentials
 chmod 600 ../etc/pundit-agent.credentials
 echo "agent-password=$AGENT_PASSWORD" >> ../etc/pundit-agent.credentials
-
+echo "central-hostname=$HOSTNAME" >> ../etc/pundit-agent.credentials
 
 echo "* Configuring database scripts"
 cat ../etc/pundit_db_scripts.conf.template | sed "s/<replace-mysql-database-here>/$DATABASE/g" | sed "s/<replace-mysql-user-here>/$USER/g" | sed "s/<replace-mysql-user-password-here>/$PASSWORD/g" > ../etc/pundit_db_scripts.conf

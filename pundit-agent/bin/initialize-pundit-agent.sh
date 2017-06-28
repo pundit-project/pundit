@@ -4,42 +4,60 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
-# Pscheduler archiver setting
-setuparchiver() {
-cat > $FILE  << EOF
-{
-    	"archiver": "rabbitmq",
-	    "data": {
-        "_url": "amqp://guest:guest@localhost:5672/",
-        "routing-key": "perfsonar.perfdata",
-	       "exchange": "perfdata",
-	       "template": {
-	       "measurement": "__RESULT__"
-	     },
-	     "retry-policy": [
-	     	{ "attempts": 5,  "wait": "PT1S" },
-	        { "attempts": 5,  "wait": "PT3S" }
-	     ]
-	    },
-	    "ttl": "PT1H"
-}
-EOF
-}
-
-FILE=/etc/pscheduler/default-archives/pscheduler-archiver-pundit
-echo "Setting up an archiver..."
-echo "Archiver config path: $FILE"
-if [ -f $FILE ]; then
-	while true; do
-		read -p "an archiver configuration for pundit already exists, overwrite?" yn
-		case $yn in
-			[Yy]* ) setuparchiver; break;;
-			[Nn]* ) break;
-		esac
-	done
-else
-	setuparchiver
+# Argument checking
+if [ $# -ne 1 ]; then
+	echo "* This script takes in only 1 argument(URL or filename)"
 fi
+
+filename=$1
+#Check whether the given argument is a valid url, if not assume it is a local filepath.
+regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
+if [[ $1 =~ $regex ]]; then
+    wget "$1"
+	filename="${1##*/}"
+fi
+
+if [ -f $filename ]; then 
+	CENTRAL_HOSTNAME=$(awk -F"=" /\central-hostname/'{print $2}' $filename)
+	#rabbitmq user/pass assigned to the agent for use by the central host.
+	CENTRAL_USER=$(awk -F"=" /\agent-user/'{print $2}' $filename)
+	CENTRAL_PASSWORD=$(awk -F"=" /\agent-password/'{print $2}' $filename)
+else
+	echo "* Couldn't open $filename"
+	exit 1
+fi
+
+PERFSONAR_HOSTNAME="$HOSTNAME"
+CHANNEL=3
+ROUTING_KEY='pundit.status'
+EXCHANGE=status
+# pundit-agent.conf
+echo "* Configuring pundit-agent daemon"
+cat ../etc/pundit-agent.conf.template | sed "s/<add-src-host-here>/$PERF_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g"  > ../etc/pundit-agent.conf
+
+#Setting up rabbitmq user
+LOCAL_USER=pundit-agent
+LOCAL_PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
+
+echo "* Creating rabbitmq user $LOCAL_USER with password $LOCAL_PASSWORD"
+rabbitmqctl add_user $LOCAL_USER $LOCAL_PASSWORD
+if [ $? -eq 0 ]
+then
+  echo "* Account created."
+else
+  echo "* Trying to delete user first."
+  rabbitmqctl delete_user $LOCAL_USER
+  rabbitmqctl add_user $LOCAL_USER $LOCAL_PASSWORD
+  if [ $? -eq 0 ]
+  then
+    echo "* Account created."
+  else
+    echo "Couldn't create the account"
+    exit 1
+  fi
+fi
+rabbitmqctl set_permissions -p / $LOCAL_USER "." "." ".*"
+rabbitmqctl set_user_tags $LOCAL_USER administrator
 
 # Check RabbitMQ iptable rule
 iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" > /dev/null
@@ -52,22 +70,8 @@ else
   /sbin/service iptables save
 fi
 
-
-# TODO pundit-central configuration
-PERF_HOST="$HOSTNAME"
-#CENTRAL_HOST=punditdev3.aglt2.org
-#CENTRAL_USER=pundit-agent
-#CENTRAL_PASSWORD=agentpass
-read -p "Enter central hostname: " CENTRAL_HOST
-echo $CENTRAL_HOST
-read -p "Enter rabbitmq user id: " CENTRAL_USER
-echo $CENTRAL_USER
-read -p "Enter rabbitmq user password: " CENTRAL_PASSWORD
-echo $CENTRAL_PASSWORD
-
-# pundit-agent.conf
-echo "* Configuring pundit-agent daemon"
-cat ../etc/pundit-agent.conf.template-dev | sed "s/<add-src-host-here>/$PERF_HOST/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOST/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g"  > ../etc/pundit-agent.conf
+# Pscheduler archiver setting
+cat pscheduler-archiver-pundit.template | sed "s/<add-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g"  > /etc/pscheduler/default-archives/pscheduler-archiver-pundit
 
 
 service pundit-agent start

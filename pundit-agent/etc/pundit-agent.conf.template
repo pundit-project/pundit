@@ -8,7 +8,7 @@
   src_host <add-src-host-here>
 
   # One configuration per measurement federation, must match elements of measurement_federations
-  <add-first-federation-name-here>
+  <federation1>
   
     # list of peer hostnames in this site, comma delimited list
     peers   <add>,<comma>,<delimited>,<list>,<of>,<host>,<names>,<here>
@@ -51,14 +51,10 @@
       
     </reporting>
     
-  </add-first-federation-name-here>
+  </federation1>
 
   # Repeat here the federation structure above for each
   # additional federation to be supported.
-  <add-second-federation-name-here>
-       <elements-of-second-federation-go-here>
-       </elements-of-second-federation-go-here>
-  </add-second-federation-name-here>
   
   # These are independent of federation
   <owamp_data>

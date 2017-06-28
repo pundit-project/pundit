@@ -1,0 +1,17 @@
+{
+    	"archiver": "rabbitmq",
+	    "data": {
+        "_url": "amqp://<add-rabbitmq-user-here>:<add-rabbitmq-user-password-here>@localhost:5672/",
+        "routing-key": "perfsonar.perfdata",
+	       "exchange": "perfdata",
+	       "template": {
+	       "measurement": "__RESULT__"
+	     },
+	     "retry-policy": [
+	     	{ "attempts": 5,  "wait": "PT1S" },
+	        { "attempts": 5,  "wait": "PT3S" }
+	     ]
+	    },
+	    "ttl": "PT1H"
+}
+
