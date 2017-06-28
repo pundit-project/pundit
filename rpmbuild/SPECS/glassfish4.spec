@@ -48,6 +48,7 @@ BuildArch:	noarch
 Prereq:		%fillup_prereq
 %endif
 Requires:	java >= 1.8.0
+Requires:	jre >= 1.8.0
 Requires(post): /sbin/chkconfig, /sbin/service
 Requires(preun): /sbin/chkconfig, /sbin/service
 
