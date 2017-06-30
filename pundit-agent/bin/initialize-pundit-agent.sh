@@ -13,8 +13,8 @@ filename=$1
 #Check whether the given argument is a valid url, if not assume it is a local filepath.
 regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
 if [[ $1 =~ $regex ]]; then
-    wget "$1"
 	filename="${1##*/}"
+	wget "$1"
 fi
 
 if [ -f $filename ]; then 
@@ -22,6 +22,7 @@ if [ -f $filename ]; then
 	#rabbitmq user/pass assigned to the agent for use by the central host.
 	CENTRAL_USER=$(awk -F"=" /\agent-user/'{print $2}' $filename)
 	CENTRAL_PASSWORD=$(awk -F"=" /\agent-password/'{print $2}' $filename)
+	AGENT_PEERS=$(awk -F"=" /\agent-peers/'{print $2}' $filename)
 else
 	echo "* Couldn't open $filename"
 	exit 1
@@ -33,11 +34,27 @@ ROUTING_KEY='pundit.status'
 EXCHANGE=status
 # pundit-agent.conf
 echo "* Configuring pundit-agent daemon"
-cat ../etc/pundit-agent.conf.template | sed "s/<add-src-host-here>/$PERF_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g"  > ../etc/pundit-agent.conf
+cat ../etc/pundit-agent.conf.template | sed "s/<add-src-host-here>/$PERF_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g" | sed "s/<add-comma-delimited-list-of-hostnames-here>/$AGENT_PEERS/g" > ../etc/pundit-agent.conf
+chmod 644 ../etc/pundit-agent.conf
 
 #Setting up rabbitmq user
 LOCAL_USER=pundit-agent
 LOCAL_PASSWORD=`openssl rand -base64 12 | sed -e 's/[\/+&]/A/g'`
+
+
+# Check RabbitMQ iptable rule
+iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" > /dev/null
+if [ $? -eq 0 ]
+then
+  echo "* Found iptables rule for RabbitMQ"
+else
+  echo "* Adding iptables rule for RabbitMQ"
+  iptables -I INPUT 1 -p tcp --dport 5672 -j ACCEPT
+  /sbin/service iptables save
+fi
+
+echo "* Make user rabbitmq-server is running"
+service rabbitmq-server start
 
 echo "* Creating rabbitmq user $LOCAL_USER with password $LOCAL_PASSWORD"
 rabbitmqctl add_user $LOCAL_USER $LOCAL_PASSWORD
@@ -58,17 +75,7 @@ else
 fi
 rabbitmqctl set_permissions -p / $LOCAL_USER "." "." ".*"
 rabbitmqctl set_user_tags $LOCAL_USER administrator
-
-# Check RabbitMQ iptable rule
-iptables-save | grep -- "-A INPUT -p tcp -m tcp --dport 5672 -j ACCEPT" > /dev/null
-if [ $? -eq 0 ]
-then
-  echo "* Found iptables rule for RabbitMQ"
-else
-  echo "* Adding iptables rule for RabbitMQ"
-  iptables -I INPUT 1 -p tcp --dport 5672 -j ACCEPT
-  /sbin/service iptables save
-fi
+service rabbitmq-server restart
 
 # Pscheduler archiver setting
 cat pscheduler-archiver-pundit.template | sed "s/<add-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g"  > /etc/pscheduler/default-archives/pscheduler-archiver-pundit

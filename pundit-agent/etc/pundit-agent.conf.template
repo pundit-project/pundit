@@ -11,7 +11,7 @@
   <federation1>
   
     # list of peer hostnames in this site, comma delimited list
-    peers   <add>,<comma>,<delimited>,<list>,<of>,<host>,<names>,<here>
+    peers   <add-comma-delimited-list-of-hostnames-here>
 
     # owamp parameters for this federation. This should match what is configured in mesh config/regular testing
     <owamp_params>

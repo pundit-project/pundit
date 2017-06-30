@@ -12,6 +12,7 @@ Group:		Productivity/Networking/Other
 Source:		%{name}.tar.gz
 BuildArch:	noarch
 Requires:       perl-Net-AMQP-RabbitMQ >= 2.30000
+Requires:	rabbitmq-server >= 3.6
 Provides:	pundit-agent = %{version}
 BuildRoot:	%{_tmppath}/%{name}-%{version}-build
 
