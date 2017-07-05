@@ -7,14 +7,20 @@ cd $DIR
 # Argument checking
 if [ $# -ne 1 ]; then
 	echo "* This script takes in only 1 argument(URL or filename)"
+	echo "* Example: initialize-pundit-agent.sh http://pundit.aglt2.org/pundit-agent.credentials"
+	exit 1
 fi
 
 filename=$1
+isUrl=false
 #Check whether the given argument is a valid url, if not assume it is a local filepath.
 regex='^(https?|ftp|file)://[-A-Za-z0-9\+&@#/%?=~_|!:,.;]*[-A-Za-z0-9\+&@#/%=~_|]$'
 if [[ $1 =~ $regex ]]; then
 	filename="${1##*/}"
 	wget "$1"
+	isUrl=true
+	mv $filename /tmp/$filename
+	filename=/tmp/$filename
 fi
 
 if [ -f $filename ]; then 
@@ -23,6 +29,10 @@ if [ -f $filename ]; then
 	CENTRAL_USER=$(awk -F"=" /\agent-user/'{print $2}' $filename)
 	CENTRAL_PASSWORD=$(awk -F"=" /\agent-password/'{print $2}' $filename)
 	AGENT_PEERS=$(awk -F"=" /\agent-peers/'{print $2}' $filename)
+	
+	if [ "$isUrl" = true ]; then
+		rm $filename
+	fi
 else
 	echo "* Couldn't open $filename"
 	exit 1
