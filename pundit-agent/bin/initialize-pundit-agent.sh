@@ -88,7 +88,7 @@ rabbitmqctl set_user_tags $LOCAL_USER administrator
 service rabbitmq-server restart
 
 # Pscheduler archiver setting
-cat pscheduler-archiver-pundit.template | sed "s/<add-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g"  > /etc/pscheduler/default-archives/pscheduler-archiver-pundit
+cat ../etc/pscheduler-archiver-pundit.template | sed "s/<add-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g"  > /etc/pscheduler/default-archives/pscheduler-archiver-pundit
 
 
 service pundit-agent start
