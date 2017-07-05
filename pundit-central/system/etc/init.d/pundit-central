@@ -2,7 +2,7 @@
 #
 # Init file for PuNDIT Central
 #
-# chkconfig: 2345 65 20
+# chkconfig: 2345 90 10
 # description: PuNDIT Central
 #
 
