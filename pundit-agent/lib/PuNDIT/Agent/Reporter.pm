@@ -21,7 +21,7 @@ package PuNDIT::Agent::Reporter;
 use strict;
 use Log::Log4perl qw(get_logger);
 use Net::AMQP::RabbitMQ;
-
+use PuNDIT::Agent::Messaging::Topics;
 my $logger = get_logger(__PACKAGE__);
 $logger->debug("Reporter called");
 
@@ -30,29 +30,23 @@ sub new {
 	my ($class, $cfgHash, $fedName) = @_;
 
 	# Incoming data flow through RabbitMQ from pscheduler
-	my $mqOut = Net::AMQP::RabbitMQ->new();
+	#my $mqOut = Net::AMQP::RabbitMQ->new();
 
-	my $hostname = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"consumer"};
-	my $r_user = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"user"};
-	my $r_pass = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"password"};
+
+	my $consumer = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"consumer"};
+	my $user = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"user"};
+	my $password = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"password"};
 	my $channel = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
 	my $routing_key = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
 	my $exchange = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
-		
-	$mqOut->connect($hostname, { user => $r_user, password => $r_pass});
-	$mqOut->channel_open($channel);
-	$mqOut->exchange_declare($channel, $exchange, {exchange_type => 'topic'});
+	
+	my $mqOut = set_topic( $consumer, $user, $password, $channel, $exchange );
 
 	# Declare queue, letting the server auto-generate one and collect the name
 	my $queuename = $mqOut->queue_declare($channel, "");
 
 	# Bind the new queue to the exchange using the routing key
 	$mqOut->queue_bind($channel, $queuename, $exchange, $routing_key);
-	$logger->info($hostname);
-	$logger->info($channel);
-#	$logger->info($queuename);
-	$logger->info($exchange);
-	$logger->info($routing_key);
 
 	my $self = {
 		'_fedName' => $fedName,

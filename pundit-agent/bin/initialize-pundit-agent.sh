@@ -44,7 +44,7 @@ ROUTING_KEY='pundit.status'
 EXCHANGE=status
 # pundit-agent.conf
 echo "* Configuring pundit-agent daemon"
-cat ../etc/pundit-agent.conf.template | sed "s/<add-src-host-here>/$PERF_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g" | sed "s/<add-comma-delimited-list-of-hostnames-here>/$AGENT_PEERS/g" > ../etc/pundit-agent.conf
+cat ../etc/pundit-agent.conf.template | sed "s/<add-src-host-here>/$PERFSONAR_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g" | sed "s/<add-comma-delimited-list-of-hostnames-here>/$AGENT_PEERS/g" > ../etc/pundit-agent.conf
 chmod 644 ../etc/pundit-agent.conf
 
 #Setting up rabbitmq user
