@@ -133,5 +133,5 @@ echo "* Creating database"
 cd ../lib/PuNDIT/db
 ./createDB.py
 
-
+service pundit-central start
 
