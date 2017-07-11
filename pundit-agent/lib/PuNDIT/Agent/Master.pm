@@ -21,9 +21,10 @@ use strict;
 use Log::Log4perl qw(get_logger);
 # local libs
 use JSON qw (decode_json); 
+use URI::Split qw/ uri_split /;
 use PuNDIT::Agent::Detection;
 use PuNDIT::Agent::Reporter;
-use Net::AMQP::RabbitMQ;
+use PuNDIT::Agent::Messaging::Topics;
 
 #Moved from Scheduler
 #use File::Find;
@@ -42,27 +43,21 @@ use constant JAN_1970 => 0x83aa7e80;	# offset in seconds
 my $scale = new Math::BigInt 2**32; # this is also a constant
 
 my $logger = get_logger(__PACKAGE__);
-
 # Top-level init for agent master
 sub new
 {
 	my ( $class, $cfgHash ) = @_;
 
 	# Incoming data flow through RabbitMQ from pscheduler
+	my $user = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"user"};	
+	my $password = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"password"};
+	my $host = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"queue_host"};
+	my $exchange = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"exchange"};
+	my $routing_key = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"routing_key"};
 	my $channel = 1;
-	my $exchange = "perfdata";
-	my $routing_key = "perfsonar.perfdata";
-	my $mqIn = Net::AMQP::RabbitMQ->new();
-	$mqIn->connect("localhost", { user => "guest", password => "guest" });
-	$mqIn->channel_open($channel);
-	$mqIn->exchange_declare($channel, "perfdata");
-	# Declare queue, letting the server auto-generate one and collect the name
-	my $queuename = $mqIn->queue_declare($channel, "");
-	# Bind the new queue to the exchange using the routing key
-	$mqIn->queue_bind($channel, $queuename, $exchange, $routing_key);
-	# Request that messages be sent and receive them until interrupted
-	$mqIn->consume($channel, $queuename);
-	
+	my $queue = "";
+
+	my $mqIn = set_bindings( $user, $password, $channel, $exchange, $queue, $routing_key );	
 	# Get the list of measurement federations
 	my $fedString = $cfgHash->{"pundit-agent"}{"measurement_federations"};
 	$fedString =~ s/,/ /g;
@@ -78,7 +73,7 @@ sub new
 	my %reportHash = ();
 	foreach my $fed (@fedList)
 	{
-		$logger->info("Creating Detection Object for $fed");
+		$logger->debug("Creating Detection Object for $fed");
 		my $detectionModule = new PuNDIT::Agent::Detection($cfgHash, $fed);
 		
 		if (!$detectionModule)
@@ -88,7 +83,6 @@ sub new
 		}
 		
 		$detHash{$fed} = $detectionModule;
-
 
 		# CREATE A RABBIT MQ CILENT FOR OUTGOING DATA FOR EACH FED
 		$logger->info("Creating Reporter Object for $fed");
@@ -127,7 +121,7 @@ sub new
 	if ($hostId ne $cfgHash->{'pundit-agent'}{'src_host'}){
 		$hostId = $cfgHash->{'pundit-agent'}{'src_host'};
 	}
-	$logger->info($hostId);		
+	$logger->info("This host: " . $hostId);		
 
 
 	my $self = {
@@ -181,15 +175,17 @@ sub _processMsg
 {
 	my ($self, $dataIn) = @_;
 
-	#$dataIn contains data sent from pscheduler archiver via rabbitmq in string
+	# $dataIn contains data (in str format) sent from pscheduler archiver via rabbitmq
 	#'body' contains the result of the test in a json(string) format
 	my $raw_json = decode_json($dataIn->{'body'});
-	my $toolname = 	$logger->info($raw_json->{'measurement'}{'tool'}{'name'}); 
-	$logger->info($toolname);
+	my $toolname = $raw_json->{'measurement'}{'tool'}{'name'}; 
+	$logger->debug("Tool name " . $toolname);
+
 	# forward paris-traceroute results
 	if ($toolname eq "paris-traceroute") {
-	#	_processParisTr($raw_json);
-		return 0;
+		_processParisTr($raw_json);
+		$logger->debug(Dumper($raw_json));	   
+		return 0; # return ok
 	}
 		   
 	$self->_processLatency($raw_json);
@@ -206,7 +202,7 @@ sub _processLatency {
 
 		# the following two lines could kill performance.
 		my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
-		$logger->info("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
+		$logger->debug("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
 
 		# continue if either srcHost or dstHost is not a member of federation
 		if ($detObj->isNotInFederation($srcHost, $dstHost)) {
@@ -216,7 +212,7 @@ sub _processLatency {
 		# $return - the number of problems detected, 0
 		# $stats - status summary generated from this file
 		my ($summary, $problemFlags) = $detObj->_detection($timeseries, $dstHost,  $sessionMinDelay); 
-		$logger->info("problemFlags: ", $problemFlags);
+		$logger->debug("problemFlags: ", $problemFlags);
 
 		my $startTime = _roundOff($timeseries->[0]{ts});
 		my $statusMsg = {
@@ -236,7 +232,7 @@ sub _processLatency {
 		if ($problemFlags > 0) {
 			$logger->info("$fedName analysis: $problemFlags problems for " . $statusMsg->{'srcHost'} . " to "  . $statusMsg->{'dstHost'});
 			foreach (@{$summary}) {
-				$logger->info(Dumper($_));
+				$logger->debug(Dumper($_));
 			}
 		}		  
 			# run trace if runTrace option is enabled
@@ -398,7 +394,7 @@ sub _parseJson
 }
 
 sub owptime2exacttime {
-	my $bigtime		= new Math::BigInt $_[0];
+	my $bigtime	= new Math::BigInt $_[0];
 	my $mantissa	= $bigtime % $scale;
 	my $significand = ( $bigtime / $scale ) - JAN_1970;
 	return ( $significand . "." . $mantissa );
@@ -409,9 +405,8 @@ sub _processParisTr {
 
 	my ($self, $raw_json) = @_;
 	$logger->info('forwarding paris-traceroute result');
-	   
 	# TODO	Parse traceroute data with a new module
-	my $parse_result = _parseParisTrJson($raw_json);
+#	my $parse_result = _parseParisTrJson($raw_json);
 
 	# TODO loop through reporterHash and see if the sourcehost name is in the peerlist of the federation
 	# also check if the dest hostname is in the peerlist

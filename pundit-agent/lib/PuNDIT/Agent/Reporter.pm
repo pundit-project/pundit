@@ -112,9 +112,8 @@ sub writeStatus
 	my $set = _compress($status->{'entries'});
 	my $body = "$status->{'srcHost'}|$status->{'dstHost'}|$status->{'baselineDelay'}|$set";
 
-	#my $body = "Reporter module is working";	
 	eval {
-		$logger->info("To publish: $status");
+		$logger->info("To publish: ($body)");
 		$self->{'_mqOut'}->publish($self->{'_channel'}, $self->{'_routing_key'}, $body, {exchange => $self->{'_exchange'}});
 	};
 	if ($@) {

@@ -7,6 +7,18 @@
   # specify the perfsonar hostname for this agent
   src_host <add-src-host-here>
 
+  # Raw data receiver. This will grab raw messages from a pscehduler-archiver
+  <raw_receiver>  
+      # RabbitMQ parameters
+      <rabbitmq>
+        queue_host   <replace-rabbitmq-host-here>
+        user         <replace-rabbitmq-user-here>
+        password     <replace-rabbitmq-user-password-here>
+        exchange     <replace-exchange-here>
+        routing_key  <replace-routing_key-here>
+      </rabbitmq>
+  </raw_reciever>
+
   # One configuration per measurement federation, must match elements of measurement_federations
   <federation1>
   
