@@ -99,6 +99,14 @@ sub getEventsMQ
     while (my $payload = $self->{'_mq'}->recv(500))
     {
         last if !defined($payload); # no more messages to retrieve
+
+        # Check payload matches the expected format
+        if (!($payload->{'body'} =~ /^[^\|]*\|[^\|]*\|[\d\.]*\|([\d\.]*,[\d\.]*,[\d\.]*,[\d\.]*,[\d\.]*,[\d\.]*;)*$/)) {
+            $logger->error("Got malformed rabbitMQ message ", $payload->{'body'});
+            next;
+        }
+        
+
         
         # TODO: Use a binary format instead
         my ($srcHost, $dstHost, $baselineDelay, $measures) = split(/\|/, $payload->{'body'});
