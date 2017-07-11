@@ -6,7 +6,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	  http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,135 +15,104 @@
 # limitations under the License.
 #
 
-
+# handles output queueing for reporting events
 package PuNDIT::Agent::Reporter;
 
 use strict;
 use Log::Log4perl qw(get_logger);
-use Net::AMQP::RabbitMQ;
-use PuNDIT::Agent::Messaging::Topics;
+use PuNDIT::Agent::Reporter::RabbitMQ;
+
 my $logger = get_logger(__PACKAGE__);
-$logger->debug("Reporter called");
 
-sub new {
-
-	my ($class, $cfgHash, $fedName) = @_;
-
-	# Incoming data flow through RabbitMQ from pscheduler
-	#my $mqOut = Net::AMQP::RabbitMQ->new();
-
-
-	my $consumer = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"consumer"};
-	my $user = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"user"};
-	my $password = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"password"};
-	my $channel = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
-	my $routing_key = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
-	my $exchange = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
-	
-	my $mqOut = set_topic( $consumer, $user, $password, $channel, $exchange );
-
-	# Declare queue, letting the server auto-generate one and collect the name
-	my $queuename = $mqOut->queue_declare($channel, "");
-
-	# Bind the new queue to the exchange using the routing key
-	$mqOut->queue_bind($channel, $queuename, $exchange, $routing_key);
-
-	my $self = {
-		'_fedName' => $fedName,
-		'_mqOut' => $mqOut,
-
-		'_routing_key' => $routing_key,
-		'_channel' => $channel,
-		'_exchange' => $exchange,
-	};
-
-	bless $self, $class;
-	return $self;
-
-}
-
-# returns a value to 1 decimal place
-sub _oneDecimalPlace
+sub new
 {
-	my ($val) = @_;
-
-	return sprintf("%.1f", $val);
+    my ($class, $cfgHash, $fedName) = @_;
+    
+    my $reporter;
+    $logger->debug("Initializing RabbitMQ Detection Reporter");
+    $reporter = new PuNDIT::Agent::Reporter::RabbitMQ($cfgHash, $fedName);
+    
+    my $self = {
+        _reporter => $reporter, # reporter object
+        
+        # for multithreaded
+        _lock => 0, # crude locking 
+        _queue => [], # empty queue
+    };
+    
+    bless $self, $class;
+    return $self;
 }
 
-# returns a value to 2 decimal places
-sub _twoDecimalPlace
+# internal function because eventually we want to make it multithreaded 
+sub _enqueue
 {
-	my ($val) = @_;
-
-	return sprintf("%.2f", $val);
+    my ($self, $event) = @_;
+    
+    while ($self->{'_lock'} == 1)
+    {
+        sleep 1;
+    }
+    $self->{'_lock'} = 1;
+    push(@{$self->{'_queue'}}, [$event]);
+    $self->{'_lock'} = 0;
 }
 
-# fake rounding function, so we don't need to include posix
-sub _roundOff
+# internal function because eventually we want to make it multithreaded
+sub _dequeue
 {
-	my ($val) = @_;
-
-	# different rounding whether positive or negative
-	if ($val >= 0)
-	{
-		return int($val + 0.5);
-	}
-	else
-	{
-		return int($val - 0.5);
-	}
+    my ($self) = @_;
+    
+    while ($self->{'_lock'} == 1)
+    {
+        sleep 1;
+    }
+    $self->{'_lock'} = 1;
+    my $event = shift(@{$self->{_queue}});
+    $self->{'_lock'} = 0;
+    
+    return $event;
 }
 
-# Destructor
-sub DESTROY
+# gets the queue size
+sub _getQueueSize
 {
-	my ($self) = @_;
-	$self->{'_mqOut'}->disconnect;
+     my ($self) = @_;
+     
+     return -1 if ($self->{'_lock'} == 1);
+     return scalar(@{$self->{'_queue'}});
 }
 
+# Public function for writing events. 
+# Legacy format. Will be removed soon
+# Eventually we want to make it multithreaded, so will use enqueue and dequeue
+sub writeEvent
+{
+    my ($self, $event) = @_;
+    
+    $self->{'_reporter'}->writeEvent($event);
+}
 
-# Publishers
+# Public function for writing statuses (once every minute) 
+# Eventually we want to make it multithreaded, so will use enqueue and dequeue
+
 sub writeStatus
 {
-	my ($self, $status) = @_;
+    my ($self, $status) = @_;
 
-	
-	# publish results
-	my $set = _compress($status->{'entries'});
-	my $body = "$status->{'srcHost'}|$status->{'dstHost'}|$status->{'baselineDelay'}|$set";
+    # TODO: clear the queue here
 
-	eval {
-		$logger->info("To publish: ($body)");
-		$self->{'_mqOut'}->publish($self->{'_channel'}, $self->{'_routing_key'}, $body, {exchange => $self->{'_exchange'}});
-	};
-	if ($@) {
-		$logger->warn("Failed to write status to server. Discarding status from " . $status->{'srcHost'} . " to " . $status->{'dstHost'} . " at " . $status->{'startTime'});
-	}
+    eval
+    {
+        $logger->info("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
+        $self->{'_reporter'}->writeStatus($status);
+    };
+    # catch any exception here
+    if ($@)
+    {
+        # TODO: Put the status on a queue for resending later
+        $logger->warn("Failed to write status to server. Discarding status from " . $status->{'srcHost'} . " to " . $status->{'dstHost'} . " at " . $status->{'startTime'});
+    }
 }
 
-# This function compresses the array of hashes for remote delivery
-sub _compress {
-	my $aref = shift;
-
-	my $set = undef;
-	foreach my $h (@$aref) {
-		$set .= _roundOff($h->{'firstTimestamp'}) . "," . _roundOff($h->{'lastTimestamp'}) . ",";
-		$set .= "$h->{'detectionCode'}," . _twoDecimalPlace($h->{'queueingDelay'}) . ",";
-		$set .= _oneDecimalPlace($h->{'lossPerc'}) . ",0.0;";
-	}
-	return $set;
-}
-
-sub report {
-
-	my	($self) = @_;
-	$logger->info("report() module");
-	my $body = "report()";
-
-	#my $body = "Reporter module is working";	
-	$self->{'_mqOut'}->publish($self->{'_channel'}, $self->{'_routing_key'}, $body, {exchange => $self->{'_exchange'}});
-
-
-}
-
-1
+1;

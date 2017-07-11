@@ -56,8 +56,8 @@ sub new
 	my $routing_key = $cfgHash->{"pundit-agent"}{"raw_receiver"}{"rabbitmq"}{"routing_key"};
 	my $channel = 1;
 	my $queue = "";
-
 	my $mqIn = set_bindings( $user, $password, $channel, $exchange, $queue, $routing_key );	
+
 	# Get the list of measurement federations
 	my $fedString = $cfgHash->{"pundit-agent"}{"measurement_federations"};
 	$fedString =~ s/,/ /g;
@@ -69,8 +69,10 @@ sub new
 		return undef;
 	}
 
+	
+	# Create a detection object for each federation
 	my %detHash = ();
-	my %reportHash = ();
+	my %reporterHash = ();
 	foreach my $fed (@fedList)
 	{
 		$logger->debug("Creating Detection Object for $fed");
@@ -84,16 +86,16 @@ sub new
 		
 		$detHash{$fed} = $detectionModule;
 
-		# CREATE A RABBIT MQ CILENT FOR OUTGOING DATA FOR EACH FED
+		# Create a rabbit mq client for outgoing data 
 		$logger->info("Creating Reporter Object for $fed");
-		my $reportModule = new PuNDIT::Agent::Reporter($cfgHash, $fed);
+		my $reporter = new PuNDIT::Agent::Reporter($cfgHash, $fed);
 		
-		if (!$reportModule)
+		if (!$reporter)
 		{
 			$logger->error("Couldn't init reporter object for federation $fed. Quitting.");    
 			return undef;
 		}
-		$reportHash{$fed} = $reportModule;
+		$reporterHash{$fed} = $reporter;
 
 	}
 
@@ -128,7 +130,7 @@ sub new
 		'_fedList' => \@fedList,
 		'_detHash' => \%detHash,
 
-		'_reportHash' => \%reportHash,
+		'_reporterHash' => \%reporterHash,
 		'_mqIn' => $mqIn,
 
 		##########################
@@ -136,16 +138,15 @@ sub new
 		##########################	  
 		_hostId => $hostId,
 	   
-		# TODO 
-		#Check if src_hostname is ddiferentew.
-		
 		# flag to indicate whether or not owps with problems will be saved
 		#_saveProblems => $saveProblems, 
 		#_saveProblemsPath => $saveProblemsPath, # path where owps with detected problems will be saved
 		
+		# TODO
 		# flag that indicates whether a traceroute should be run after a problem is detected
 		_runTrace => 0, 
 
+		# TODO
 		#_checkMkReporter => $checkMkReporter,
 	};
 
@@ -226,7 +227,7 @@ sub _processLatency {
 		};
 
 		# Report the result to the pundit-central.
-		${$self->{'_reportHash'}}{$fedName}->writeStatus($statusMsg);
+		${$self->{'_reporterHash'}}{$fedName}->writeStatus($statusMsg);
    
 		# One or more problems were detected
 		if ($problemFlags > 0) {
@@ -416,7 +417,7 @@ sub _processParisTr {
 		#if ($reportObj->isNotInFederation($srcHost, $dstHost)) {
 		#	next;
 		#}
-		#${$self->{'_reportHash'}}{$fedName}->relayParisTr();
+		#${$self->{'_reporterHash'}}{$fedName}->relayParisTr();
 		# TODO do something if send is unsuccessful
 #	}
 
