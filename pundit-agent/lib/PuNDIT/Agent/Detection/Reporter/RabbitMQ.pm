@@ -16,7 +16,7 @@
 #
 
 # Handles the interface to RabbitMQ
-package PuNDIT::Agent::Reporter::RabbitMQ;
+package PuNDIT::Agent::Detection::Reporter::RabbitMQ;
 
 use strict;
 use Data::Dumper;   ###
@@ -24,7 +24,7 @@ use Log::Log4perl qw(get_logger);
 use PuNDIT::Agent::Messaging::Topics;
 
 my $logger = get_logger(__PACKAGE__);
-$logger->debug("Reporter::RabbitMQ called");
+$logger->info("Reporter::RabbitMQ called");
 
 # returns a value to 1 decimal place
 sub _oneDecimalPlace
@@ -70,10 +70,10 @@ sub new
     my ($channel)     = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
     my ($exchange)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
     my ($routing_key) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
+    $logger->info($consumer . " / " . $user . " / " . $password. " / " . $channel . " / " . $exchange . " / " . $routing_key);
 
-    $logger->debug("Constructor Reporter::RabbitMQ, channel=$channel");
-
-    # Set up the RabbitMQ topic exchange
+    $logger->info("Constructor Reporter::RabbitMQ, channel=$channel");
+        # Set up the RabbitMQ topic exchange
     my $mq = set_topic( $consumer, $user, $password, $channel, $exchange );
 
     my $self = {

@@ -21,9 +21,9 @@ use strict;
 use Log::Log4perl qw(get_logger);
 use JSON::XS;
 
-#use PuNDIT::Agent::Detection::Reporter;
+use PuNDIT::Agent::Detection::Reporter;
 use PuNDIT::Utils::HostInfo;
-
+use Data::Dumper;
 # used for time conversion
 use Math::BigInt;
 use Math::BigFloat;
@@ -38,10 +38,7 @@ sub new
 
     # federation info
     my $hostId = PuNDIT::Utils::HostInfo::getHostId();
-	if ($hostId ne $cfgHash->{'pundit-agent'}{'src_host'}) {
-		$hostId = $cfgHash->{'pundit-agent'}{'src_host'};
-	}
-
+    
     my $peer_monitor_string = $cfgHash->{"pundit-agent"}{$fedName}{"peers"};
     $peer_monitor_string =~ s/,/ /g;
     my @peer_monitors = split(/\s+/, $peer_monitor_string);
@@ -56,12 +53,12 @@ sub new
     my ($lossThresh) = _parsePercentage($cfgHash->{"pundit-agent"}{$fedName}{"detection"}{"loss_threshold"});
     if (!(defined($delayVal)&&defined($delayThresh)&&defined($lossThresh)))
     {
-        $logger->error("Detection Parameters not defined. Can't continue");
+        $logger->critical("Detection Parameters not defined. Can't continue");
         return undef;
     }
 
     # initalize reporting here as well
-    #my $reporter = new PuNDIT::Agent::Detection::Reporter($cfgHash, $fedName); 
+    my $reporter = new PuNDIT::Agent::Detection::Reporter($cfgHash, $fedName); 
     
     my $self = {
         '_fedName' => $fedName,
@@ -71,7 +68,7 @@ sub new
         '_sampleCount' => $sampleCount,
         '_packetInterval' => $packetInterval,
         
-        #'_reporter' => $reporter,
+        '_reporter' => $reporter,
         
         '_delayVal' => $delayVal,
         '_delayType' => $delayType,
@@ -97,7 +94,82 @@ sub new
     return $self;
 }
 
+# entry point for external functions
+# returns undef if not valid
+sub processFile
+{
+    my ($self, $dataIn) = @_;
+    
+    # $dataIn contains data (in str format) sent from pscheduler archiver via rabbitmq
+    #'body' contains the result of the test in a json(string) format
+    my $raw_json = decode_json($dataIn->{'body'});
+    my $toolname = $raw_json->{'measurement'}{'tool'}{'name'}; 
+    $logger->debug("Tool name: " . $toolname);
 
+    # forward paris-traceroute results
+    if ($toolname eq "paris-traceroute") {
+        #_processParisTr($raw_json);
+        $logger->info("paris-traceroute to be routed");     
+        $logger->debug(Dumper($raw_json));     
+        return 0; # return ok
+    }
+    # elsif ($toolname eq "") {
+        # $logger->debug("Unrecognized toolname.");
+        # return 0;
+    # }
+           
+    # TODO SELF COMMENT(BY EK) To be removed
+    # previously $self->_processLatency($raw_json);
+
+    my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
+    $logger->debug("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
+    
+    if ($srcHost ne $self->{'_hostId'})
+    {
+        $logger->info("Skipping $srcHost. Not from this host " . $self->{'_hostId'});
+        return (-1, undef);
+    }
+    
+    # filter out destinations not in the current federation
+    #TODO: Figure out how to get the data out of the owp files
+    if (!grep( /^$dstHost$/, @{$self->{'_peers'}} ) )
+    {
+        $logger->info("Skipping $dstHost. Not in peerlist");
+        return (-1, undef);
+    }
+    
+    # perform detection and return a summary
+    my ($summary, $problemFlags) = $self->_detection($timeseries, $dstHost, $sessionMinDelay);
+    foreach (@{$summary}) {
+	$logger->debug(Dumper($_));
+    }
+
+    my $startTime = _roundOff($timeseries->[0]{ts});
+    my $statusMsg = {
+        'srcHost' => $srcHost,
+        'dstHost' => $dstHost,
+        'startTime' => $startTime,
+        'endTime' => _roundOff($timeseries->[-1]{ts}),
+        'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
+        'baselineDelay' => $sessionMinDelay,
+        'entries' => $summary,
+    };
+
+    $self->{'_reporter'}->writeStatus($statusMsg);
+    
+    $logger->debug("$srcHost $dstHost Returning $problemFlags problemFlags at $startTime");
+    $logger->debug("entries: $summary");      ###
+    
+    return ($problemFlags, $statusMsg);
+}
+
+
+sub owptime2exacttime {
+    my $bigtime     = new Math::BigInt $_[0];
+    my $mantissa    = $bigtime % $scale;
+    my $significand = ( $bigtime / $scale ) - JAN_1970;
+    return ( $significand . "." . $mantissa );
+}
 
 
 # parses the config variable for the value
@@ -173,6 +245,426 @@ sub _parseInt
     return ($val);
 }
 
+# returns undef if not valid
+# reads + parses an archiver json file 
+sub _parseJson
+{
+    # $owampResult is $raw_json
+    # kept the name to make it easier to compare with the old codebase
+    my ($self, $owampResult) = @_;    
+     
+    # The output variables
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    my $lost_count;
+     
+    # TODO WHAT DOES IT DO?
+    # Print individual packet delays, with Unix timestamps, using millisecond granularity
+    # open(FILE, "<", $inputFile) or die;
+    
+    # error check the result
+    my ($srcHost) = $owampResult->{'measurement'}{'test'}{'spec'}{'source'};
+    my ($dstHost) = $owampResult->{'measurement'}{'test'}{'spec'}{'dest'};
+
+    # $entry is a hash
+    foreach my $entry (@{$owampResult->{'measurement'}{'result'}{'raw-packets'}})
+    {
+        my $unsyncFlag = 0;
+        my $lostFlag = 0;
+        
+        # Send timestamp
+        my $sendTs = owptime2exacttime($entry->{"src-ts"});
+        my $recvTs = -1;
+        my $delay = -1.0;
+        
+        # Mark lost or unsynced packets differently
+        if ($entry->{"dst-ts"} == 0)
+        {
+            $lostFlag = 1;
+        }
+        elsif (($entry->{"dst-clock-sync"} == 0) || 
+               ($entry->{"src-clock-sync"} == 0))
+        {
+            # no point calculating delays if unsynced
+            $unsyncFlag = 1;
+        }
+        else # not lost or unsynced
+        {
+            $recvTs = owptime2exacttime($entry->{"dst-ts"});
+            $delay = ($recvTs - $sendTs) * 1000; # convert to milliseconds
+            
+            # guard against negative values
+            if ($delay < 0.0)
+            {
+                $delay = 0.0;
+            }
+            
+            # fix self-queueing
+            # TODO global requires explicit error
+            #if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
+            #{
+            #    $delay = $prevDelay;
+            #}
+            
+            # update for the next loop
+            $prevDelay = $delay;
+        #TODO global requires explicit error
+            #$prevTs = $sendTs;
+        }
+        
+        # store the entry in the timeseries array
+        my %elem = (
+            'ts' => $sendTs,
+            'rcvts' => $recvTs,
+            'seq' => int($entry->{"seq-num"}),
+            'lost' => $lostFlag,
+            'unsync' => $unsyncFlag,
+            'delay' => $delay,
+        );
+        push(@timeseries, \%elem);
+        
+        # update the minimum delay in this session
+        if (($delay > 0.0) && 
+            (!defined $sessionMinDelay || $delay < $sessionMinDelay))
+        {
+            $sessionMinDelay = $delay;
+        }
+    }
+
+    # sort the timeseries by seq no
+    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
+    
+    return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
+}
+
+# reads an input owamp file
+sub _readFile
+{
+    my ($self, $inputFile) = @_;
+    
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    my $srcHost;
+    my $dstHost;
+    my $reorder_metric;
+    my $lost_count;
+    my @lost_array;
+    my @unsync_array;
+    
+    if (substr($inputFile, -3) eq "owp")
+    {
+        # Print individual packet delays, with Unix timestamps, using millisecond granularity
+        open(IN, "owstats -v -U -nm $inputFile |") or die;
+    }
+
+    while(my $line = <IN>)
+    {
+        if ($line =~/^--- owping statistics from \[(.+?)\]:\d+ to \[(.+?)\]\:\d+ ---$/)
+        {
+            $srcHost = $1;
+            $dstHost = $2;           
+        }
+        
+        # grab a reordering metric if any. We calculate our own, so no need to preserve all values
+        $reorder_metric = $1 if ($line =~/^\d*-reordering = ([0-9]*\.?[0-9]*)/);
+        
+        # grab the number of lost packets
+        $lost_count = $1 if ($line =~ /^\d*\ssent, (\d*) lost/);
+        
+        # skip lines that are not owamp measurements
+        next if $line !~ /^seq_no/; 
+        
+        chomp $line;
+        
+        # replace equals and tabs with spaces, then split on space
+        $line =~ s/=/ /g; 
+        $line =~ s/\t/ /g;
+        my @obj = split(/\s+/, $line);
+
+        # check for lost packet
+        my $lost_flag = 0;
+        my $unsync_flag = 0;
+        my $delay = undef;
+        my $sndTS = -1;
+        my $rcvTS = -1;
+        if ($line =~ /LOST/) # catch lost packets
+        {
+            # note sequence number of loss
+            push(@lost_array, $obj[1]);
+            
+            $lost_flag = 1;
+        }
+        elsif ($line =~ /unsync/)
+        {
+            # note sequence number of unsync
+            push(@unsync_array, $obj[1]);
+            
+            # Delay
+#            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+            $unsync_flag = 1;
+        }
+        else # normal packet
+        {
+#            # skip values that are out of range
+#            next if $fileStartTime && $obj[10] < $fileStartTime;
+#            last if $fileEndTime && $obj[10] > $fileEndTime;
+
+            # Delay
+            $delay = $obj[3] * 1.0; # This converts from scientific notation to decimal
+            
+            $sndTS = $obj[10] * 1.0;
+            $rcvTS = $obj[12] * 1.0;
+            
+            # guard against negative values
+            if ($delay < 0.0)
+            {
+                $delay = 0.0;
+            }
+            
+            # update the minimum delay in this session
+            if (!defined $sessionMinDelay || $delay < $sessionMinDelay)
+            {
+                $sessionMinDelay = $delay;
+            }
+        }
+        
+        my %elem = ();
+        $elem{ts} = $sndTS; # sender timestamp
+        $elem{rcvts} = $rcvTS; # receiver timestamp
+        $elem{seq} = int($obj[1]); # original seq
+        $elem{lost} = $lost_flag;
+        $elem{unsync} = $unsync_flag;
+        
+        # If 2 packets are sent too close to each other, likely induced self queueing 
+        if (!($lost_flag || $unsync_flag))
+        {
+            if (@timeseries > 0 && ($elem{ts} != -1) && ($elem{ts} - $prevTS < 100e-6))
+            {
+                $elem{delay} = $prevDelay;
+            }
+            else
+            {
+                $elem{delay} = $delay;
+            }
+        }
+        
+        if (($elem{ts} != -1) && (defined($delay)))
+        {
+            # keep track of values to overwrite self queueing
+            $prevDelay = $delay;
+            $prevTS = $elem{ts};
+        }
+        push(@timeseries, \%elem);
+    }
+    close IN;
+    
+    # sort the timeseries by seq no
+    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
+    
+    # loop one more time to fill the sender timestamps of lost packets
+    if (scalar(@lost_array) > 0 || scalar(@unsync_array) > 0)
+    {
+        open(IN, "owstats -R $inputFile |") or die; ## TODO: Guard against die
+        while(my $line = <IN>)
+        {
+            # Each line can be split using this way
+            my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
+            
+            $seqNo = int($seqNo);
+            if ((scalar(@lost_array) > 0) && ($seqNo == $lost_array[0]))
+            {
+                $timeseries[$seqNo]->{ts} = owptime2exacttime($sTime);
+                shift @lost_array;
+            }
+            elsif ((scalar(@unsync_array) > 0) && ($seqNo == $unsync_array[0]))
+            {
+                $timeseries[$seqNo]->{'ts'} = owptime2exacttime($sTime);
+                $timeseries[$seqNo]->{'rcvTs'} = owptime2exacttime($rTime);
+                shift @unsync_array;
+            }
+            last if (scalar(@lost_array) == 0 && scalar(@unsync_array) == 0);
+        }
+        close IN;
+    }
+    
+    return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
+}
+
+# reads an archiver json file
+sub _readJson
+{
+    my ($self, $inputFile) = @_;
+    
+    # The output variables
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    my $lost_count;
+    
+    # reject non-json files
+    if (!(substr($inputFile, -4) eq "json"))
+    {
+        return undef;
+    }
+     
+    # Print individual packet delays, with Unix timestamps, using millisecond granularity
+    open(FILE, "<", $inputFile) or die;
+    
+    my $owampResult = decode_json <FILE>;
+    
+    # error check the result
+    my ($srcHost, $dstHost) = @{$owampResult->{'result'}{'participants'}};
+    
+    foreach my $entry (@{$owampResult->{'result'}{'result'}{'raw-packets'}})
+    {
+	my $prevTS;
+        my $unsyncFlag = 0;
+        my $lostFlag = 0;
+        
+        # Send timestamp
+        my $sendTs = owptime2exacttime($entry->{"src-ts"});
+        my $recvTs = -1;
+        my $delay = -1.0;
+        
+        # Mark lost or unsynced packets differently
+        if ($entry->{"dst-ts"} == 0)
+        {
+            $lostFlag = 1;
+        }
+        elsif (($entry->{"dst-clock-sync"} == 0) || 
+               ($entry->{"src-clock-sync"} == 0))
+        {
+            # no point calculating delays if unsynced
+            $unsyncFlag = 1;
+        }
+        else # not lost or unsynced
+        {
+            $recvTs = owptime2exacttime($entry->{"dst-ts"});
+            $delay = ($recvTs - $sendTs) * 1000; # convert to milliseconds
+            
+            # guard against negative values
+            if ($delay < 0.0)
+            {
+                $delay = 0.0;
+            }
+            
+            # fix self-queueing 
+            #if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
+            #{
+            #    $delay = $prevDelay;
+            #}
+            
+            # update for the next loop
+            # $prevDelay = $delay;
+            # $prevTs = $sendTs;
+        }
+        
+        # store the entry in the timeseries array
+        my %elem = (
+            'ts' => $sendTs,
+            'rcvts' => $recvTs,
+            'seq' => int($entry->{"seq-num"}),
+            'lost' => $lostFlag,
+            'unsync' => $unsyncFlag,
+            'delay' => $delay,
+        );
+        push(@timeseries, \%elem);
+        
+        # update the minimum delay in this session
+        if (($delay > 0.0) && 
+            (!defined $sessionMinDelay || $delay < $sessionMinDelay))
+        {
+            $sessionMinDelay = $delay;
+        }
+    }
+
+    # sort the timeseries by seq no
+    @timeseries = sort { $a->{seq} <=> $b->{seq} } @timeseries;
+    
+    return ($srcHost, $dstHost, \@timeseries, $sessionMinDelay);
+}
+
+
+# reads an input owamp file
+# Not being used yet.
+sub _readFile2
+{
+    my ($self, $inputFile) = @_;
+    
+    if (substr($inputFile, -3) ne "owp")
+    {
+        print "$inputFile is not an owp file! Skipping!\n";
+        return -1;
+    }
+    
+    my @timeseries = ();
+    my $sessionMinDelay;
+    
+    # variables used to overwrite delays due to self queueing 
+    my ($prevTS, $prevDelay);
+    
+    # metadata
+    my ($srcHost, $srcip, $dstHost, $dstip);
+    
+    # 2 loops: one for getting the metadata, then one for getting the timeseries
+    
+    # get the metadata
+    
+#    FROM_HOST       perfsonar03-iep-grid.saske.sk
+#    FROM_ADDR       147.213.204.117
+#    FROM_PORT       8927
+#    TO_HOST psum09.cc.gt.atl.ga.us
+#    TO_ADDR 143.215.129.69
+#    TO_PORT 8777
+#    START_TIME      15735090711158434567
+#    END_TIME        15735090973283830624
+        
+    open(IN, "owstats -M $inputFile |") or die;
+    while(my $line = <IN>)
+    {
+        if ($line =~/^--- owping statistics from \[(.+?)\]:\d+ to \[(.+?)\]\:\d+ ---$/)
+        {
+            $srcHost = $1;
+            $dstHost = $2;           
+        }
+    }
+    close IN;
+    
+    # 2nd loop gets the timeseries
+    open(IN, "owstats -R $inputFile |") or die;
+    while(my $line = <IN>)
+    {
+        # Each line can be split using this way
+        my ($seqNo, $sTime, $sSync, $sErr, $rTime, $rSync, $rErr, $ttl) = split(/\s+/, $line);
+        
+        my $delay = -1;
+        my $loss = 0;
+        if ($rTime != 0 && $sSync == 1 && $rSync == 1)
+        {
+            $delay = $rTime - $sTime;
+        }
+        if ($rTime == 0)
+        {
+            $loss = 1;
+        }
+        
+        
+    }
+    close IN;
+    
+}
+
 
 # Calculates the bin of this timestamp
 # only used in version 1 of detection
@@ -182,57 +674,6 @@ sub _calcBin
     return int(int($timestamp)/$self->{'_windowSize'}) * $self->{'_windowSize'}
 }
 
-sub detection()
-{
-
-    my ($self, $srcHost, $dstHost, $timeseries, $sessionMinDelay) = @_;
-
-    # perform detection and return a summary
-    my ($summary, $problemFlags) = $self->_detection($timeseries, $dstHost, $sessionMinDelay);
-
-    my $startTime = _roundOff($timeseries->[0]{ts});
-    my $statusMsg = {
-        'srcHost' => $srcHost,
-        'dstHost' => $dstHost,
-        'startTime' => $startTime,
-        'endTime' => _roundOff($timeseries->[-1]{ts}),
-        'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
-        'baselineDelay' => $sessionMinDelay,
-        'entries' => $summary,
-    };
-
-    # TODO temporarily disable this function
-    #$self->{'_reporter'}->writeStatus($statusMsg);
-    
-    $logger->debug("$srcHost $dstHost Returning $problemFlags problemFlags at $startTime");
-    $logger->debug("entries: $summary");      ###
-    
-    return ($problemFlags, $statusMsg);
-}
-
-
-sub isNotInFederation()
-{
-    my ($self, $srcHost, $dstHost) = @_;
-    
-    if ($srcHost ne $self->{'_hostId'})
-    {
-        $logger->info("Skipping $srcHost. Not from this host " . $self->{'_hostId'});
-        return (1);
-    }
- 
-	#TODO NEEDS TESTING
-	my($dstHost_test) = "abc.asdfjiaosdf.com";
-	# filter out destinations not in the current federation
-	if (grep {$dstHost_test eq $_ } @{$self->{'_peers'}}) {
-        $logger->info("Skipping $dstHost. Not in peerlist");
-        return (1);
-	}
-
-	return 0;
-}
-
-# NEW entry point for external functions
 # Version 1: Bin the elements into 5 second intervals
 sub _detection
 {

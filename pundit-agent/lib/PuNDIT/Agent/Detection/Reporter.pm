@@ -16,11 +16,11 @@
 #
 
 # handles output queueing for reporting events
-package PuNDIT::Agent::Reporter;
+package PuNDIT::Agent::Detection::Reporter;
 
 use strict;
 use Log::Log4perl qw(get_logger);
-use PuNDIT::Agent::Reporter::RabbitMQ;
+use PuNDIT::Agent::Detection::Reporter::RabbitMQ;
 
 my $logger = get_logger(__PACKAGE__);
 
@@ -29,8 +29,8 @@ sub new
     my ($class, $cfgHash, $fedName) = @_;
     
     my $reporter;
-    $logger->debug("Initializing RabbitMQ Detection Reporter");
-    $reporter = new PuNDIT::Agent::Reporter::RabbitMQ($cfgHash, $fedName);
+    $logger->info("Initializing RabbitMQ Detection Reporter");
+    $reporter = new PuNDIT::Agent::Detection::Reporter::RabbitMQ($cfgHash, $fedName);
     
     my $self = {
         _reporter => $reporter, # reporter object
