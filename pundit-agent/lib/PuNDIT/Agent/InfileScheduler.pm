@@ -25,6 +25,7 @@ use File::Copy;
 use File::Basename;
 use Data::Dumper; # used for dumping stats
 
+# TODO Won't need MkReporter as we transitioned away from direct file i/o
 #use PuNDIT::Agent::InfileScheduler::CheckMkReporter;
 # TODO NEXT
 #use PuNDIT::Agent::LocalizationTraceroute;
@@ -36,8 +37,9 @@ my $logger = get_logger(__PACKAGE__);
 sub new
 {
     my ($class, $cfgHash, $detHash) = @_;
-    
-    # initialise check mk reporter to periodically write stats
+
+    # TODO possible removal of this part. 
+    # # initialise check mk reporter to periodically write stats
     # my $checkMkReporter = new PuNDIT::Agent::InfileScheduler::CheckMkReporter($cfgHash);
     
     #my $owampPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"path"};
@@ -59,6 +61,8 @@ sub new
         _hostId => $hostId,
 
         _detHash => $detHash,
+
+        # TODO possible removal of this line
         # _owampPath => $owampPath,
         
         # flag to indicate whether or not owps with problems will be saved
@@ -68,6 +72,7 @@ sub new
         # flag that indicates whether a traceroute should be run after a problem is detected
         _runTrace => 0, 
         
+        # TODO possible removal of this line
         # _checkMkReporter => $checkMkReporter,
     };
     
@@ -86,8 +91,11 @@ sub runSchedule
     # no files. just quit
     # return if (!@$owpFiles);
     
-    # my $processCount = $self->_processFiles($owpFiles);
+    # TODO we can directly call _processOwmpfile
+    # currently _processFiles merely relalys $dataIn to _processOwmpfile
     $self->_processFiles($dataIn);
+
+    # my $processCount = $self->_processFiles($owpFiles);
     # $logger->debug("processed " . $processCount . " files");
     # $self->{'_checkMkReporter'}->reportProcessedCount($processCount);
 }
@@ -104,7 +112,6 @@ sub _processFiles
     # foreach my $filename (@$infiles)
     # {
     #   my $return = $self->_processOwpfile($filename);
-        
         # $processCount += 1;
     # }
     # return $processCount;
@@ -132,7 +139,6 @@ sub _processOwpfile
         {
             $logger->info("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
 
-            
             # run trace if runTrace option is enabled
             # if ($self->{'runTrace'})
             # {
@@ -180,120 +186,26 @@ sub _processOwpfile
     return 0; # return ok 
 }
 
-# This function is comparable to _processOwpfile
-sub _processMsg
-{
-    my ($self, $dataIn) = @_;
-
-
-}
-
-
-sub _processLatency {
-
-    my ($self, $raw_json) = @_;
-
-    while (my ($fedName, $detObj) = each (%{$self->{'_detHash'}})) {
-
-        # the following two lines could kill performance.
-        my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
-        $logger->debug("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
-
-        # continue if either srcHost or dstHost is not a member of federation
-        if ($detObj->isNotInFederation($srcHost, $dstHost)) {
-             next;
-        }
-
-        # $return - the number of problems detected, 0
-        # $stats - status summary generated from this file
-        my ($summary, $problemFlags) = $detObj->_detection($timeseries, $dstHost,  $sessionMinDelay); 
-        $logger->debug("problemFlags: ", $problemFlags);
-
-        my $startTime = _roundOff($timeseries->[0]{ts});
-        my $statusMsg = {
-            'srcHost' => $srcHost,
-            'dstHost' => $dstHost,
-            'startTime' => $startTime,
-            'endTime' => _roundOff($timeseries->[-1]{ts}),
-            'duration' => ($timeseries->[-1]{ts} - $timeseries->[0]{ts}),
-            'baselineDelay' => $sessionMinDelay,
-            'entries' => $summary,
-        };
-
-        # Report the result to the pundit-central.
-        ${$self->{'_reporterHash'}}{$fedName}->writeStatus($statusMsg);
-   
-        # One or more problems were detected
-        if ($problemFlags > 0) {
-            $logger->info("$fedName analysis: $problemFlags problems for " . $statusMsg->{'srcHost'} . " to "  . $statusMsg->{'dstHost'});
-            foreach (@{$summary}) {
-                $logger->debug(Dumper($_));
-            }
-        }         
-            # run trace if runTrace option is enabled
-            # if ($self->{'runTrace'})
-            # {
-            #     if ($stats->{'srcHost'} eq $self->{'_hostId'})
-            #     {
-            #         $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dstHost'});
-                
-            #         my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srcHost'});
-            #         $tr_helper->runTrace($stats->{'dstHost'});
-            #     }
-            #     else
-            #     {
-            #         $logger->debug("runTrace enabled. Can't run trace on this host: It is the destination");
-            #     }
-            # }
-            
-            # user wants to save the problems
-            # if ($self->{'_saveProblems'})
-            # {
-            #     # copy the problematic file to this directory
-            #     my($filename, $dirs, $suffix) = fileparse($filePath);
-            #     my $savePath = $self->{'_saveProblemsPath'} . $fedName . '/';
-                
-            #     $logger->debug("Saving problematic owp file $filePath to $savePath");
-                
-            #     if (!-d $savePath)
-            #     {
-            #         $logger->debug("Creating path $savePath for savedProblems");
-            #         mkdir($savePath);
-            #     }
-            #     copy($filePath, $savePath . $filename . $suffix);
-          
-            #     # write the stats in a corresponding txt file
-            #     my $statFile = $savePath . $filename . ".txt";
-            #     open my $statFh, ">", $statFile; 
-            #     print $statFh Dumper( $stats );
-            #     close $statFh;
-            # }
-       # }
-    }
-
-    return 0;
-}
-
-
 # TODO possible removal
 # Scans the owamp directory to find owp files for processing
 # Returns the list of files sorted from oldest to newest
-sub _getOwpFiles
-{
-    my ($self) = @_;
+# sub _getOwpFiles
+# {
+#     my ($self) = @_;
 
-    my @owpfiles = glob($self->{"_owampPath"} . "owamp_*/*.owp"); # get all owp files in the regular testing directory
+#     my @owpfiles = glob($self->{"_owampPath"} . "owamp_*/*.owp"); # get all owp files in the regular testing directory
 
-    # multi-operation sort. Order of precedence is from innermost to outermost
-    my @result =     
-        map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
-        sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
-        map  { /\/(\d+?)_\d+?\.owp$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
-        @owpfiles;
+#     # multi-operation sort. Order of precedence is from innermost to outermost
+#     my @result =     
+#         map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
+#         sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
+#         map  { /\/(\d+?)_\d+?\.owp$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
+#         @owpfiles;
         
-    return \@result;
-}
+#     return \@result;
+# }
 
+# TODO possible removal
 # Scans the owamp directory to find json files for processing
 # Returns the list of files sorted from oldest to newest
 #sub _getJsonFiles
