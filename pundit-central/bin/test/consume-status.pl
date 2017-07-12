@@ -29,7 +29,7 @@ my $exchange = $cfgHash{pundit_central}{federation1}{ev_receiver}{rabbitmq}{exch
 # Open connection and retrieves a handle to the queue
 my $mq = set_bindings( $user, $password, $channel, $exchange, $queue, $binding_keys );
 
-print Dumper($user . " / " . $exchange . " / " . $channel . " / ");
+print Dumper($user . " / " . $exchange . " / " . $channel . " / " . $binding_keys);
 
 # Consume loop
 while ( my $payload = $mq->recv() ) {
