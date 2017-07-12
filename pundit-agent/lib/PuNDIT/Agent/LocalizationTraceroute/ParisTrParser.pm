@@ -20,13 +20,14 @@ package PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
 use strict;
 use Log::Log4perl qw(get_logger);
 
-#my $logger = get_logger(__PACKAGE__);
-my $debug = 0;
-
-if ($debug == 1)
-{
-	use Data::Dumper;
-}
+my $logger = get_logger(__PACKAGE__);
+use Data::Dumper;
+# my $debug = 0;
+#
+# if ($debug == 1)
+# {
+# 	use Data::Dumper;
+# }
 
 # Parses the output of paris traceroute into a path
 sub parse
@@ -150,4 +151,5 @@ sub parse
 1;
 
 #my $out = `paris-traceroute www.google.com`;
-#print Dumper parse($out);
+#print Dumper($out);
+#print Dumper(parse($out));
