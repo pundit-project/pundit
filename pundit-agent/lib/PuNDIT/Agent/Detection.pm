@@ -22,6 +22,7 @@ use Log::Log4perl qw(get_logger);
 use JSON::XS;
 
 use PuNDIT::Agent::Detection::Reporter;
+use PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
 use PuNDIT::Utils::HostInfo;
 use Data::Dumper;
 # used for time conversion
@@ -109,8 +110,10 @@ sub processFile
     # forward paris-traceroute results
     if ($toolname eq "paris-traceroute") {
         #_processParisTr($raw_json);
-        $logger->info("paris-traceroute to be routed");     
-        $logger->debug(Dumper($raw_json));     
+        $logger->info("paris-traceroute to be routed");
+ 	my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse_for_pscheduler($raw_json);
+        $logger->info("--Dumping parse result--");
+        $logger->info(Dumper($parse_result));     
         return 0; # return ok
     }
     # elsif ($toolname eq "") {
@@ -1269,3 +1272,4 @@ sub _purgeOldIncompleteBins
 }
 
 1;
+

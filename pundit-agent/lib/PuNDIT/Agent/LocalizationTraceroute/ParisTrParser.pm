@@ -18,48 +18,48 @@
 package PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
 
 use strict;
-use Log::Log4perl qw(get_logger);
-
-my $logger = get_logger(__PACKAGE__);
 use Data::Dumper;
+use Socket;
+use Log::Log4perl qw(get_logger);
+my $logger = get_logger(__PACKAGE__);
 # my $debug = 0;
 #
 # if ($debug == 1)
 # {
-# 	use Data::Dumper;
+#       use Data::Dumper;
 # }
 
 # Parses the output of paris traceroute into a path
 sub parse
 {
-	# helper functions
-	sub trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s }; # Trim leading and trailing spaces
-	
-	my $firstline = 0;
-	
-	# output variables
-	my $dest_hn; 
-	my $dest_ip;
-	my $reached_flag = 0;
-	my @path = ();
-	
-	my ($tr_text) = @_;
-	my @lines = split /^/, $tr_text;
-	
-	foreach my $line (@lines) 
-	{
-		$line = trim $line;
-		
-		# parse the first line. Format:
-		# traceroute to psum09.cc.gt.atl.ga.us (143.215.129.69), 30 hops max, 30 bytes packets
-		if ($firstline == 0) 
+        # helper functions
+        sub trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s }; # Trim leading and trailing spaces
+
+        my $firstline = 0;
+
+        # output variables
+        my $dest_hn;
+        my $dest_ip;
+        my $reached_flag = 0;
+        my @path = ();
+
+        my ($tr_text) = @_;
+        my @lines = split /^/, $tr_text;
+
+        foreach my $line (@lines)
+        {
+                $line = trim $line;
+
+                # parse the first line. Format:
+                # traceroute to psum09.cc.gt.atl.ga.us (143.215.129.69), 30 hops max, 30 bytes packets
+                if ($firstline == 0)
         {
             if ($line =~ /^traceroute to (.*) \(([\d|\.]*)\), .* hops max, .* bytes packets$/)
             {
                 $firstline = 1;
                 $dest_hn = $1;
                 $dest_ip = $2;
-                
+
                 next;
             }
             else
@@ -68,84 +68,127 @@ sub parse
                 return undef;
             }
         }
-		
-		#print $line;
-		
-		# loop over each hop in the traceroute 
-		# and choose the most likely hop for each
-		my @elems = split /\s+/, $line;
-		my $hop = undef;
-		my $hop_count = undef;
-		my %tmp_hash = ();
-		my $hop_ip;
-		my $hop_hn;
-		my $curr_hop = undef;
-		my $stars_flag = 0;
-		foreach my $elem (@elems)
-		{
-			# skip stars and hop numbers
-			if ($elem =~ /^\*$/)
-			{
-				$stars_flag = 1;
-				next;
-			}
-			elsif ($elem =~ /^\d*$/)
-			{
-				$hop_count = $elem;
-				next;
-			}
-			elsif ($elem =~ /^\d.*ms$/)
-			{
-				$curr_hop = $hop_hn . "_" . $hop_ip;
-				if (exists $tmp_hash{$curr_hop}) 
-				{
-					$tmp_hash{$curr_hop}++;
-				}
-				else
-				{
-					$tmp_hash{$curr_hop} = 1;
-				}
-			}
-			elsif ($elem =~ /^\((.*)\)$/)
-			{
-				# ip address. Separated as we might want to use this later
-				#print "IP address $elem\n";
-				$hop_ip = $1;
-				next;
-			}
-			else
-			{
-				$hop_hn = $elem;
-				#print "curr_hop = $elem\n";
-			}			
-		}
-		# voting for the most likely hop
-		if (keys %tmp_hash)
-		{
-			my $max_key;
-			my $max_value = -1;
-			while ((my $key, my $value) = each %tmp_hash) {
-			  if ($value > $max_value) {
-			    $max_value = $value;
-			    $max_key = $key;
-			  }
-			}
-			#print "max_key = $max_key\n";
-			$hop = $max_key;
-		}
-		if ($hop)
-		{
-			my ($h_name, $h_ip) = split("_", $hop); 
-			push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
-		}
-		elsif ($stars_flag)
-		{
-			push @path, { 'hop_count' => $hop_count, 'hop_name' => '*', 'hop_ip' => '*'};
-		}
-		#print "\n";
-	}
-	$reached_flag = 1 if ($path[-1]{'hop_ip'} eq $dest_ip);
-	return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
+
+                #print $line;
+
+                # loop over each hop in the traceroute
+                # and choose the most likely hop for each
+                my @elems = split /\s+/, $line;
+                my $hop = undef;
+                my $hop_count = undef;
+                my %tmp_hash = ();
+                my $hop_ip;
+                my $hop_hn;
+                my $curr_hop = undef;
+                my $stars_flag = 0;
+                foreach my $elem (@elems)
+                {
+                        # skip stars and hop numbers
+                        if ($elem =~ /^\*$/)
+                        {
+                                $stars_flag = 1;
+                                next;
+                        }
+                        elsif ($elem =~ /^\d*$/)
+                        {
+                                $hop_count = $elem;
+                                next;
+                        }
+                        elsif ($elem =~ /^\d.*ms$/)
+                        {
+                                $curr_hop = $hop_hn . "_" . $hop_ip;
+                                if (exists $tmp_hash{$curr_hop})
+                                {
+                                        $tmp_hash{$curr_hop}++;
+                                }
+                                else
+                                {
+                                        $tmp_hash{$curr_hop} = 1;
+                                }
+                        }
+                        elsif ($elem =~ /^\((.*)\)$/)
+                        {
+                                # ip address. Separated as we might want to use this later
+                                #print "IP address $elem\n";
+                                $hop_ip = $1;
+                                next;
+                        }
+                        else
+                        {
+                                $hop_hn = $elem;
+                                #print "curr_hop = $elem\n";
+                        }
+                }
+                # voting for the most likely hop
+                if (keys %tmp_hash)
+                {
+                        my $max_key;
+                        my $max_value = -1;
+                        while ((my $key, my $value) = each %tmp_hash) {
+                          if ($value > $max_value) {
+                            $max_value = $value;
+                            $max_key = $key;
+                          }
+                        }
+                        #print "max_key = $max_key\n";
+                        $hop = $max_key;
+                }
+                if ($hop)
+                {
+                        my ($h_name, $h_ip) = split("_", $hop);
+                        push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
+                }
+                elsif ($stars_flag)
+                {
+                        push @path, { 'hop_count' => $hop_count, 'hop_name' => '*', 'hop_ip' => '*'};
+                }
+                #print "\n";
+        }
+        $reached_flag = 1 if ($path[-1]{'hop_ip'} eq $dest_ip);
+        return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
+}
+
+# Parses the output of paris traceroute (from pscheduler) into a path
+sub parse_for_pscheduler
+{
+
+        my ($msg) = @_;
+
+        # output variables
+        my $dest_hn;
+        my $dest_ip;
+        my $reached_flag = 0;
+        my @path = ();
+        my @path_extract = $msg->{'measurement'}{'result'}{'paths'};
+
+        $dest_hn = $msg->{'measurement'}{'test'}{'spec'}{'dest'};
+        my @addresses = gethostbyname($dest_hn);
+        my @ips = map { inet_ntoa($_) } @addresses[4 .. $#addresses];
+        $dest_ip = @ips[0];
+
+        my $hop_count = 0;
+        foreach my $each_hash (@{$path_extract[0][0]}) {
+        #ip
+                $hop_count++;
+                my $h_ip = ${\%{$each_hash}}{'ip'};
+                my $h_name = undef;
+                if (${\%{$each_hash}}{'hostname'} eq undef) {
+                        $h_name = "null";
+                }
+                else {
+                        $h_name = ${\%{$each_hash}}{'hostname'};
+                }
+                push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
+                print ("$hop_count $h_name $h_ip \n");
+        }
+        # pscheduler determines whether the traceroute test was successful or not
+        # includes this info in the json.
+        my $success = $msg->{'measurement'}{'result'}{'succeeded'};
+        if ($success eq 'true') {
+                $reached_flag = 1;
+        }
+
+        return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
 }
 
 1;
