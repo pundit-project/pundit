@@ -149,48 +149,6 @@ sub parse
         return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
 }
 
-# Parses the output of paris traceroute (from pscheduler) into a path
-sub parse_for_pscheduler
-{
-
-        my ($msg) = @_;
-
-        # output variables
-        my $dest_hn;
-        my $dest_ip;
-        my $reached_flag = 0;
-        my @path = ();
-        my @path_extract = $msg->{'measurement'}{'result'}{'paths'};
-
-        $dest_hn = $msg->{'measurement'}{'test'}{'spec'}{'dest'};
-        my @addresses = gethostbyname($dest_hn);
-        my @ips = map { inet_ntoa($_) } @addresses[4 .. $#addresses];
-        $dest_ip = @ips[0];
-
-        my $hop_count = 0;
-        foreach my $each_hash (@{$path_extract[0][0]}) {
-        #ip
-                $hop_count++;
-                my $h_ip = ${\%{$each_hash}}{'ip'};
-                my $h_name = undef;
-                if (${\%{$each_hash}}{'hostname'} eq undef) {
-                        $h_name = "null";
-                }
-                else {
-                        $h_name = ${\%{$each_hash}}{'hostname'};
-                }
-                push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
-                print ("$hop_count $h_name $h_ip \n");
-        }
-        # pscheduler determines whether the traceroute test was successful or not
-        # includes this info in the json.
-        my $success = $msg->{'measurement'}{'result'}{'succeeded'};
-        if ($success eq 'true') {
-                $reached_flag = 1;
-        }
-
-        return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
-}
 
 1;
 
