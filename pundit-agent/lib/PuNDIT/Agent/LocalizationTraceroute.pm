@@ -93,24 +93,6 @@ sub runTrace
     # $self->storeTraceMySql($parse_result);
 }
 
-sub relayTrace
-{
-    my ($self, $target) = @_;
-    
-    my $tr_result = `paris-traceroute $target`;
-    my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse($tr_result);
-    $logger->info("Dumping tr_result now");
-    $logger->info(Dumper($tr_result));
-    
-
-    # TODO to be implemented
-    # $self->storeTraceRabbitMQ($parse_result);
-
-    # TODO to be removed
-    # $self->storeTraceMySql($parse_result);
-}
-
-# TODO to be implemented
 # sub storeTraceRabbitMQ
 # {
 #     my ($self, $trace_hash) = @_;
