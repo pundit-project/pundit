@@ -22,7 +22,7 @@ use Log::Log4perl qw(get_logger);
 use JSON::XS;
 
 use PuNDIT::Agent::Detection::Reporter;
-use PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
+use PuNDIT::Agent::RelayTraceroute;
 use PuNDIT::Utils::HostInfo;
 use Data::Dumper;
 # used for time conversion
@@ -62,6 +62,7 @@ sub new
     my $reporter = new PuNDIT::Agent::Detection::Reporter($cfgHash, $fedName); 
     
     my $self = {
+        '_cfgHash' => $cfgHash,
         '_fedName' => $fedName,
         
         '_hostId' => $hostId,
@@ -109,11 +110,10 @@ sub processFile
 
     # forward paris-traceroute results
     if ($toolname eq "paris-traceroute") {
-        #_processParisTr($raw_json);
         $logger->info("paris-traceroute to be routed");
- 	my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse_for_pscheduler($raw_json);
-        $logger->info("--Dumping parse result--");
-        $logger->info(Dumper($parse_result));     
+        my $tr_helper = new PuNDIT::Agent::RelayTraceroute($self->{'_cfgHash'}, $self->{'_fedName'});
+        $tr_helper->relayTrace($raw_json);
+
         return 0; # return ok
     }
     # elsif ($toolname eq "") {
@@ -261,11 +261,10 @@ sub _parseJson
     my $sessionMinDelay;
     
     # variables used to overwrite delays due to self queueing 
-    my ($prevTS, $prevDelay);
+    my ($prevTs, $prevDelay);
     
     my $lost_count;
      
-    # TODO WHAT DOES IT DO?
     # Print individual packet delays, with Unix timestamps, using millisecond granularity
     # open(FILE, "<", $inputFile) or die;
     
@@ -308,15 +307,14 @@ sub _parseJson
             
             # fix self-queueing
             # TODO global requires explicit error
-            #if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
-            #{
-            #    $delay = $prevDelay;
-            #}
+            if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
+            {
+                $delay = $prevDelay;
+            }
             
             # update for the next loop
             $prevDelay = $delay;
-        #TODO global requires explicit error
-            #$prevTs = $sendTs;
+            $prevTs = $sendTs;
         }
         
         # store the entry in the timeseries array

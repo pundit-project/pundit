@@ -41,7 +41,7 @@ sub new
 
     my $reporter;
     $logger->info("Initializing RabbitMQ Detection Reporter for LocalizationTraceroute");
-    $reporter = new PuNDIT::Agent::Detection::Reporter::RabbitMQ($cfgHash, $fedName);
+    $tr_reporter = new PuNDIT::Agent::Detection::TrReporter::RabbitMQ($cfgHash, $fedName);
 
     # TODO To be removed
     # DB Params
@@ -57,7 +57,7 @@ sub new
     my $self = {
         # _dbh => $dbh,
         # reporter object (_dbh replacement)
-        _reporter => $reporter, 
+        _tr_reporter => $tr_reporter, 
 
         _start_time => $start_time,
         _host_id => $host_id,
@@ -77,6 +77,23 @@ sub DESTROY
 }
 
 sub runTrace
+{
+    my ($self, $target) = @_;
+    
+    my $tr_result = `paris-traceroute $target`;
+    my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse($tr_result);
+    $logger->info("Dumping tr_result now");
+    $logger->info(Dumper($tr_result));
+    
+
+    # TODO to be implemented
+    # $self->storeTraceRabbitMQ($parse_result);
+
+    # TODO to be removed
+    # $self->storeTraceMySql($parse_result);
+}
+
+sub relayTrace
 {
     my ($self, $target) = @_;
     

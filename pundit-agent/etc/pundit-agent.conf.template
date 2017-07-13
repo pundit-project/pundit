@@ -60,7 +60,13 @@
         routing_key <add-routing-key-here>
         exchange    <add-exchange-name-here>
       </rabbitmq>
-      
+
+      <rabbitmq_tr>
+        channel     <add-tr-channel-here>
+        routing_key <add-tr-routing-key-here>
+        exchange    <add-tr-exchange-here>
+      </rabbitmq_tr>
+
     </reporting>
     
   </federation1>

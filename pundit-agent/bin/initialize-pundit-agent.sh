@@ -60,11 +60,11 @@ fi
 echo "* Make user rabbitmq-server is running"
 service rabbitmq-server start
 
-echo "* Creating rabbitmq user $LOCAL_USER with password $LOCAL_PASSWORD"
+echo "* Creating rabbitmq user $LOCAL_USER with password $LOCAL_PASSWORD"i
 rabbitmqctl add_user $LOCAL_USER $LOCAL_PASSWORD
 if [ $? -eq 0 ]
 then
-  echo "* Account created."
+  echo "*Account created."
 else
   echo "* Trying to delete user first."
   rabbitmqctl delete_user $LOCAL_USER
@@ -74,9 +74,9 @@ else
     echo "* Account created."
   else
     echo "Couldn't create the account"
-    exit 1
-  fi
-fi
+    exit 1   
+  fi 
+fi 
 rabbitmqctl set_permissions -p / $LOCAL_USER "." "." ".*"
 rabbitmqctl set_user_tags $LOCAL_USER administrator
 service rabbitmq-server restart
@@ -89,9 +89,13 @@ CHANNEL=3
 ROUTING_KEY='pundit.status'
 EXCHANGE=status
 
+TR_CHANNEL=4
+TR_ROUTING_KEY='pundit.traceroute'
+TR_EXCHANGE=traceroute
+
 # pundit-agent.conf
 echo "* Configuring pundit-agent daemon"
-cat ../etc/pundit-agent.conf.template | sed "s/<replace-rabbitmq-host-here>/$LOCAL_HOST/g" | sed "s/<replace-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<replace-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g" | sed "s/<replace-exchange-here>/$LOCAL_EXCHANGE/g" | sed "s/<replace-routing_key-here>/$LOCAL_ROUTING_KEY/g" | sed "s/<add-src-host-here>/$PERFSONAR_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g" | sed "s/<add-comma-delimited-list-of-hostnames-here>/$AGENT_PEERS/g" > ../etc/pundit-agent.conf
+cat ../etc/pundit-agent.conf.template | sed "s/<replace-rabbitmq-host-here>/$LOCAL_HOST/g" | sed "s/<replace-rabbitmq-user-here>/$LOCAL_USER/g" | sed "s/<replace-rabbitmq-user-password-here>/$LOCAL_PASSWORD/g" | sed "s/<replace-exchange-here>/$LOCAL_EXCHANGE/g" | sed "s/<replace-routing_key-here>/$LOCAL_ROUTING_KEY/g" | sed "s/<add-src-host-here>/$PERFSONAR_HOSTNAME/g" | sed "s/<add-consumer-host-name-here>/$CENTRAL_HOSTNAME/g" | sed "s/<add-rabbitmq-user-here>/$CENTRAL_USER/g" | sed "s/<add-rabbitmq-user-password-here>/$CENTRAL_PASSWORD/g" | sed "s/<add-channel-number-here>/$CHANNEL/g" | sed "s/<add-routing-key-here>/$ROUTING_KEY/g" | sed "s/<add-exchange-name-here>/$EXCHANGE/g" | sed "s/<add-tr-channel-here>/$TR_CHANNEL/g" | sed "s/<add-tr-routing-key-here>/$TR_ROUTING_KEY/g" | sed "s/<add-tr-exchange-here>/$TR_EXCHANGE/g" | sed "s/<add-comma-delimited-list-of-hostnames-here>/$AGENT_PEERS/g" > ../etc/pundit-agent.conf
 chmod 644 ../etc/pundit-agent.conf
 
 service pundit-agent start
