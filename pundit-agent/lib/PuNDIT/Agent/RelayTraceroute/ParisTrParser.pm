@@ -63,7 +63,7 @@ sub parse
 			$h_ip = ${\%{$each_hash}}{'ip'};
 
 	                if (${\%{$each_hash}}{'hostname'} eq undef) {
-        	                $h_name = "null";
+        	                $h_name = h_ip;
 	                }
 	                else {
 	                        $h_name = ${\%{$each_hash}}{'hostname'};
