@@ -345,9 +345,14 @@ sub _addHashToEvQueues
         {
             $evQueues->{$srcHost} = &share({});
         }
-        
+	#$logger->info(Dumper($dstHash));
+    
         while (my ($dstHost, $evArray) = each %$dstHash) 
         {
+	    if (!$evArray) {
+		$logger->info("evArray undefined.");
+		next;
+	    }
             # Don't auto vivify. Manually create shared hashes
             if (!exists($evQueues->{$srcHost}{$dstHost}))
             {
@@ -390,7 +395,7 @@ sub _addArrayToEvQueue
     # Skip the input evArray if:
     # 1. Empty evArray, or
     # 2. Last element in evArray is before the firstTime of this queue
-    if ((scalar(@{$evArray}) == 0) || 
+       if ((scalar(@{$evArray}) == 0) || 
         ($evArray->[-1]{'endTime'} < $evQueue->{'firstTime'}))
     {
         return $evQueue->{'lastTime'};
