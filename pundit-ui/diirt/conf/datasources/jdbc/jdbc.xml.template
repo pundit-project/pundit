@@ -52,7 +52,7 @@
                 <pollQuery>SELECT timeBlock AS Time FROM timeSeriesLatest, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock DESC LIMIT 1</pollQuery>
             </channel>
             <channel name="history/info/(.*)/(.*)/pLoss">
-                <query>SELECT timeBlock AS Time, loss AS Loss FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
+                <query>SELECT timeBlock AS Time, loss AS Loss FROM timeSeries, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock ASC;</query>
                 <pollQuery>SELECT timeBlock AS Time FROM timeSeriesLatest, host AS src, host AS dst WHERE srcId = src.hostId AND dstId = dst.hostId AND src.name=? AND dst.name=? ORDER BY timeBlock DESC LIMIT 1</pollQuery>
             </channel>
         </channelSet>
