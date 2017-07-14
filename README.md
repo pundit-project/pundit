@@ -18,13 +18,13 @@ PuNDIT will integrate and enhance several software tools needed by the High Ener
     Shawn McKee, University of Michigan (smckeeumich.edu)
     Constantine Dovrolis, Georgia Tech (dovroliscc.gatech.edu)
 
-#### Installation ####
+##### pundit-central installation #####
 
 Add PuNDIT yum repository.
 
      wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
 
-##### pundit-central #####
+
 Install server component. Note that this will also install glassfish and mysql. 
 
      yum install pundit-central pundit-ui
@@ -33,7 +33,12 @@ Run the pundit-central initialization script. **It will prompt you for the mysql
 
      /opt/pundit-central/bin/initialize-pundit-central.sh
 
-##### pundit-agent #####
+##### pundit-agent installation #####
+
+Add PuNDIT yum repository.
+
+     wget -O /etc/yum.repos.d/pundit.repo http://pundit.aglt2.org/pundit.repo
+
 Install pundit-agent on the perfsonar nodes.
 
 	yum install pundit-agent
