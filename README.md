@@ -33,6 +33,19 @@ Run the pundit-central initialization script. **It will prompt you for the mysql
 
      /opt/pundit-central/bin/initialize-pundit-central.sh
 
+##### Prepare agent initialization properties #####
+
+After initializing pundit-central, you will have a file that looks like this:
+
+    > cat /opt/pundit-central/etc/pundit-agent.credentials
+    agent-user=pundit-agent
+    agent-password=<randomly-generated-password>
+    central-hostname=<your-host.site.org>
+
+You will need to add the list of all nodes on which you will install the agent. This will instruct the agent installation which network paths to look at
+
+    agent-peers=<your-node.site.org>,<other-node.othersite.com>,<next-node.nextsite.edu>
+
 ##### pundit-agent installation #####
 
 Add PuNDIT yum repository.
@@ -43,9 +56,9 @@ Install pundit-agent on the perfsonar nodes.
 
 	yum install pundit-agent
 
-Run the pundit-central initialization script.
+Copy the pundit agent file with the initialization properties and run the pundit-central initialization script. For conventience, the location can be a local file or a URL.
 
-	/opt/pundit-agent/bin/initialize-pundit-agent.sh
+	/opt/pundit-agent/bin/initialize-pundit-agent.sh <location-of-pundit-agent.credentials>
 
 #### Build ####
 
