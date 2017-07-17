@@ -60,6 +60,8 @@ Copy the pundit agent file with the initialization properties and run the pundit
 
 	/opt/pundit-agent/bin/initialize-pundit-agent.sh <location-of-pundit-agent.credentials>
 
+The script can be run again in case you want to update the configuration.
+
 #### Build ####
 
 After cloning the repository, run the master build script:
