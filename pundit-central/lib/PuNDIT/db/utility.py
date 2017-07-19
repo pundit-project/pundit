@@ -612,7 +612,7 @@ class PunditDBUtil:
     cursor.execute("INSERT INTO status SELECT * FROM newStatus")
     print "Updating time series"
     cursor.execute("INSERT INTO timeSeriesLatest SELECT startTime AS timeBlock, srcId AS srcId, dstId AS dstId, queueingDelay AS delay, lossRatio AS loss, ((detectionCode & 2) <> 0) AS hasDelay, ((detectionCode & 4) <> 0) AS hasLoss FROM newStatus ORDER BY srcId, dstId, startTime")
-    cutoff = datetime.fromtimestamp(math.floor((time.time() - 5) / 300) * 300)
+    cutoff = datetime.fromtimestamp(math.floor((time.time() - 150) / 300) * 300)
     cursor.execute("INSERT INTO timeSeries SELECT FROM_UNIXTIME(FLOOR((UNIX_TIMESTAMP(timeBlock) / (5 * 60))) * (5 * 60)) AS timeBlock2, srcId AS srcId, dstId AS dstId, MIN(delay) AS delayMin, AVG(delay) as delay, MAX(delay) AS delayMax, MAX(loss) AS loss, MAX(hasDelay) AS hasDelay, MAX(hasLoss) AS hasLoss FROM timeSeriesLatest WHERE timeBlock < %s GROUP BY timeBlock2, srcId, dstId ORDER BY srcId, dstId, timeBlock2",(cutoff,))
     cursor.execute("DELETE FROM timeSeriesLatest WHERE timeBlock < %s", (cutoff,))
     # Process problems for new status entries
