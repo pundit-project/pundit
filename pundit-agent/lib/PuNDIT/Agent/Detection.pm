@@ -96,6 +96,8 @@ sub new
     return $self;
 }
 
+my $previous_trace;
+
 # entry point for external functions
 # returns undef if not valid
 sub processFile
@@ -112,7 +114,7 @@ sub processFile
     if ($toolname eq "paris-traceroute") {
         $logger->info("paris-traceroute to be routed");
         my $tr_helper = new PuNDIT::Agent::RelayTraceroute($self->{'_cfgHash'}, $self->{'_fedName'});
-        $tr_helper->relayTrace($raw_json);
+        $previous_trace = $tr_helper->relayTrace($raw_json, $previous_trace);
 
         return 0; # return ok
     }

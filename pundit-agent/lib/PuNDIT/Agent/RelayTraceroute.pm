@@ -62,15 +62,20 @@ sub DESTROY
 
 sub relayTrace
 {
-    my ($self, $raw_json) = @_;
+    my ($self, $raw_json, $previous_trace) = @_;
     
     my $parse_result = PuNDIT::Agent::RelayTraceroute::ParisTrParser::parse($raw_json);
     
     #Uncomment these lines to check the parsed result.
     #$logger->info("Dumping $parse_result now");
     #$logger->info(Dumper($parse_result));
+    if ($previous_trace->{'dest_name'} ne $parse_result->{'dest_name'} || $previous_trace->{'ts'} ne $parse_result->{'ts'} ) {
+        $self->{'_tr_reporter'}->storeTraceRabbitMQ($parse_result, $self->{'_host_id'});
+    } else {
+        $logger->info("Duplicate trace skipped: $parse_result->{'ts'}|$self->{'_host_id'}|$parse_result->{'dest_name'} ")
+    }
 
-    $self->{'_tr_reporter'}->storeTraceRabbitMQ($parse_result, $self->{'_host_id'});
+    return $parse_result;
 }
 
 
