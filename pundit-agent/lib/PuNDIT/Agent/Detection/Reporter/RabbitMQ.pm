@@ -70,9 +70,9 @@ sub new
     my ($channel)     = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"channel"};
     my ($exchange)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"exchange"};
     my ($routing_key) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq"}{"routing_key"};
-    $logger->info($consumer . " / " . $user . " / " . $password. " / " . $channel . " / " . $exchange . " / " . $routing_key);
+    $logger->debug($consumer . " / " . $user . " / " . $channel . " / " . $exchange . " / " . $routing_key);
 
-    $logger->info("Constructor Reporter::RabbitMQ, channel=$channel");
+    $logger->debug("Constructor Reporter::RabbitMQ, channel=$channel");
         # Set up the RabbitMQ topic exchange
     my $mq = set_topic( $consumer, $user, $password, $channel, $exchange );
 
@@ -106,13 +106,11 @@ sub writeStatus
 {
     my ($self, $status) = @_;
 
-    $logger->info("To publish: $status");
-
     # publish results
     my $set = _compress($status->{'entries'});
     my $body = "$status->{'srcHost'}|$status->{'dstHost'}|$status->{'baselineDelay'}|$set";
     
-
+    $logger->info("To publish: " . $body);
     $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
                             $body,
                             { exchange => $self->{'_exchange'} });

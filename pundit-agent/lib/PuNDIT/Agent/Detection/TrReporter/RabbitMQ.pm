@@ -71,9 +71,8 @@ sub new
     my ($channel)     = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq_tr"}{"channel"};
     my ($exchange)    = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq_tr"}{"exchange"};
     my ($routing_key) = $cfgHash->{"pundit-agent"}{$fedName}{"reporting"}{"rabbitmq_tr"}{"routing_key"};
-    $logger->info($consumer . " / " . $user . " / " . $password. " / " . $channel . " / " . $exchange . " / " . $routing_key);
+    $logger->debug($consumer . " / " . $user . " / " . $channel . " / " . $exchange . " / " . $routing_key);
 
-    $logger->info("Constructor TrReporter::RabbitMQ, channel=$channel");
         # Set up the RabbitMQ topic exchange
     my $mq = set_topic( $consumer, $user, $password, $channel, $exchange );
 
@@ -106,7 +105,6 @@ sub DESTROY
 sub storeTraceRabbitMQ
 {
     my ($self, $parse_result_hash, $src_host) = @_;
-    $logger->info("To relay paris-traceroute result");
 
     #convert to epochtime used in perl
     my ($date, $timestr) = split /[T]+/, $parse_result_hash->{'ts'};
@@ -124,7 +122,7 @@ sub storeTraceRabbitMQ
 
 
     my $body = "$ts|$src_host|$parse_result_hash->{'dest_name'}|$traceStr";
-    $logger->info("Publish paris-traceroute: $body");
+    $logger->info("To relay(publish) paris-traceroute result: $body");
     $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
                             $body,
                             { exchange => $self->{'_exchange'} });

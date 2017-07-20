@@ -18,18 +18,17 @@
 package PuNDIT::Agent::RelayTraceroute::ParisTrParser;
 
 use strict;
-use Data::Dumper;
 use Socket;
 use Time::Local;
 use Log::Log4perl qw(get_logger);
 
 my $logger = get_logger(__PACKAGE__);
-# my $debug = 0;
-#
-# if ($debug == 1)
-# {
-#       use Data::Dumper;
-# }
+my $debug = 0;
+
+if ($debug == 1)
+{
+        use Data::Dumper;
+}
 
 # Parses the output of paris traceroute (from pscheduler) into a path
 sub parse
@@ -50,15 +49,19 @@ sub parse
         $dest_ip = @ips[0];
 
         my $hop_count = 0;
+        # $path_extract[0][0] is an array of hashes
+        # each hash contains the info about each hop
+        # pscheduler sends an {} for a hop with no reply (*)
         foreach my $each_hash (@{$path_extract[0][0]}) {
         #ip
                 $hop_count++;
                 my $h_ip = undef;
                 my $h_name = undef;
-		if (${\%{$each_hash}}{'ip'} eq undef) {
-			$h_ip = '*';
-			$h_name = '*';
-		}
+	        if (!!%{$each_hash}){
+	            $logger->debug("no reply for the hop");
+	            $h_ip = '*';
+	            $h_name = '*';
+	        }
 		else {
 			$h_ip = ${\%{$each_hash}}{'ip'};
 
@@ -71,7 +74,7 @@ sub parse
 		}
 
                 push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
-                print ("$hop_count $h_name $h_ip \n");
+                #print ("$hop_count $h_name $h_ip \n");
         }
         # pscheduler determines whether the traceroute test was successful or not
         # includes this info in the json.

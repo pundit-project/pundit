@@ -39,7 +39,7 @@ sub new
     # new PuNDIT::Agent::RelayTraceroute($self->{'_cfgHash'}, $fedName);
     # $fedName is $site
 
-    $logger->info("Initializing RabbitMQ Detection Reporter for RelayTraceroute");
+    $logger->debug("Initializing RabbitMQ Detection Reporter for RelayTraceroute");
     my $tr_reporter = new PuNDIT::Agent::Detection::TrReporter::RabbitMQ($cfgHash, $fedName);
     
     my $self = {
@@ -66,9 +66,9 @@ sub relayTrace
     
     my $parse_result = PuNDIT::Agent::RelayTraceroute::ParisTrParser::parse($raw_json);
     
-
-    $logger->info("Dumping $parse_result now");
-    $logger->info(Dumper($parse_result));
+    #Uncomment these lines to check the parsed result.
+    #$logger->info("Dumping $parse_result now");
+    #$logger->info(Dumper($parse_result));
 
     $self->{'_tr_reporter'}->storeTraceRabbitMQ($parse_result, $self->{'_host_id'});
 }

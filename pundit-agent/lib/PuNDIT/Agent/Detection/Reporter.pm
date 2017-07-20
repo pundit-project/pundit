@@ -104,7 +104,7 @@ sub writeStatus
 
     eval
     {
-        $logger->info("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
+       $logger->debug("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
         $self->{'_reporter'}->writeStatus($status);
     };
     # catch any exception here
