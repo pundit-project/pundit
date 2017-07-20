@@ -5,7 +5,7 @@
 Name:		pundit-agent
 Summary:	PuNDIT Agent
 Url:		http://pundit.gatech.edu/
-Version:	1.0
+Version:	1.0.1
 Release:	1
 License:	Apache License 2.0
 Group:		Productivity/Networking/Other
