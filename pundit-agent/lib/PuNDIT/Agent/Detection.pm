@@ -118,14 +118,11 @@ sub processFile
 
         return 0; # return ok
     }
-    # elsif ($toolname eq "") {
-        # $logger->debug("Unrecognized toolname.");
-        # return 0;
-    # }
+    if ($toolname ne "powstream") {
+        $logger->info("Unrecognized toolname.");
+        return 0;
+    }
            
-    # TODO SELF COMMENT(BY EK) To be removed
-    # previously $self->_processLatency($raw_json);
-
     my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
     $logger->debug("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
     
@@ -168,7 +165,7 @@ sub processFile
     return ($problemFlags, $statusMsg);
 }
 
-
+#this function does NOT work. needs to be fixed. high order is the left most 32 bits
 sub owptime2exacttime {
     my $bigtime     = new Math::BigInt $_[0];
     my $mantissa    = $bigtime % $scale;
@@ -299,7 +296,7 @@ sub _parseJson
         else # not lost or unsynced
         {
             $recvTs = owptime2exacttime($entry->{"dst-ts"});
-            $delay = ($recvTs - $sendTs) * 1000; # convert to milliseconds
+            $delay = ((($entry->{"dst-ts"} - $entry->{"src-ts"}) * 100000.0 / $scale) . "") / 100.0;
             
             # guard against negative values
             if ($delay < 0.0)
