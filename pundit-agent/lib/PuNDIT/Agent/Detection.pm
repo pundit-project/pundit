@@ -169,8 +169,9 @@ sub processFile
 sub owptime2exacttime {
     my $bigtime     = new Math::BigInt $_[0];
     my $mantissa    = $bigtime % $scale;
+    $mantissa = ($mantissa . "") / (2**32);
     my $significand = ( $bigtime / $scale ) - JAN_1970;
-    return ( $significand . "." . $mantissa );
+    return ( ($significand . ".") + $mantissa );
 }
 
 
@@ -296,8 +297,8 @@ sub _parseJson
         else # not lost or unsynced
         {
             $recvTs = owptime2exacttime($entry->{"dst-ts"});
-            $delay = ((($entry->{"dst-ts"} - $entry->{"src-ts"}) * 100000.0 / $scale) . "") / 100.0;
-            
+            $delay = ($recvTs - $sendTs) * 1000; # convert to milliseconds
+
             # guard against negative values
             if ($delay < 0.0)
             {
@@ -305,7 +306,6 @@ sub _parseJson
             }
             
             # fix self-queueing
-            # TODO global requires explicit error
             if ((($sendTs - $prevTs) < 100e-6) && defined($prevDelay))
             {
                 $delay = $prevDelay;
