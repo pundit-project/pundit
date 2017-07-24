@@ -33,6 +33,8 @@ Run the pundit-central initialization script. **It will prompt you for the mysql
 
      /opt/pundit-central/bin/initialize-pundit-central.sh
 
+Note that the default configuration of MySQL from your distribution may need to be modified. Please refer to the [MySQL configuration notes](https://github.com/pundit-project/pundit/wiki/MySQL-configuration-notes).
+
 ##### Prepare agent initialization properties #####
 
 After initializing pundit-central, you will have a file that looks like this:
