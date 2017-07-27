@@ -123,7 +123,7 @@ sub processFile
         return 0;
     }
            
-    my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_parseJson($raw_json); 
+    my ($srcHost, $dstHost, $timeseries, $sessionMinDelay) = $self->_readJson($raw_json); 
     $logger->debug("Parsed: " . $srcHost . " / " . $dstHost . " / " . $sessionMinDelay);
     
     if ($srcHost ne $self->{'_hostId'})
@@ -165,7 +165,6 @@ sub processFile
     return ($problemFlags, $statusMsg);
 }
 
-#this function does NOT work. needs to be fixed. high order is the left most 32 bits
 sub owptime2exacttime {
     my $bigtime     = new Math::BigInt $_[0];
     my $mantissa    = $bigtime % $scale;
@@ -250,7 +249,7 @@ sub _parseInt
 
 # returns undef if not valid
 # reads + parses an archiver json file 
-sub _parseJson
+sub _readJson
 {
     # $owampResult is $raw_json
     # kept the name to make it easier to compare with the old codebase
@@ -499,7 +498,7 @@ sub _readFile
 }
 
 # reads an archiver json file
-sub _readJson
+sub _readJson_old
 {
     my ($self, $inputFile) = @_;
     
