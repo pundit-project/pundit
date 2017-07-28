@@ -119,7 +119,7 @@ $logger = get_logger( "PuNDIT" );
 # warnings make it into the logs.
 my $insig = 0;
 $SIG{__WARN__} = sub {
-    $logger->warn("Warned: ".join( '', @_ ));
+    $logger->debug("Warned: ".join( '', @_ ));
     return;
 };
 
