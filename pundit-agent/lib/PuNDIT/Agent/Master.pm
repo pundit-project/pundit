@@ -23,7 +23,6 @@ use Log::Log4perl qw(get_logger);
 # local libs
 use PuNDIT::Agent::Detection;
 use PuNDIT::Agent::InfileScheduler;
-#use PuNDIT::Utils::CleanOwamp;
 use PuNDIT::Agent::Messaging::Topics;
 
 my $logger = get_logger(__PACKAGE__);
@@ -111,8 +110,7 @@ sub run
     
 
     while (my $dataIn = $self->{'_mqIn'}->recv(0)) {
-        # $logger->debug("Master woke. Running schedule.");
-        $logger->info("A message received from RabbitMQ(in).");
+        $logger->debug("A message received from RabbitMQ(in).");
         $self->{'_inFileSched'}->runSchedule($dataIn);
         # sleep(10);
     }

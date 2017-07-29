@@ -25,7 +25,7 @@ use Data::Dumper;   ###
 use Log::Log4perl qw(get_logger);
 
 my $logger = get_logger(__PACKAGE__);
-$logger->info("TrReporter::RabbitMQ called");
+$logger->debug("TrReporter::RabbitMQ called");
 
 # returns a value to 1 decimal place
 sub _oneDecimalPlace
@@ -122,7 +122,7 @@ sub storeTraceRabbitMQ
 
 
     my $body = "$ts|$src_host|$parse_result_hash->{'dest_name'}|$traceStr";
-    $logger->info("To relay(publish) paris-traceroute result: $body");
+    $logger->info("To publish paris-traceroute result: $body");
     $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
                             $body,
                             { exchange => $self->{'_exchange'} });

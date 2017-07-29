@@ -112,14 +112,13 @@ sub processFile
 
     # forward paris-traceroute results
     if ($toolname eq "paris-traceroute") {
-        $logger->info("paris-traceroute to be routed");
         my $tr_helper = new PuNDIT::Agent::RelayTraceroute($self->{'_cfgHash'}, $self->{'_fedName'});
         $previous_trace = $tr_helper->relayTrace($raw_json, $previous_trace);
 
         return 0; # return ok
     }
     if ($toolname ne "powstream") {
-        $logger->info("Unrecognized toolname.");
+        $logger->debug("Unrecognized toolname.");
         return 0;
     }
            
@@ -128,7 +127,7 @@ sub processFile
     
     if ($srcHost ne $self->{'_hostId'})
     {
-        $logger->info("Skipping $srcHost. Not from this host " . $self->{'_hostId'});
+        $logger->debug("Skipping $srcHost. Not from this host " . $self->{'_hostId'});
         return (-1, undef);
     }
     
@@ -136,7 +135,7 @@ sub processFile
     #TODO: Figure out how to get the data out of the owp files
     if (!grep( /^$dstHost$/, @{$self->{'_peers'}} ) )
     {
-        $logger->info("Skipping $dstHost. Not in peerlist");
+        $logger->debug("Skipping $dstHost. Not in peerlist");
         return (-1, undef);
     }
     

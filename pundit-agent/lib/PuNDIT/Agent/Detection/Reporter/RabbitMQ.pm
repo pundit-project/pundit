@@ -24,7 +24,7 @@ use Log::Log4perl qw(get_logger);
 use PuNDIT::Agent::Messaging::Topics;
 
 my $logger = get_logger(__PACKAGE__);
-$logger->info("Reporter::RabbitMQ called");
+$logger->debug("Reporter::RabbitMQ called");
 
 # returns a value to 1 decimal place
 sub _oneDecimalPlace

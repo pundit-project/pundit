@@ -25,8 +25,6 @@ use File::Copy;
 use File::Basename;
 use Data::Dumper; # used for dumping stats
 
-# TODO Won't need MkReporter as we transitioned away from direct file i/o
-#use PuNDIT::Agent::InfileScheduler::CheckMkReporter;
 # TODO NEXT
 #use PuNDIT::Agent::LocalizationTraceroute;
 use PuNDIT::Utils::HostInfo;
