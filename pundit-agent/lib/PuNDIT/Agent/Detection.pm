@@ -59,7 +59,7 @@ sub new
     }
 
     # debug flags 
-    my $saveProblems = $cfgHash->{"pundit_agent"}{"owamp_data"}{"save_problems"};
+    my $saveProblems = $cfgHash->{"pundit-agent"}{"owamp_data"}{"save_problems"};
     
     # initalize reporting here as well
     my $reporter = new PuNDIT::Agent::Detection::Reporter($cfgHash, $fedName); 
@@ -163,7 +163,7 @@ sub processFile
     $logger->info ("Published: $publishedMsg"); 
     
     # user wants to save the problems
-    if ($problemFlags gt 0 && $self->{'_saveProblems'}) {
+    if ($problemFlags gt 0 && $self->{'_saveProblems'} eq 1) {
         _saveProblems($problemFlags, $publishedMsg, $statusMsg, $timeseries);       
     }    
     
