@@ -19,7 +19,6 @@
 package PuNDIT::Agent::Detection::Reporter::RabbitMQ;
 
 use strict;
-use Data::Dumper;   ###
 use Log::Log4perl qw(get_logger);
 use PuNDIT::Agent::Messaging::Topics;
 
@@ -110,10 +109,10 @@ sub writeStatus
     my $set = _compress($status->{'entries'});
     my $body = "$status->{'srcHost'}|$status->{'dstHost'}|$status->{'baselineDelay'}|$set";
     
-    $logger->info("To publish: " . $body);
     $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
                             $body,
                             { exchange => $self->{'_exchange'} });
+    return $body;
 }
 
 # This function compresses the array of hashes for remote delivery

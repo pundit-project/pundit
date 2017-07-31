@@ -77,17 +77,8 @@
   # These are independent of federation
   <owamp_data>
   
-    # path to owamp data 
-    path /var/lib/perfsonar/regulartesting/
-    
-    # When cleaning old owamp data, retain files X hours old
-    cleanup_threshold 1
-    
     # debug flag to save problematic owamp traces  
     save_problems 1
-    
-    # debug path to save problematic owamp traces
-    save_problems_path  /opt/pundit-agent/savedProblems/
     
   </owamp_data>
   
@@ -97,16 +88,5 @@
     filename /var/log/perfsonar/pundit-agent.log
     
   </log>
-  
-  # check_mk values
-  <check_mk>
-  
-    # interval in seconds to report # of processed files
-    processed_count_interval    60
-    
-    # file to write processed_count value
-    processed_count_path    /opt/pundit-agent/processed_count
-    
-  </check_mk>
   
 </pundit-agent>

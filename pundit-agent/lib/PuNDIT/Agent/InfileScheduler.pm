@@ -20,12 +20,8 @@ package PuNDIT::Agent::InfileScheduler;
 
 use strict;
 use Log::Log4perl qw(get_logger);
-use File::Find;
-use File::Copy;
-use File::Basename;
-use Data::Dumper; # used for dumping stats
 
-# TODO NEXT
+# TODO 
 #use PuNDIT::Agent::LocalizationTraceroute;
 use PuNDIT::Utils::HostInfo;
 
@@ -35,23 +31,6 @@ my $logger = get_logger(__PACKAGE__);
 sub new
 {
     my ($class, $cfgHash, $detHash) = @_;
-
-    # TODO possible removal of this part. 
-    # # initialise check mk reporter to periodically write stats
-    # my $checkMkReporter = new PuNDIT::Agent::InfileScheduler::CheckMkReporter($cfgHash);
-    
-    #my $owampPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"path"};
-    
-    # debug flags 
-    # my $saveProblems = $cfgHash->{"pundit_agent"}{"owamp_data"}{"save_problems"};
-    # my $saveProblemsPath = $cfgHash->{"pundit_agent"}{"owamp_data"}{"save_problems_path"};
-    
-    # sanity check the owamp path
-    # if (!($owampPath && -e $owampPath))
-    # {
-    #     $logger->error("owamp_data:path doesn't exist or is invalid. Quitting!");
-    #     return undef;
-    # }
     
     my $hostId = PuNDIT::Utils::HostInfo::getHostId();
 
@@ -60,18 +39,10 @@ sub new
 
         _detHash => $detHash,
 
-        # TODO possible removal of this line
-        # _owampPath => $owampPath,
-        
-        # flag to indicate whether or not owps with problems will be saved
-        # _saveProblems => $saveProblems, 
-        # _saveProblemsPath => $saveProblemsPath, # path where owps with detected problems will be saved
-        
+        # TODO Not implemented.
         # flag that indicates whether a traceroute should be run after a problem is detected
-        _runTrace => 0, 
+        #_runTrace => 0, 
         
-        # TODO possible removal of this line
-        # _checkMkReporter => $checkMkReporter,
     };
     
     bless $self, $class;
@@ -84,36 +55,15 @@ sub runSchedule
 {
     my ($self, $dataIn) = @_;
     
-    # my $owpFiles = $self->_getOwpFiles();
-    
-    # no files. just quit
-    # return if (!@$owpFiles);
-    
-    # TODO we can directly call _processOwmpfile
-    # currently _processFiles merely relalys $dataIn to _processOwmpfile
     $self->_processFiles($dataIn);
-
-    # my $processCount = $self->_processFiles($owpFiles);
-    # $logger->debug("processed " . $processCount . " files");
-    # $self->{'_checkMkReporter'}->reportProcessedCount($processCount);
 }
 
 # No longer processes "files" after adopting rabbitmq
 # it processes a message as it arrives.
 sub _processFiles
 {
-    # my ($self, $infiles) = @_;
     my ($self, $dataIn) = @_;
        
-    # my $processCount = 0;
-    
-    # foreach my $filename (@$infiles)
-    # {
-    #   my $return = $self->_processOwpfile($filename);
-        # $processCount += 1;
-    # }
-    # return $processCount;
-
     my $return = $self->_processOwpfile($dataIn);
 }
 
@@ -129,7 +79,6 @@ sub _processOwpfile
         # each detobj will know whether the owamp file belongs to the federation
         # $return - the number of problems detected, 0 or -1 (not a member of federation)
         # $stats - status summary generated from this file
-        # my ($return, $stats) = $detObj->processFile($filePath); 
         my ($return, $stats) = $detObj->processFile($dataIn); 
         
         # One or more problems were detected
@@ -137,6 +86,7 @@ sub _processOwpfile
         {
             $logger->info("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
 
+            # TODO Not functional since transition to rabbitmq
             # run trace if runTrace option is enabled
             # if ($self->{'runTrace'})
             # {
@@ -153,72 +103,10 @@ sub _processOwpfile
             #     }
             # }
             
-            # user wants to save the problems
-            # if ($self->{'_saveProblems'})
-            # {
-            #     # copy the problematic file to this directory
-            #     my($filename, $dirs, $suffix) = fileparse($filePath);
-            #     my $savePath = $self->{'_saveProblemsPath'} . $fedName . '/';
-                
-            #     $logger->debug("Saving problematic owp file $filePath to $savePath");
-                
-            #     if (!-d $savePath)
-            #     {
-            #         $logger->debug("Creating path $savePath for savedProblems");
-            #         mkdir($savePath);
-            #     }
-            #     copy($filePath, $savePath . $filename . $suffix);
-                
-            #     # write the stats in a corresponding txt file
-            #     my $statFile = $savePath . $filename . ".txt";
-            #     open my $statFh, ">", $statFile; 
-            #     print $statFh Dumper( $stats );
-            #     close $statFh;
-            # }
         }
     }
 
-    # we're done with the owamp file. Delete it.    
-    #unlink $filePath;
-    
     return 0; # return ok 
 }
 
-# TODO possible removal
-# Scans the owamp directory to find owp files for processing
-# Returns the list of files sorted from oldest to newest
-# sub _getOwpFiles
-# {
-#     my ($self) = @_;
-
-#     my @owpfiles = glob($self->{"_owampPath"} . "owamp_*/*.owp"); # get all owp files in the regular testing directory
-
-#     # multi-operation sort. Order of precedence is from innermost to outermost
-#     my @result =     
-#         map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
-#         sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
-#         map  { /\/(\d+?)_\d+?\.owp$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
-#         @owpfiles;
-        
-#     return \@result;
-# }
-
-# TODO possible removal
-# Scans the owamp directory to find json files for processing
-# Returns the list of files sorted from oldest to newest
-#sub _getJsonFiles
-#{
-#    my ($self) = @_;
-
-#    my @jsonFiles = glob($self->{"_owampPath"} . "/*.json"); # get all json files in the archiver directory
-    
-    # multi-operation sort. Order of precedence is from innermost to outermost
-#    my @result =     
-#        map  { $_->[1] }                # Step 3: Discard the sort value and get the original value back
-#        sort { $a->[0] <=> $b->[0] }    # Step 2: Sort arrayrefs numerically on the sort value
-#        map  { /\/(\d+?)_[\d\w\-]+?\.json$/; [$1, $_] } # Step 1: Build arrayref of the sort value and orig pairs
-#        @owpfiles;
-        
-#    return \@jsonFiles;
-#}
 

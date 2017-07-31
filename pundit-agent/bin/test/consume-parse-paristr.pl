@@ -25,15 +25,6 @@ use JSON qw (decode_json);
 use Data::Dumper;
 use PuNDIT::Agent::Messaging::Topics;
 use Socket;
-#use Log::Log4perl qw(get_logger);
-
-#my $logger = get_logger(__PACKAGE__);
-# my $debug = 0;
-
-# if ($debug == 1)
-# {
-# 	use Data::Dumper;
-# }
 
 # Parses the output of paris traceroute into a path
 sub parse

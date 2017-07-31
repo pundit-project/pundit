@@ -42,10 +42,7 @@ sub new
     my $queue = "";
     my $mqIn = set_bindings( $user, $password, $channel, $exchange, $queue, $routing_key ); 
     $logger->info("set_bindings to pscheduler successful");
-    # my $cleanupThreshold = $cfgHash->{"pundit-agent"}{"owamp_data"}{"cleanup_threshold"};
-    # my $owampPath = $cfgHash->{"pundit-agent"}{"owamp_data"}{"path"};  
     
-    # TODO removal possible
     # Get the list of measurement federations
     my $fedString = $cfgHash->{"pundit-agent"}{"measurement_federations"};
     $fedString =~ s/,/ /g;
@@ -60,7 +57,7 @@ sub new
     my %detHash = ();
     foreach my $fed (@fedList)
     {
-        $logger->info("Creating Detection Object: $fed");
+        $logger->debug("Creating Detection Object: $fed");
         my $detectionModule = new PuNDIT::Agent::Detection($cfgHash, $fed);
         
         if (!$detectionModule)
@@ -84,8 +81,6 @@ sub new
         '_detHash' => \%detHash,
         '_inFileSched' => $infileScheduler,
         '_mqIn' => $mqIn,
-        #'_cleanupThresh' => $cleanupThreshold,
-        #'_owampPath' => $owampPath, 
     };
 
     bless $self, $class;
@@ -103,14 +98,8 @@ sub run
 {
     my ($self) = @_;
     
-    # Clean old owamp files
-    # PuNDIT::Utils::CleanOwamp::cleanOldFiles($self->{'_cleanupThresh'}, $self->{'_owampPath'});
-    
-    # my $runLoop = 1;
-    
-
     while (my $dataIn = $self->{'_mqIn'}->recv(0)) {
-        $logger->debug("A message received from RabbitMQ(in).");
+        $logger->debug("A msg received from RabbitMQ.");
         $self->{'_inFileSched'}->runSchedule($dataIn);
         # sleep(10);
     }

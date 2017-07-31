@@ -101,11 +101,11 @@ sub writeStatus
     my ($self, $status) = @_;
 
     # TODO: clear the queue here
-
+    my $publishedMsg = undef;
     eval
     {
-       $logger->debug("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
-        $self->{'_reporter'}->writeStatus($status);
+        #$logger->debug("$status->{'srcHost'}:$status->{'dstHost'}:$status->{'startTime'}:$status->{'endTime'}:$status->{'baselineDelay'}:$status->{'entries'}"); ###
+        $publishedMsg = $self->{'_reporter'}->writeStatus($status);
     };
     # catch any exception here
     if ($@)
@@ -113,6 +113,8 @@ sub writeStatus
         # TODO: Put the status on a queue for resending later
         $logger->warn("Failed to write status to server. Discarding status from " . $status->{'srcHost'} . " to " . $status->{'dstHost'} . " at " . $status->{'startTime'});
     }
+
+    return $publishedMsg;
 }
 
 1;
