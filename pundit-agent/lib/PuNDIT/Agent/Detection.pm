@@ -164,7 +164,7 @@ sub processFile
     
     # user wants to save the problems
     if ($problemFlags gt 0 && $self->{'_saveProblems'} eq 1) {
-        _saveProblems($problemFlags, $publishedMsg, $statusMsg, $timeseries);       
+        _saveProblems($problemFlags, $publishedMsg, $statusMsg, $timeseries, $summary);       
     }    
     
     return ($problemFlags, $statusMsg);
@@ -180,11 +180,10 @@ sub owptime2exacttime {
 
 sub _saveProblems {
 
-    my ($problemFlags, $publishedMsg, $statusMsg, $timeseries) = @_;
+    my ($problemFlags, $publishedMsg, $statusMsg, $timeseries, $summary) = @_;
     my $srcHost = $statusMsg->{'srcHost'};
     my $dstHost = $statusMsg->{'dstHost'};
     my $startTime = $statusMsg->{'startTime'};
-    my $summary = $statusMsg->{'summary'};
 
     my $loggerStr = undef;
     $loggerStr .= "\n*Published(raw): $publishedMsg \n";
