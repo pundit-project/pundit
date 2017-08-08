@@ -57,12 +57,6 @@ sub parse
                 $hop_count++;
                 my $h_ip = undef;
                 my $h_name = undef;
-	        if (!!%{$each_hash}){
-	            $logger->debug("no reply for the hop");
-	            $h_ip = '*';
-	            $h_name = '*';
-	        }
-		else {
 			$h_ip = ${\%{$each_hash}}{'ip'};
 
 	                if (${\%{$each_hash}}{'hostname'} eq undef) {
@@ -71,6 +65,12 @@ sub parse
 	                else {
 	                        $h_name = ${\%{$each_hash}}{'hostname'};
 	                }
+
+		if ($h_ip eq ""){
+			$h_ip = '*';
+		}
+		if ($h_name eq ""){
+			$h_name = '*';
 		}
 
                 push @path, { 'hop_count' => $hop_count, 'hop_name' => $h_name, 'hop_ip' => $h_ip };
