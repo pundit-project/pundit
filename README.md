@@ -57,6 +57,8 @@ Add PuNDIT yum repository.
 Install pundit-agent on the perfsonar nodes.
 
 	yum install pundit-agent
+	
+![A screenshot of the adding repo + install](http://i.imgur.com/AsAAj5Z.png)
 
 Copy the pundit agent file with the initialization properties and run the pundit-central initialization script. For conventience, the location can be a local file or a URL.
 
