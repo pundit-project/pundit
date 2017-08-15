@@ -140,7 +140,7 @@ sub storeLocalizationTraceRabbitMQ
 
 
     my $body = "$parse_result_hash->{'ts'}|$src_host|$parse_result_hash->{'dest_name'}|$traceStr";
-    $logger->info("To publish paris-traceroute result (localizaiton): $body");
+    $logger->info("To publish paris-traceroute result (localization): $body");
     $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
                             $body,
                             { exchange => $self->{'_exchange'} });
