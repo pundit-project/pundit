@@ -146,7 +146,7 @@ sub parse
                 #print "\n";
         }
         $reached_flag = 1 if ($path[-1]{'hop_ip'} eq $dest_ip);
-        return { 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
+        return {'ts' => time, 'dest_name' => $dest_hn, 'dest_ip' => $dest_ip, 'reached' => $reached_flag, 'path' => \@path };
 }
 
 

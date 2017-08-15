@@ -128,6 +128,23 @@ sub storeTraceRabbitMQ
                             { exchange => $self->{'_exchange'} });
 }
 
+sub storeLocalizationTraceRabbitMQ
+{
+    my ($self, $parse_result_hash, $src_host) = @_;
+  
+    my $traceStr="";
+    foreach my $each_hop (@{$parse_result_hash->{'path'}}){
+            $traceStr .= "$each_hop->{'hop_count'},$each_hop->{'hop_ip'},$each_hop->{'hop_name'};";
+    }
+    $traceStr=~ s/;$//; #get rid of ; at the end
+
+
+    my $body = "$parse_result_hash->{'ts'}|$src_host|$parse_result_hash->{'dest_name'}|$traceStr";
+    $logger->info("To publish paris-traceroute result (localizaiton): $body");
+    $self->{'_mq'}->publish($self->{'_channel'},$self->{'_routing_key'},
+                            $body,
+                            { exchange => $self->{'_exchange'} });
+}
 # TODO adapt _compress for storeTraceRabbitMQ (taken from Reporter::RabbitMQ)
 # This function compresses the array of hashes for remote delivery
 # sub _compress {

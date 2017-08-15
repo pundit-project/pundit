@@ -21,8 +21,7 @@ package PuNDIT::Agent::InfileScheduler;
 use strict;
 use Log::Log4perl qw(get_logger);
 
-# TODO 
-#use PuNDIT::Agent::LocalizationTraceroute;
+use PuNDIT::Agent::LocalizationTraceroute;
 use PuNDIT::Utils::HostInfo;
 
 my $logger = get_logger(__PACKAGE__);
@@ -38,10 +37,11 @@ sub new
         _hostId => $hostId,
 
         _detHash => $detHash,
+        _cfgHash => $cfgHash,
 
         # TODO Not implemented.
         # flag that indicates whether a traceroute should be run after a problem is detected
-        #_runTrace => 0, 
+        _runTrace => 1, 
         
     };
     
@@ -84,24 +84,22 @@ sub _processOwpfile
         # One or more problems were detected
         if ($return > 0)
         {
-            $logger->info("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
+             $logger->info("$fedName analysis: $return problems for " . $stats->{'srcHost'} . " to "  . $stats->{'dstHost'});
 
-            # TODO Not functional since transition to rabbitmq
-            # run trace if runTrace option is enabled
-            # if ($self->{'runTrace'})
-            # {
-            #     if ($stats->{'srcHost'} eq $self->{'_hostId'})
-            #     {
-            #         $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dstHost'});
-                
-            #         my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srcHost'});
-            #         $tr_helper->runTrace($stats->{'dstHost'});
-            #     }
-            #     else
-            #     {
-            #         $logger->debug("runTrace enabled. Can't run trace on this host: It is the destination");
-            #     }
-            # }
+            #run trace if runTrace option is enabled
+            if ($self->{'_runTrace'})
+            {            
+                if ($stats->{'srcHost'} eq $self->{'_hostId'})
+                {
+                    $logger->debug('runTrace enabled. Running trace to ' . $stats->{'dstHost'});
+                    my $tr_helper = new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, $stats->{'srcHost'});
+                    $tr_helper->runTrace($stats->{'dstHost'});
+                }
+                else
+                {
+                    $logger->debug("runTrace enabled. Can't run trace on this host: It is the destination");
+                }
+            }
             
         }
     }

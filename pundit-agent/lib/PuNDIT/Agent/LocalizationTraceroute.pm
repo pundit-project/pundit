@@ -25,7 +25,7 @@ package PuNDIT::Agent::LocalizationTraceroute;
 use strict;
 # use DBI qw(:sql_types); TODO to be removed
 use PuNDIT::Agent::LocalizationTraceroute::ParisTrParser;
-use PuNDIT::Agent::Detection::Reporter::RabbitMQ;
+use PuNDIT::Agent::Detection::TrReporter::RabbitMQ;
 use Data::Dumper;
 use Log::Log4perl qw(get_logger);
 my $logger = get_logger(__PACKAGE__);
@@ -33,7 +33,8 @@ my $logger = get_logger(__PACKAGE__);
 # Constructor
 sub new
 {
-    my ($class, $cfgHash, $site, $start_time, $host_id) = @_;
+    #my ($class, $cfgHash, $site, $start_time, $host_id) = @_;
+    my ($class, $cfgHash, $fedName, $host_id) = @_;
     
     # Usage example (of this module) taken from InfileScheduler.pm
     # new PuNDIT::Agent::LocalizationTraceroute($self->{'_cfgHash'}, $fedName, time, $stats->{'srcHost'});
@@ -41,25 +42,13 @@ sub new
 
     my $reporter;
     $logger->info("Initializing RabbitMQ Detection Reporter for LocalizationTraceroute");
-    $tr_reporter = new PuNDIT::Agent::Detection::TrReporter::RabbitMQ($cfgHash, $fedName);
-
-    # TODO To be removed
-    # DB Params
-    # my ($host) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"host"};
-    # my ($port) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"port"};
-    # my ($database) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"database"};
-    # my ($user) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"user"};
-    # my ($password) = $cfgHash->{"pundit-agent"}{$site}{"reporting"}{"mysql"}{"password"};
-    
-    # make the db connection here, for the lifetime of this object
-    # my $dbh = DBI->connect("DBI:mysql:$database:$host:$port", $user, $password) or die "Critical error: cannot connect to DB";
+    my $tr_reporter = new PuNDIT::Agent::Detection::TrReporter::RabbitMQ($cfgHash, $fedName);
     
     my $self = {
-        # _dbh => $dbh,
         # reporter object (_dbh replacement)
         _tr_reporter => $tr_reporter, 
 
-        _start_time => $start_time,
+        #_start_time => $start_time,
         _host_id => $host_id,
     };
     
@@ -82,81 +71,12 @@ sub runTrace
     
     my $tr_result = `paris-traceroute $target`;
     my $parse_result = PuNDIT::Agent::LocalizationTraceroute::ParisTrParser::parse($tr_result);
-    $logger->info("Dumping tr_result now");
-    $logger->info(Dumper($tr_result));
+    $logger->debug("\n!!!LocalziationTraceroute!!!\n" . Dumper($parse_result));
     
 
-    # TODO to be implemented
-    # $self->storeTraceRabbitMQ($parse_result);
+    #$self->storeTraceRabbitMQ($parse_result);
+    $self->{'_tr_reporter'}->storeLocalizationTraceRabbitMQ($parse_result, $self->{'_host_id'});
 
-    # TODO to be removed
-    # $self->storeTraceMySql($parse_result);
 }
-
-# sub storeTraceRabbitMQ
-# {
-#     my ($self, $trace_hash) = @_;
-    
-#     my $sql = "INSERT INTO traceroutes ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES ";
-#     for (my $i = scalar(@{$trace_hash->{'path'}}); $i > 0; $i--)
-#     {
-#         $sql .= "(?, ?, ?, ?, ?, ?)";
-#         if ($i > 1)
-#         {
-#             $sql .= ", ";
-#         }
-#     }
-    
-#     my $sth = $self->{'_dbh'}->prepare($sql);
-    
-#     my $param_cnt = 6; # variable so we don't hardcode the number of params
-#     for (my $i = 0; $i < scalar(@{$trace_hash->{'path'}}); $i++)
-#     {
-#         my $hop = $trace_hash->{'path'}[$i];
-        
-#         $sth->bind_param(($i*$param_cnt) + 1, $self->{'_start_time'}, SQL_INTEGER);
-#         $sth->bind_param(($i*$param_cnt) + 2, $self->{'_host_id'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 3, $trace_hash->{'dest_name'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 4, $hop->{'hop_count'}, SQL_INTEGER);
-#         $sth->bind_param(($i*$param_cnt) + 5, $hop->{'hop_ip'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 6, $hop->{'hop_name'}, SQL_VARCHAR);
-#     }
-    
-#     $sth->execute;
-#     $sth->finish;
-# }
-
-# sub storeTraceMySql
-# {
-#     my ($self, $trace_hash) = @_;
-    
-#     my $sql = "INSERT INTO traceroutes ( ts, src, dst, hop_no, hop_ip, hop_name ) VALUES ";
-#     for (my $i = scalar(@{$trace_hash->{'path'}}); $i > 0; $i--)
-#     {
-#         $sql .= "(?, ?, ?, ?, ?, ?)";
-#         if ($i > 1)
-#         {
-#             $sql .= ", ";
-#         }
-#     }
-    
-#     my $sth = $self->{'_dbh'}->prepare($sql);
-    
-#     my $param_cnt = 6; # variable so we don't hardcode the number of params
-#     for (my $i = 0; $i < scalar(@{$trace_hash->{'path'}}); $i++)
-#     {
-#         my $hop = $trace_hash->{'path'}[$i];
-        
-#         $sth->bind_param(($i*$param_cnt) + 1, $self->{'_start_time'}, SQL_INTEGER);
-#         $sth->bind_param(($i*$param_cnt) + 2, $self->{'_host_id'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 3, $trace_hash->{'dest_name'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 4, $hop->{'hop_count'}, SQL_INTEGER);
-#         $sth->bind_param(($i*$param_cnt) + 5, $hop->{'hop_ip'}, SQL_VARCHAR);
-#         $sth->bind_param(($i*$param_cnt) + 6, $hop->{'hop_name'}, SQL_VARCHAR);
-#     }
-    
-#     $sth->execute;
-#     $sth->finish;
-# }
 
 1;
