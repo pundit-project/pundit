@@ -39,7 +39,6 @@ sub new
         _detHash => $detHash,
         _cfgHash => $cfgHash,
 
-        # TODO Not implemented.
         # flag that indicates whether a traceroute should be run after a problem is detected
         _runTrace => 1, 
         
