@@ -6,7 +6,7 @@ Name:		pundit-agent
 Summary:	PuNDIT Agent
 Url:		http://pundit.gatech.edu/
 Version:	1.0.1
-Release:	1
+Release:	2
 License:	Apache License 2.0
 Group:		Productivity/Networking/Other
 Source:		%{name}.tar.gz
@@ -76,3 +76,9 @@ esac
 /etc/cron.d/pundit-localization-daemon
 /etc/cron.hourly/pundit-cleanowamp
 /etc/init.d/pundit-agent
+
+%changelog
+* Thu Sep 7 2017 smckee <smckee@umich.edu> - 1.0.1-2
+- Fixed path array indexing problem in ParisTrParser.pm
+
+
